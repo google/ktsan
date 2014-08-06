@@ -1,0 +1,10 @@
+config HAVE_ARCH_TSAN
+	bool
+
+if HAVE_ARCH_TSAN
+
+config TSAN
+	bool "ThreadSanitizer: dynamic data race error detector"
+	default n
+
+endif
