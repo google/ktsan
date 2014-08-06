@@ -1,0 +1,141 @@
+#include "ktsan.h"
+
+#include <linux/kernel.h>
+#include <linux/mm_types.h>
+#include <linux/mm.h>
+#include <linux/printk.h>
+#include <linux/sched.h>
+
+static bool physical_memory_addr(unsigned long addr)
+{
+	return (addr >= (unsigned long)(__va(0)) &&
+		addr < (unsigned long)(__va(max_pfn << PAGE_SHIFT)));
+}
+
+static void *map_memory_to_shadow(unsigned long addr)
+{
+	struct page *page;
+	unsigned long aligned_addr;
+	unsigned long shadow_offset;
+
+	if (!physical_memory_addr(addr))
+		return NULL;
+
+	/* XXX: kmemcheck checks something about pte here. */
+
+	page = virt_to_page(addr);
+	if (!page->shadow)
+		return NULL;
+
+	aligned_addr = round_down(addr, KTSAN_GRAIN);
+	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KTSAN_SHADOW_SLOTS;
+	return page->shadow + shadow_offset;
+}
+
+static bool ranges_intersect(int first_offset, int first_size,
+			     int second_offset, int second_size)
+{
+	if (first_offset + first_size < second_offset)
+		return false;
+
+	if (second_offset + second_size < first_offset)
+		return false;
+
+	return true;
+}
+
+static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
+			struct shadow *slot, struct shadow value, bool stored)
+{
+	struct race_info info;
+	struct shadow old = *slot; /* FIXME: atomic. */
+
+	if (*(unsigned long *)(&old) == 0) {
+		if (!stored) {
+			*slot = value; /* FIXME: atomic. */
+			return true;
+		}
+		return false;
+	}
+
+	/* Is the memory access equal to the previous? */
+	if (value.offset == old.offset && value.size == old.size) {
+		/* Same thread? */
+		if (value.tid == old.tid) {
+			/* TODO. */
+			return false;
+		}
+
+		/* Happens-before? */
+		if (ktsan_clk_get(thr->clk, old.tid) >= old.clock) {
+			*slot = value; /* FIXME: atomic. */
+			return true;
+		}
+
+		if (old.read && value.read)
+			return false;
+
+		info.addr = addr;
+		info.old = old;
+		info.new = value;
+		info.strip_addr = _RET_IP_;
+		report_race(&info);
+
+		return false;
+	}
+
+	/* Do the memory accesses intersect? */
+	if (ranges_intersect(old.offset, (1 << old.size),
+			     value.offset, (1 << value.size))) {
+		if (old.tid == value.tid)
+			return false;
+		if (old.read && value.read)
+			return false;
+
+		/* TODO: compare clock. */
+
+		info.addr = addr;
+		info.old = old;
+		info.new = value;
+		info.strip_addr = _RET_IP_;
+		report_race(&info);
+
+		return false;
+	}
+
+	return false;
+}
+
+void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+		  size_t size, bool read)
+{
+	struct shadow value;
+	unsigned long current_clock;
+	struct shadow *slots;
+	int i;
+	bool stored;
+
+	slots = map_memory_to_shadow(addr); /* FIXME: might be NULL */
+
+	ktsan_clk_tick(thr->clk, thr->id);
+	current_clock = ktsan_clk_get(thr->clk, thr->id);
+
+	/* TODO(xairy): log memory access. */
+
+	value.tid = thr->id;
+	value.clock = current_clock;
+	value.offset = addr & ~KTSAN_GRAIN;
+	value.size = size;
+	value.read = read;
+
+	stored = false;
+	for (i = 0; i < KTSAN_SHADOW_SLOTS; i++)
+		stored |= update_one_shadow_slot(thr, addr, &slots[i],
+						 value, stored);
+
+	if (!stored) {
+		/* Evict random shadow slot. */
+		/* FIXME: atomic? */
+		slots[current_clock % KTSAN_SHADOW_SLOTS] = value;
+	}
+}

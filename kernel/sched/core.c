@@ -74,6 +74,7 @@
 #include <linux/binfmts.h>
 #include <linux/context_tracking.h>
 #include <linux/compiler.h>
+#include <linux/ktsan.h>
 
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
@@ -3052,6 +3053,9 @@ static void __sched __schedule(void)
 
 		rq = context_switch(rq, prev, next); /* unlocks the rq */
 		cpu = cpu_of(rq);
+
+		ktsan_thr_stop(&prev->ktsan, cpu);
+		ktsan_thr_start(&next->ktsan, cpu);
 	} else {
 		lockdep_unpin_lock(&rq->lock);
 		raw_spin_unlock_irq(&rq->lock);

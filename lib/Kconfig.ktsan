@@ -1,0 +1,10 @@
+config HAVE_ARCH_KTSAN
+	bool
+
+if HAVE_ARCH_KTSAN
+
+config KTSAN
+	bool "ThreadSanitizer: dynamic data race error detector"
+	default n
+
+endif

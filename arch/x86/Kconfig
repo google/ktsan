@@ -150,6 +150,7 @@ config X86
 	select VIRT_TO_BUS
 	select X86_DEV_DMA_OPS			if X86_64
 	select X86_FEATURE_NAMES		if PROC_FS
+	select HAVE_ARCH_KTSAN if X86_64
 
 config INSTRUCTION_DECODER
 	def_bool y

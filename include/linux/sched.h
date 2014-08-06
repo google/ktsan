@@ -59,6 +59,7 @@ struct sched_param {
 #include <linux/gfp.h>
 #include <linux/magic.h>
 #include <linux/cgroup-defs.h>
+#include <linux/ktsan.h>
 
 #include <asm/processor.h>
 
@@ -1776,6 +1777,9 @@ struct task_struct {
 	unsigned long	task_state_change;
 #endif
 	int pagefault_disabled;
+
+	/* ThreadSanitizer state. Empty in non-tsan build. */
+	ktsan_thr_t ktsan;
 /* CPU-specific state of this task */
 	struct thread_struct thread;
 /*
