@@ -74,6 +74,7 @@
 #include <linux/binfmts.h>
 #include <linux/context_tracking.h>
 #include <linux/compiler.h>
+#include <linux/tsan.h>
 
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
@@ -2835,6 +2836,10 @@ need_resched:
 		 */
 		cpu = smp_processor_id();
 		rq = cpu_rq(cpu);
+
+		#ifdef CONFIG_TSAN
+		tsan_thread_start(next->pid, cpu);
+		#endif /* CONFIG_TSAN */
 	} else
 		raw_spin_unlock_irq(&rq->lock);
 
