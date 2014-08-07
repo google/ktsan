@@ -20,6 +20,7 @@
 #include <linux/interrupt.h>
 #include <linux/debug_locks.h>
 #include <linux/export.h>
+#include <linux/tsan.h>
 
 /*
  * If lockdep is enabled then we use the non-preemption spin-ops
