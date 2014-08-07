@@ -3142,7 +3142,8 @@ noretry:
 nopage:
 	warn_alloc_failed(gfp_mask, order, NULL);
 got_pg:
-	tsan_alloc_page(page, order, gfp_mask);
+	tsan_alloc_page(page, order, gfp_mask, -1);
+
 	return page;
 }
 

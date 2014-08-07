@@ -1625,7 +1625,7 @@ static struct page *kmem_getpages(struct kmem_cache *cachep, gfp_t flags,
 		else
 			kmemcheck_mark_unallocated_pages(page, nr_pages);
 	}
-	tsan_alloc_page(page, cachep->gfporder, cachep->flags);
+	tsan_alloc_page(page, cachep->gfporder, cachep->flags, nodeid);
 
 	return page;
 }

@@ -24,7 +24,8 @@ void tsan_thread_start(int thread_id, int cpu);
 
 /* TODO(xairy): trylock? */
 
-void tsan_alloc_page(struct page *page, unsigned int order, gfp_t gfp_mask);
+void tsan_alloc_page(struct page *page, unsigned int order,
+		     gfp_t flags, int node);
 void tsan_free_page(struct page *page, unsigned int order);
 void tsan_split_page(struct page *page, unsigned int order);
 
@@ -44,7 +45,8 @@ void tsan_spin_unlock(spinlock_t *lock) {}
 void tsan_thread_start(int thread_id, int cpu) {}
 //void tsan_thread_stop(int thread_id, int cpu) {}
 
-void tsan_alloc_page(struct page *page, unsigned int order, gfp_t gfp_mask) {}
+void tsan_alloc_page(struct page *page, unsigned int order,
+		     gfp_t flags, int node) {}
 void tsan_free_page(struct page *page, unsigned int order) {}
 void tsan_split_page(struct page *page, unsigned int order) {}
 
