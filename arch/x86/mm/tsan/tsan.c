@@ -1,12 +1,16 @@
 #include <linux/tsan.h>
 
+#include <linux/gfp.h>
 #include <linux/mm_types.h>
+#include <linux/mm.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
 
 #include <asm/thread_info.h>
+
+#include "tsan.h"
 
 /* XXX: for debugging. */
 #define REPEAT_N_AND_STOP(n) \
@@ -68,20 +72,54 @@ void tsan_thread_stop(int thread_id, int cpu)
 }
 EXPORT_SYMBOL(tsan_thread_stop);
 
-void tsan_alloc_page(struct page *page, unsigned int order, gfp_t gfp_mask)
+void tsan_alloc_page(struct page *page, unsigned int order,
+		     gfp_t flags, int node)
 {
+	struct page *shadow;
+	int pages = 1 << order;
+	int i;
 
+	if (flags & (__GFP_HIGHMEM | __GFP_NOTRACK))
+		return;
+
+	shadow = alloc_pages_node(node, flags | __GFP_NOTRACK,
+			order + TSAN_SHADOW_SLOTS_LOG);
+	if (!shadow) {
+		pr_err("TSan: failed to allocate shadow for page %p.\n", page);
+		return;
+	}
+
+	for (i = 0; i < pages; i++)
+		page[i].shadow = page_address(&shadow[i * TSAN_SHADOW_SLOTS]);
 }
 EXPORT_SYMBOL(tsan_alloc_page);
 
 void tsan_free_page(struct page *page, unsigned int order)
 {
+	struct page *shadow;
+	int pages = 1 << order;
+	int i;
 
+	if (!page[0].shadow)
+		return;
+
+	shadow = virt_to_page(page[0].shadow);
+
+	for (i = 0; i < pages; i++)
+		page[i].shadow = NULL;
+
+	__free_pages(shadow, order);
 }
 EXPORT_SYMBOL(tsan_free_page);
 
 void tsan_split_page(struct page *page, unsigned int order)
 {
+	struct page *shadow;
 
+	if (!page[0].shadow)
+		return;
+
+	shadow = virt_to_page(page[0].shadow);
+	split_page(shadow, order);
 }
 EXPORT_SYMBOL(tsan_split_page);
