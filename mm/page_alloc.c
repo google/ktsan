@@ -2775,7 +2775,7 @@ nopage:
 got_pg:
 	if (kmemcheck_enabled)
 		kmemcheck_pagealloc_alloc(page, order, gfp_mask);
-	tsan_alloc_page(page, order, gfp_mask);
+	tsan_alloc_page(page, order, gfp_mask, -1);
 
 	return page;
 }
