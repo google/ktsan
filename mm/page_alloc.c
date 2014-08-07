@@ -63,6 +63,7 @@
 #include <linux/sched/rt.h>
 #include <linux/page_owner.h>
 #include <linux/kthread.h>
+#include <linux/tsan.h>
 
 #include <asm/sections.h>
 #include <asm/tlbflush.h>
@@ -917,6 +918,7 @@ static bool free_pages_prepare(struct page *page, unsigned int order)
 	trace_mm_page_free(page, order);
 	kmemcheck_free_shadow(page, order);
 	kasan_free_pages(page, order);
+	tsan_free_page(page, order);
 
 	if (PageAnon(page))
 		page->mapping = NULL;
@@ -1962,6 +1964,8 @@ void split_page(struct page *page, unsigned int order)
 	if (kmemcheck_page_is_tracked(page))
 		split_page(virt_to_page(page[0].shadow), order);
 #endif
+
+	tsan_split_page(page, order);
 
 	set_page_owner(page, 0, 0);
 	for (i = 1; i < (1 << order); i++) {
@@ -3138,6 +3142,7 @@ noretry:
 nopage:
 	warn_alloc_failed(gfp_mask, order, NULL);
 got_pg:
+	tsan_alloc_page(page, order, gfp_mask);
 	return page;
 }
 
