@@ -75,7 +75,6 @@ typedef struct spinlock {
 	};
 
 #ifdef CONFIG_TSAN
-	/* TODO(xairy): initialize on first lock. */
 	unsigned long* clock;
 #endif
 } spinlock_t;
