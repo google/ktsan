@@ -60,7 +60,7 @@
 #include <linux/hugetlb.h>
 #include <linux/sched/rt.h>
 #include <linux/page_owner.h>
-#include <linux/tsan.h>
+#include <linux/ktsan.h>
 
 #include <asm/sections.h>
 #include <asm/tlbflush.h>
@@ -808,7 +808,7 @@ static bool free_pages_prepare(struct page *page, unsigned int order)
 
 	trace_mm_page_free(page, order);
 	kmemcheck_free_shadow(page, order);
-	tsan_free_page(page, order);
+	ktsan_free_page(page, order);
 
 	if (PageAnon(page))
 		page->mapping = NULL;
@@ -1568,7 +1568,7 @@ void split_page(struct page *page, unsigned int order)
 		split_page(virt_to_page(page[0].shadow), order);
 #endif
 
-	tsan_split_page(page, order);
+	ktsan_split_page(page, order);
 
 	set_page_owner(page, 0, 0);
 	for (i = 1; i < (1 << order); i++) {
@@ -2862,7 +2862,7 @@ nopage:
 got_pg:
 	if (kmemcheck_enabled)
 		kmemcheck_pagealloc_alloc(page, order, gfp_mask);
-	tsan_alloc_page(page, order, gfp_mask, -1);
+	ktsan_alloc_page(page, order, gfp_mask, -1);
 
 	return page;
 }
