@@ -12,6 +12,10 @@ struct page;
 
 #define TSAN_MAX_THREAD_ID 4096
 
+void tsan_enable(void);
+
+void tsan_spin_lock_init(void *lock);
+
 void tsan_spin_lock(void *lock);
 void tsan_spin_unlock(void *lock);
 
@@ -20,6 +24,8 @@ void tsan_spin_unlock(void *lock);
 
 //void tsan_spin_write_lock(void *lock);
 //void tsan_spin_write_unlock(void *lock);
+
+void tsan_thread_create(struct task_struct* task);
 
 void tsan_thread_start(int thread_id, int cpu);
 // void tsan_thread_stop(int thread_id, int cpu);
@@ -35,6 +41,10 @@ void tsan_split_page(struct page *page, unsigned int order);
 
 /* When disabled TSAN is no-op. */
 
+void tsan_enable(void) {}
+
+void tsan_spin_lock_init(void *lock) {}
+
 void tsan_spin_lock(void *lock) {}
 void tsan_spin_unlock(void *lock) {}
 
@@ -43,6 +53,8 @@ void tsan_spin_unlock(void *lock) {}
 
 //void tsan_spin_write_lock(void *lock) {}
 //void tsan_spin_write_unlock(void *lock) {}
+
+void tsan_thread_create(struct task_struct* task) {}
 
 void tsan_thread_start(int thread_id, int cpu) {}
 //void tsan_thread_stop(int thread_id, int cpu) {}

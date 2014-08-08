@@ -1,6 +1,7 @@
 #include <linux/tsan.h>
 
 #include <linux/gfp.h>
+#include <linux/kernel.h>
 #include <linux/mm_types.h>
 #include <linux/mm.h>
 #include <linux/printk.h>
@@ -15,6 +16,12 @@
 #include <asm/thread_info.h>
 
 #include "tsan.h"
+
+static struct {
+	int enabled;
+} ctx = {
+	.enabled = 0,
+};
 
 /* XXX: for debugging. */
 #define REPEAT_N_AND_STOP(n) \
@@ -55,6 +62,8 @@ static bool physical_memory_addr(unsigned long addr)
 static void *map_memory_to_shadow(unsigned long addr)
 {
 	struct page *page;
+	unsigned long aligned_addr;
+	unsigned long shadow_offset;
 
 	if (!physical_memory_addr(addr))
 		return NULL;
@@ -64,25 +73,75 @@ static void *map_memory_to_shadow(unsigned long addr)
 	page = virt_to_page(addr);
 	if (!page->shadow)
 		return NULL;
-	return page->shadow + (addr & (PAGE_SIZE - 1)) * TSAN_SHADOW_SLOTS;
+	aligned_addr = round_down(addr, sizeof(unsigned long));
+	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * TSAN_SHADOW_SLOTS;
+	return page->shadow + shadow_offset;
 }
 
+static void acquire(unsigned long *thread_vc, unsigned long *sync_vc)
+{
+	int i;
+
+	for (i = 0; i < TSAN_MAX_THREAD_ID; i++)
+		sync_vc[i] = max(thread_vc[i], sync_vc[i]);
+}
+
+static void release(unsigned long *thread_vc, unsigned long *sync_vc)
+{
+	int i;
+
+	for (i = 0; i < TSAN_MAX_THREAD_ID; i++)
+		thread_vc[i] = max(thread_vc[i], sync_vc[i]);
+}
+
+/*
+static void store_release(unsigned long *thread_vc, unsigned long *sync_vc)
+{
+	int i;
+
+	for (i = 0; i < TSAN_MAX_THREAD_ID; i++)
+		sync_vc[i] = thread_vc[i];
+}
+*/
+
+void tsan_enable(void)
+{
+	/* XXX: race on ctx.enabled? */
+	// ctx.enabled = 0;
+	ctx.enabled = 1;
+}
+
+void tsan_spin_lock_init(void *lock)
+{
+	spinlock_t *spin_lock = (spinlock_t *)lock;
+	spin_lock->clock = NULL;
+}
+EXPORT_SYMBOL(tsan_spin_lock_init);
+
+/* XXX: before actual lock or after? */
 void tsan_spin_lock(void *lock)
 {
 	unsigned long addr = (unsigned long)lock;
 	int thread_id = current_thread_id();
 	spinlock_t *spin_lock = (spinlock_t *)lock;
 
-	if (!spin_lock->clock)
-		spin_lock->clock = kmalloc(
-			sizeof(unsigned long) * TSAN_MAX_THREAD_ID, GFP_KERNEL);
-	BUG_ON(!spin_lock->clock);
-
 	REPEAT_N_AND_STOP(20) TSAN_PRINT(
 		"Thread #%d locked %lu.\n", thread_id, addr);
+
+	//if (!ctx.enabled)
+	//	return;
+
+	if (!spin_lock->clock) {
+		/*spin_lock->clock = kzalloc(
+			sizeof(unsigned long) * TSAN_MAX_THREAD_ID, GFP_KERNEL);*/
+		/*spin_lock->clock =
+			(void *)__get_free_pages(GFP_KERNEL | __GFP_NOTRACK, 3);*/
+	}
+	//BUG_ON(!spin_lock->clock);
 }
 EXPORT_SYMBOL(tsan_spin_lock);
 
+/* XXX: before actual unlock or after? */
 void tsan_spin_unlock(void *lock)
 {
 	unsigned long addr = (unsigned long)lock;
@@ -91,6 +150,13 @@ void tsan_spin_unlock(void *lock)
 		"Thread #%d unlocked %lu.\n", thread_id, addr);
 }
 EXPORT_SYMBOL(tsan_spin_unlock);
+
+void tsan_thread_create(struct task_struct* task)
+{
+	memset(task->clock, 0, sizeof(task->clock));
+}
+EXPORT_SYMBOL(tsan_thread_create);
+
 
 void tsan_thread_start(int thread_id, int cpu)
 {
