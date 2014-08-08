@@ -59,6 +59,8 @@ struct sched_param {
 #include <linux/gfp.h>
 #include <linux/magic.h>
 
+#include <linux/tsan.h>
+
 #include <asm/processor.h>
 
 #define SCHED_ATTR_SIZE_VER0	48	/* sizeof first published struct */
@@ -1700,6 +1702,10 @@ struct task_struct {
 #endif
 #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
 	unsigned long	task_state_change;
+#endif
+
+#ifdef CONFIG_TSAN
+	unsigned long clock[TSAN_MAX_THREAD_ID];
 #endif
 };
 
