@@ -13,13 +13,13 @@ static int current_thread_id(void)
 	return current_thread_info()->task->pid;
 }
 
-static void tsan_run_tests(void)
+static void ktsan_run_tests(void)
 {
 	printk("TSan: running tests, thread #%d.\n", current_thread_id());
 }
 
-static ssize_t tsan_tests_write(struct file *file, const char __user *buf,
-				size_t count, loff_t *offset)
+static ssize_t ktsan_tests_write(struct file *file, const char __user *buf,
+				 size_t count, loff_t *offset)
 {
 	char buffer[16];
 
@@ -30,19 +30,19 @@ static ssize_t tsan_tests_write(struct file *file, const char __user *buf,
 		return -EFAULT;
 
 	if (!strcmp(buffer, "tsan_run_tests\n"))
-		tsan_run_tests();
+		ktsan_run_tests();
 
 	return count;
 }
 
-static const struct file_operations tsan_tests_operations = {
-	.write = tsan_tests_write,
+static const struct file_operations ktsan_tests_operations = {
+	.write = ktsan_tests_write,
 };
 
-static int __init tsan_tests_init(void)
+static int __init ktsan_tests_init(void)
 {
-	proc_create("ktsan_tests", S_IWUSR, NULL, &tsan_tests_operations);
+	proc_create("ktsan_tests", S_IWUSR, NULL, &ktsan_tests_operations);
 	return 0;
 }
 
-device_initcall(tsan_tests_init);
+device_initcall(ktsan_tests_init);

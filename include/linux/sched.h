@@ -57,7 +57,7 @@ struct sched_param {
 #include <linux/uidgid.h>
 #include <linux/gfp.h>
 
-#include <linux/tsan.h>
+#include <linux/ktsan.h>
 
 #include <asm/processor.h>
 
@@ -1653,8 +1653,8 @@ struct task_struct {
 	unsigned int	sequential_io_avg;
 #endif
 
-#ifdef CONFIG_TSAN
-	unsigned long clock[TSAN_MAX_THREAD_ID];
+#ifdef CONFIG_KTSAN
+	unsigned long clock[KTSAN_MAX_THREAD_ID];
 #endif
 };
 
