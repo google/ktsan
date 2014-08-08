@@ -202,7 +202,7 @@ struct page {
 	void *shadow;
 #endif
 
-#ifdef CONFIG_TSAN
+#ifdef CONFIG_KTSAN
 	void *shadow;
 #endif
 

@@ -59,7 +59,7 @@ struct sched_param {
 #include <linux/gfp.h>
 #include <linux/magic.h>
 #include <linux/cgroup-defs.h>
-#include <linux/tsan.h>
+#include <linux/ktsan.h>
 
 #include <asm/processor.h>
 
@@ -1779,8 +1779,8 @@ struct task_struct {
 	unsigned long	task_state_change;
 #endif
 	int pagefault_disabled;
-#ifdef CONFIG_TSAN
-	unsigned long clock[TSAN_MAX_THREAD_ID];
+#ifdef CONFIG_KTSAN
+	unsigned long clock[KTSAN_MAX_THREAD_ID];
 #endif
 };
 

@@ -663,7 +663,7 @@ config DEBUG_STACKOVERFLOW
 source "lib/Kconfig.kmemcheck"
 
 source "lib/Kconfig.kasan"
-source "lib/Kconfig.tsan"
+source "lib/Kconfig.ktsan"
 
 endmenu # "Memory Debugging"
 

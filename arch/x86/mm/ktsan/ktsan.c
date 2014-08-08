@@ -1,4 +1,4 @@
-#include <linux/tsan.h>
+#include <linux/ktsan.h>
 
 #include <linux/gfp.h>
 #include <linux/kernel.h>
@@ -15,7 +15,7 @@
 #include <asm/page_64.h>
 #include <asm/thread_info.h>
 
-#include "tsan.h"
+#include "ktsan.h"
 
 static struct {
 	int enabled;
@@ -45,7 +45,7 @@ static struct {
 #define COLOR_MAGENTA COLOR("\x1B[1;35m")
 #define COLOR_WHITE   COLOR("\x1B[1;37m")
 
-#define TSAN_PRINT(fmt, args...) \
+#define KTSAN_PRINT(fmt, args...) \
 	pr_err("%sTsan: %s"fmt, COLOR_GREEN, COLOR_NORMAL, ##args)
 
 static int current_thread_id(void)
@@ -74,7 +74,7 @@ static void *map_memory_to_shadow(unsigned long addr)
 	if (!page->shadow)
 		return NULL;
 	aligned_addr = round_down(addr, sizeof(unsigned long));
-	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * TSAN_SHADOW_SLOTS;
+	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KTSAN_SHADOW_SLOTS;
 	return page->shadow + shadow_offset;
 }
 
@@ -82,7 +82,7 @@ static void acquire(unsigned long *thread_vc, unsigned long *sync_vc)
 {
 	int i;
 
-	for (i = 0; i < TSAN_MAX_THREAD_ID; i++)
+	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
 		sync_vc[i] = max(thread_vc[i], sync_vc[i]);
 }
 
@@ -90,7 +90,7 @@ static void release(unsigned long *thread_vc, unsigned long *sync_vc)
 {
 	int i;
 
-	for (i = 0; i < TSAN_MAX_THREAD_ID; i++)
+	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
 		thread_vc[i] = max(thread_vc[i], sync_vc[i]);
 }
 
@@ -99,78 +99,76 @@ static void store_release(unsigned long *thread_vc, unsigned long *sync_vc)
 {
 	int i;
 
-	for (i = 0; i < TSAN_MAX_THREAD_ID; i++)
+	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
 		sync_vc[i] = thread_vc[i];
 }
 */
 
-void tsan_enable(void)
+void ktsan_enable(void)
+
 {
 	/* XXX: race on ctx.enabled? */
 	// ctx.enabled = 0;
 	ctx.enabled = 1;
 }
 
-void tsan_spin_lock_init(void *lock)
+void ktsan_spin_lock_init(void *lock)
 {
 	spinlock_t *spin_lock = (spinlock_t *)lock;
 	spin_lock->clock = NULL;
 }
-EXPORT_SYMBOL(tsan_spin_lock_init);
+EXPORT_SYMBOL(ktsan_spin_lock_init);
 
 /* XXX: before actual lock or after? */
-void tsan_spin_lock(void *lock)
+void ktsan_spin_lock(void *lock)
 {
 	unsigned long addr = (unsigned long)lock;
 	int thread_id = current_thread_id();
 	spinlock_t *spin_lock = (spinlock_t *)lock;
 
-	REPEAT_N_AND_STOP(20) TSAN_PRINT(
+	REPEAT_N_AND_STOP(20) KTSAN_PRINT(
 		"Thread #%d locked %lu.\n", thread_id, addr);
-
-	//if (!ctx.enabled)
-	//	return;
 
 	if (!spin_lock->clock) {
 		/*spin_lock->clock = kzalloc(
-			sizeof(unsigned long) * TSAN_MAX_THREAD_ID, GFP_KERNEL);*/
+			sizeof(unsigned long) * KTSAN_MAX_THREAD_ID, GFP_KERNEL);*/
 		/*spin_lock->clock =
 			(void *)__get_free_pages(GFP_KERNEL | __GFP_NOTRACK, 3);*/
 	}
 	//BUG_ON(!spin_lock->clock);
 }
-EXPORT_SYMBOL(tsan_spin_lock);
+EXPORT_SYMBOL(ktsan_spin_lock);
 
 /* XXX: before actual unlock or after? */
-void tsan_spin_unlock(void *lock)
+void ktsan_spin_unlock(void *lock)
 {
 	unsigned long addr = (unsigned long)lock;
 	int thread_id = current_thread_id();
-	REPEAT_N_AND_STOP(20) TSAN_PRINT(
+	REPEAT_N_AND_STOP(20) KTSAN_PRINT(
 		"Thread #%d unlocked %lu.\n", thread_id, addr);
 }
-EXPORT_SYMBOL(tsan_spin_unlock);
+EXPORT_SYMBOL(ktsan_spin_unlock);
 
-void tsan_thread_create(struct task_struct* task)
+void ktsan_thread_create(struct task_struct* task)
 {
 	memset(task->clock, 0, sizeof(task->clock));
 }
-EXPORT_SYMBOL(tsan_thread_create);
+EXPORT_SYMBOL(ktsan_thread_create);
 
 
-void tsan_thread_start(int thread_id, int cpu)
+void ktsan_thread_start(int thread_id, int cpu)
 {
-	REPEAT_N_AND_STOP(10) TSAN_PRINT(
+	REPEAT_N_AND_STOP(10) KTSAN_PRINT(
 		"Thread #%d started on cpu #%d.\n", thread_id, cpu);
 }
-EXPORT_SYMBOL(tsan_thread_start);
+EXPORT_SYMBOL(ktsan_thread_start);
 
-void tsan_thread_stop(int thread_id, int cpu)
+void ktsan_thread_stop(int thread_id, int cpu)
 {
 }
-EXPORT_SYMBOL(tsan_thread_stop);
+EXPORT_SYMBOL(ktsan_thread_stop);
 
-void tsan_alloc_page(struct page *page, unsigned int order,
+void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node)
 {
 	struct page *shadow;
@@ -181,15 +179,15 @@ void tsan_alloc_page(struct page *page, unsigned int order,
 		return;
 
 	shadow = alloc_pages_node(node, flags | __GFP_NOTRACK,
-			order + TSAN_SHADOW_SLOTS_LOG);
+			order + KTSAN_SHADOW_SLOTS_LOG);
 	BUG_ON(!shadow);
 
 	for (i = 0; i < pages; i++)
-		page[i].shadow = page_address(&shadow[i * TSAN_SHADOW_SLOTS]);
+		page[i].shadow = page_address(&shadow[i * KTSAN_SHADOW_SLOTS]);
 }
-EXPORT_SYMBOL(tsan_alloc_page);
+EXPORT_SYMBOL(ktsan_alloc_page);
 
-void tsan_free_page(struct page *page, unsigned int order)
+void ktsan_free_page(struct page *page, unsigned int order)
 {
 	struct page *shadow;
 	int pages = 1 << order;
@@ -205,9 +203,9 @@ void tsan_free_page(struct page *page, unsigned int order)
 
 	__free_pages(shadow, order);
 }
-EXPORT_SYMBOL(tsan_free_page);
+EXPORT_SYMBOL(ktsan_free_page);
 
-void tsan_split_page(struct page *page, unsigned int order)
+void ktsan_split_page(struct page *page, unsigned int order)
 {
 	struct page *shadow;
 
@@ -217,9 +215,9 @@ void tsan_split_page(struct page *page, unsigned int order)
 	shadow = virt_to_page(page[0].shadow);
 	split_page(shadow, order);
 }
-EXPORT_SYMBOL(tsan_split_page);
+EXPORT_SYMBOL(ktsan_split_page);
 
-void tsan_access_memory(unsigned long addr, size_t size, bool is_read)
+void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 {
 	
 }

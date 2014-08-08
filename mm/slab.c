@@ -116,6 +116,7 @@
 #include	<linux/kmemcheck.h>
 #include	<linux/memory.h>
 #include	<linux/prefetch.h>
+#include	<linux/ktsan.h>
 
 #include	<net/sock.h>
 
@@ -1625,7 +1626,7 @@ static struct page *kmem_getpages(struct kmem_cache *cachep, gfp_t flags,
 		else
 			kmemcheck_mark_unallocated_pages(page, nr_pages);
 	}
-	tsan_alloc_page(page, cachep->gfporder, cachep->flags, nodeid);
+	ktsan_alloc_page(page, cachep->gfporder, cachep->flags, nodeid);
 
 	return page;
 }
@@ -1638,7 +1639,7 @@ static void kmem_freepages(struct kmem_cache *cachep, struct page *page)
 	const unsigned long nr_freed = (1 << cachep->gfporder);
 
 	kmemcheck_free_shadow(page, cachep->gfporder);
-	tsan_free_page(page, cachep->gfporder);	
+	ktsan_free_page(page, cachep->gfporder);	
 
 	if (cachep->flags & SLAB_RECLAIM_ACCOUNT)
 		sub_zone_page_state(page_zone(page),
