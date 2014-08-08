@@ -31,4 +31,4 @@ obj-$(CONFIG_NUMA_EMU)		+= numa_emulation.o
 
 obj-$(CONFIG_MEMTEST)		+= memtest.o
 
-obj-$(CONFIG_TSAN)		+= tsan/
+obj-$(CONFIG_KTSAN)		+= ktsan/
