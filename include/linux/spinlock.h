@@ -302,10 +302,18 @@ static inline raw_spinlock_t *spinlock_check(spinlock_t *lock)
 	return &lock->rlock;
 }
 
+/* XXX(xairy): _lock in spin_lock_init might be a pointer or a value. */
+static inline void tsan_spin_lock_init(spinlock_t *lock) {
+#ifdef CONFIG_TSAN
+	lock->clock = NULL;
+#endif
+}
+
 #define spin_lock_init(_lock)				\
 do {							\
 	spinlock_check(_lock);				\
 	raw_spin_lock_init(&(_lock)->rlock);		\
+	tsan_spin_lock_init(_lock);			\
 } while (0)
 
 static inline void spin_lock(spinlock_t *lock)

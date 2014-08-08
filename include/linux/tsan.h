@@ -10,14 +10,16 @@ struct page;
 
 #ifdef CONFIG_TSAN
 
-void tsan_spin_lock(spinlock_t *lock);
-void tsan_spin_unlock(spinlock_t *lock);
+#define TSAN_MAX_THREAD_ID 4096
 
-//void tsan_spin_read_lock(spinlock_t *lock);
-//void tsan_spin_read_unlock(spinlock_t *lock);
+void tsan_spin_lock(void *lock);
+void tsan_spin_unlock(void *lock);
 
-//void tsan_spin_write_lock(spinlock_t *lock);
-//void tsan_spin_write_unlock(spinlock_t *lock);
+//void tsan_spin_read_lock(void *lock);
+//void tsan_spin_read_unlock(void *lock);
+
+//void tsan_spin_write_lock(void *lock);
+//void tsan_spin_write_unlock(void *lock);
 
 void tsan_thread_start(int thread_id, int cpu);
 // void tsan_thread_stop(int thread_id, int cpu);
@@ -33,14 +35,14 @@ void tsan_split_page(struct page *page, unsigned int order);
 
 /* When disabled TSAN is no-op. */
 
-void tsan_spin_lock(spinlock_t *lock) {}
-void tsan_spin_unlock(spinlock_t *lock) {}
+void tsan_spin_lock(void *lock) {}
+void tsan_spin_unlock(void *lock) {}
 
-//void tsan_spin_read_lock(spinlock_t *lock) {}
-//void tsan_spin_read_unlock(spinlock_t *lock) {}
+//void tsan_spin_read_lock(void *lock) {}
+//void tsan_spin_read_unlock(void *lock) {}
 
-//void tsan_spin_write_lock(spinlock_t *lock) {}
-//void tsan_spin_write_unlock(spinlock_t *lock) {}
+//void tsan_spin_write_lock(void *lock) {}
+//void tsan_spin_write_unlock(void *lock) {}
 
 void tsan_thread_start(int thread_id, int cpu) {}
 //void tsan_thread_stop(int thread_id, int cpu) {}

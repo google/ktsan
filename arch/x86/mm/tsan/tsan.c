@@ -5,9 +5,13 @@
 #include <linux/mm.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
 
+#include <asm/bug.h>
+#include <asm/page.h>
+#include <asm/page_64.h>
 #include <asm/thread_info.h>
 
 #include "tsan.h"
@@ -42,16 +46,44 @@ static int current_thread_id(void)
 	return current_thread_info()->task->pid;
 }
 
-void tsan_spin_lock(spinlock_t *lock)
+static bool physical_memory_addr(unsigned long addr)
+{
+	return (addr >= (unsigned long)(__va(0)) &&
+		addr < (unsigned long)(__va(max_pfn << PAGE_SHIFT)));
+}
+
+static void *map_memory_to_shadow(unsigned long addr)
+{
+	struct page *page;
+
+	if (!physical_memory_addr(addr))
+		return NULL;
+
+	/* XXX: kmemcheck checks something about pte here. */
+
+	page = virt_to_page(addr);
+	if (!page->shadow)
+		return NULL;
+	return page->shadow + (addr & (PAGE_SIZE - 1)) * TSAN_SHADOW_SLOTS;
+}
+
+void tsan_spin_lock(void *lock)
 {
 	unsigned long addr = (unsigned long)lock;
 	int thread_id = current_thread_id();
+	spinlock_t *spin_lock = (spinlock_t *)lock;
+
+	if (!spin_lock->clock)
+		spin_lock->clock = kmalloc(
+			sizeof(unsigned long) * TSAN_MAX_THREAD_ID, GFP_KERNEL);
+	BUG_ON(!spin_lock->clock);
+
 	REPEAT_N_AND_STOP(20) TSAN_PRINT(
 		"Thread #%d locked %lu.\n", thread_id, addr);
 }
 EXPORT_SYMBOL(tsan_spin_lock);
 
-void tsan_spin_unlock(spinlock_t *lock)
+void tsan_spin_unlock(void *lock)
 {
 	unsigned long addr = (unsigned long)lock;
 	int thread_id = current_thread_id();
@@ -84,10 +116,7 @@ void tsan_alloc_page(struct page *page, unsigned int order,
 
 	shadow = alloc_pages_node(node, flags | __GFP_NOTRACK,
 			order + TSAN_SHADOW_SLOTS_LOG);
-	if (!shadow) {
-		pr_err("TSan: failed to allocate shadow for page %p.\n", page);
-		return;
-	}
+	BUG_ON(!shadow);
 
 	for (i = 0; i < pages; i++)
 		page[i].shadow = page_address(&shadow[i * TSAN_SHADOW_SLOTS]);
@@ -123,3 +152,8 @@ void tsan_split_page(struct page *page, unsigned int order)
 	split_page(shadow, order);
 }
 EXPORT_SYMBOL(tsan_split_page);
+
+void tsan_access_memory(unsigned long addr, size_t size, bool is_read)
+{
+	
+}
