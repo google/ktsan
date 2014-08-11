@@ -59,51 +59,6 @@ static bool physical_memory_addr(unsigned long addr)
 		addr < (unsigned long)(__va(max_pfn << PAGE_SHIFT)));
 }
 
-static void *map_memory_to_shadow(unsigned long addr)
-{
-	struct page *page;
-	unsigned long aligned_addr;
-	unsigned long shadow_offset;
-
-	if (!physical_memory_addr(addr))
-		return NULL;
-
-	/* XXX: kmemcheck checks something about pte here. */
-
-	page = virt_to_page(addr);
-	if (!page->shadow)
-		return NULL;
-	aligned_addr = round_down(addr, sizeof(unsigned long));
-	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KTSAN_SHADOW_SLOTS;
-	return page->shadow + shadow_offset;
-}
-
-static void acquire(unsigned long *thread_vc, unsigned long *sync_vc)
-{
-	int i;
-
-	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
-		sync_vc[i] = max(thread_vc[i], sync_vc[i]);
-}
-
-static void release(unsigned long *thread_vc, unsigned long *sync_vc)
-{
-	int i;
-
-	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
-		thread_vc[i] = max(thread_vc[i], sync_vc[i]);
-}
-
-/*
-static void store_release(unsigned long *thread_vc, unsigned long *sync_vc)
-{
-	int i;
-
-	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
-		sync_vc[i] = thread_vc[i];
-}
-*/
-
 void ktsan_enable(void)
 
 {
@@ -168,6 +123,7 @@ void ktsan_thread_stop(int thread_id, int cpu)
 }
 EXPORT_SYMBOL(ktsan_thread_stop);
 
+/* TODO(xairy): zero shadow. */
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node)
 {
@@ -217,7 +173,123 @@ void ktsan_split_page(struct page *page, unsigned int order)
 }
 EXPORT_SYMBOL(ktsan_split_page);
 
+static void *map_memory_to_shadow(unsigned long addr)
+{
+	struct page *page;
+	unsigned long aligned_addr;
+	unsigned long shadow_offset;
+
+	if (!physical_memory_addr(addr))
+		return NULL;
+
+	/* XXX: kmemcheck checks something about pte here. */
+
+	page = virt_to_page(addr);
+	if (!page->shadow)
+		return NULL;
+	aligned_addr = round_down(addr, sizeof(unsigned long));
+	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KTSAN_SHADOW_SLOTS;
+	return page->shadow + shadow_offset;
+}
+
+static void report_race(struct task_struct *task,
+		struct shadow old, struct shadow new)
+{
+	pr_err("TSan: race detected.\n");
+	/* TODO. */
+}
+
+static bool update_one_shadow_slot(struct task_struct *task,
+	struct shadow *slot, struct shadow value, bool stored)
+{
+	struct shadow old = *slot; /* FIXME: atomic. */
+
+	if (*(unsigned long *)(&old) == 0) {
+		if (!stored) {
+			*slot = value; /* FIXME: atomic. */
+			return true;
+		}
+		return false;
+	}
+
+	/* Is the memory access equal to the previous? */
+	if (value.offset == old.offset && value.size == old.size) {
+		/* Same thread? */
+		if (value.thread_id == old.thread_id) {
+			/* TODO. */
+			return false;
+		}
+
+		/* Happens-before? */
+		if (task->clock[old.thread_id] >= old.clock) {
+			*slot = value; /* FIXME: atomic. */
+			return true;
+		}
+
+		if (old.is_read && value.is_read)
+			return false;
+
+		report_race(task, old, value);
+	}
+
+	/* TODO: ranges intersection. */
+
+	return false;
+}
+
 void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 {
-	
+	bool stored;
+	int i;
+
+	struct task_struct *task = current_thread_info()->task;	
+	int thread_id = task->pid;
+	struct shadow *slots = map_memory_to_shadow(addr);
+	unsigned long current_clock = ++task->clock[thread_id];
+
+	/* TODO(xairy): log memory access. */
+
+	struct shadow value;
+	value.thread_id = task->pid;
+	value.clock = current_clock;
+	value.offset = 0; /* FIXME. */
+	value.size = 1; /* FIXME. */
+	value.is_read = is_read;
+	value.is_atomic = 0; /* FIXME. */
+	value.is_freed = 0; /* FIXME. */
+
+	stored = false;
+	for (i = 0; i < KTSAN_SHADOW_SLOTS; i++)
+		stored |= update_one_shadow_slot(task, &slots[i],
+						 value, stored);
+	if (!stored) {
+		/* Evict random shadow slot. */
+		slots[current_clock % KTSAN_SHADOW_SLOTS] = value; /* FIXME: atomic?*/
+	}
 }
+
+void acquire(unsigned long *thread_vc, unsigned long *sync_vc)
+{
+	int i;
+
+	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
+		sync_vc[i] = max(thread_vc[i], sync_vc[i]);
+}
+
+void release(unsigned long *thread_vc, unsigned long *sync_vc)
+{
+	int i;
+
+	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
+		thread_vc[i] = max(thread_vc[i], sync_vc[i]);
+}
+
+/*
+static void store_release(unsigned long *thread_vc, unsigned long *sync_vc)
+{
+	int i;
+
+	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
+		sync_vc[i] = thread_vc[i];
+}
+*/
