@@ -189,6 +189,7 @@ static void *map_memory_to_shadow(unsigned long addr)
 	page = virt_to_page(addr);
 	if (!page->shadow)
 		return NULL;
+
 	aligned_addr = round_down(addr, sizeof(unsigned long));
 	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KTSAN_SHADOW_SLOTS;
 	return page->shadow + shadow_offset;

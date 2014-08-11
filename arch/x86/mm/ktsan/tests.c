@@ -4,6 +4,7 @@
 #include <linux/printk.h>
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
 #include <linux/string.h>
 
 #include <asm/uaccess.h>
@@ -16,10 +17,12 @@ static int thread_race(void *arg)
 	int i;
 	int *value = (int *)arg;
 
-	for (i = 0; i < 500 * 1000 * 1000; i++)
-		*value++;
+	for (i = 0; i < 500 * 1000 * 1000; i++) {
+		ktsan_access_memory((unsigned long)arg, 1, false);
+		(*value)++;
+	}
 
-	return value;
+	return *value;
 }
 
 static void ktsan_test_race(void)
@@ -29,12 +32,13 @@ static void ktsan_test_race(void)
 	char thread_name_first[] = "thread-race-first";
 	char thread_name_second[] = "thread-race-second";
 
-	int value; /* Allocated on stack => in physical memory. */
+	int* value = kmalloc(1, GFP_KERNEL);
+	BUG_ON(!value);
 
 	pr_err("TSan: starting test, race expected.\n");
 
-	thread_first = kthread_create(thread_race, &value, thread_name_first);
-	thread_second = kthread_create(thread_race, &value, thread_name_second);
+	thread_first = kthread_create(thread_race, value, thread_name_first);
+	thread_second = kthread_create(thread_race, value, thread_name_second);
 
 	if (!thread_first || !thread_second) {
 		pr_err("TSan: could not create kernel threads.\n");
@@ -46,6 +50,8 @@ static void ktsan_test_race(void)
 
 	kthread_stop(thread_first);
 	kthread_stop(thread_second);
+
+	kfree(value);
 
 	pr_err("TSan: end of test.\n");
 }
