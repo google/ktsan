@@ -55,6 +55,7 @@
 #include <linux/kernel.h>
 #include <linux/stringify.h>
 #include <linux/bottom_half.h>
+#include <linux/ktsan.h>
 #include <asm/barrier.h>
 
 
@@ -296,20 +297,24 @@ static inline raw_spinlock_t *spinlock_check(spinlock_t *lock)
 do {							\
 	spinlock_check(_lock);				\
 	raw_spin_lock_init(&(_lock)->rlock);		\
+	ktsan_spin_lock_init(_lock);			\
 } while (0)
 
 static inline void spin_lock(spinlock_t *lock)
 {
+	ktsan_spin_lock(lock);
 	raw_spin_lock(&lock->rlock);
 }
 
 static inline void spin_lock_bh(spinlock_t *lock)
 {
+	ktsan_spin_lock(lock);
 	raw_spin_lock_bh(&lock->rlock);
 }
 
 static inline int spin_trylock(spinlock_t *lock)
 {
+	/* ASan: TODO. */
 	return raw_spin_trylock(&lock->rlock);
 }
 
@@ -325,6 +330,7 @@ do {									\
 
 static inline void spin_lock_irq(spinlock_t *lock)
 {
+	ktsan_spin_lock(lock);
 	raw_spin_lock_irq(&lock->rlock);
 }
 
@@ -341,30 +347,36 @@ do {									\
 static inline void spin_unlock(spinlock_t *lock)
 {
 	raw_spin_unlock(&lock->rlock);
+	ktsan_spin_unlock(lock);
 }
 
 static inline void spin_unlock_bh(spinlock_t *lock)
 {
 	raw_spin_unlock_bh(&lock->rlock);
+	ktsan_spin_unlock(lock);
 }
 
 static inline void spin_unlock_irq(spinlock_t *lock)
 {
 	raw_spin_unlock_irq(&lock->rlock);
+	ktsan_spin_unlock(lock);
 }
 
 static inline void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)
 {
 	raw_spin_unlock_irqrestore(&lock->rlock, flags);
+	ktsan_spin_unlock(lock);
 }
 
 static inline int spin_trylock_bh(spinlock_t *lock)
 {
+	/* ktsan: TODO. */
 	return raw_spin_trylock_bh(&lock->rlock);
 }
 
 static inline int spin_trylock_irq(spinlock_t *lock)
 {
+	/* ktsan: TODO. */
 	return raw_spin_trylock_irq(&lock->rlock);
 }
 
