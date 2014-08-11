@@ -5,16 +5,16 @@
 #define KTSAN_SHADOW_SLOTS (1 << KTSAN_SHADOW_SLOTS_LOG)
 
 #define KTSAN_THREAD_ID_BITS     13
-#define KTSAN_EPOCH_BITS         42
+#define KTSAN_CLOCK_BITS         42
 
 struct shadow {
-	unsigned long thread_id     : KTSAN_THREAD_ID_BITS;
-	unsigned long epoch         : KTSAN_EPOCH_BITS;
-	unsigned long access_offset : 3;
-	unsigned long access_size   : 2;
-	unsigned long is_read       : 1;
-	unsigned long is_atomic     : 1;
-	unsigned long is_freed      : 1;
+	unsigned long thread_id : KTSAN_THREAD_ID_BITS;
+	unsigned long clock     : KTSAN_CLOCK_BITS;
+	unsigned long offset    : 3;
+	unsigned long size      : 2;
+	unsigned long is_read   : 1;
+	unsigned long is_atomic : 1;
+	unsigned long is_freed  : 1;
 };
 
 /* Fow testing purposes. */
