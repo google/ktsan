@@ -10,7 +10,6 @@ struct page;
 #ifdef CONFIG_KTSAN
 
 #define KTSAN_MAX_THREAD_ID 4096
-
 void ktsan_enable(void);
 
 void ktsan_spin_lock_init(void *lock);
@@ -35,6 +34,11 @@ void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node);
 void ktsan_free_page(struct page *page, unsigned int order);
 void ktsan_split_page(struct page *page, unsigned int order);
+
+/* FIXME(xairy): for now. */
+void ktsan_access_memory(unsigned long addr, size_t size, bool is_read);
+void acquire(unsigned long *thread_vc, unsigned long *sync_vc);
+void release(unsigned long *thread_vc, unsigned long *sync_vc);
 
 #else /* CONFIG_KTSAN */
 
