@@ -53,12 +53,6 @@ static int current_thread_id(void)
 	return current_thread_info()->task->pid;
 }
 
-static bool physical_memory_addr(unsigned long addr)
-{
-	return (addr >= (unsigned long)(__va(0)) &&
-		addr < (unsigned long)(__va(max_pfn << PAGE_SHIFT)));
-}
-
 void ktsan_enable(void)
 
 {
@@ -123,7 +117,6 @@ void ktsan_thread_stop(int thread_id, int cpu)
 }
 EXPORT_SYMBOL(ktsan_thread_stop);
 
-/* TODO(xairy): zero shadow. */
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node)
 {
@@ -137,6 +130,9 @@ void ktsan_alloc_page(struct page *page, unsigned int order,
 	shadow = alloc_pages_node(node, flags | __GFP_NOTRACK,
 			order + KTSAN_SHADOW_SLOTS_LOG);
 	BUG_ON(!shadow);
+
+	memset(page_address(shadow), 0,
+	       PAGE_SIZE * (1 << (order + KTSAN_SHADOW_SLOTS_LOG)));
 
 	for (i = 0; i < pages; i++)
 		page[i].shadow = page_address(&shadow[i * KTSAN_SHADOW_SLOTS]);
@@ -172,6 +168,12 @@ void ktsan_split_page(struct page *page, unsigned int order)
 	split_page(shadow, order);
 }
 EXPORT_SYMBOL(ktsan_split_page);
+
+static bool physical_memory_addr(unsigned long addr)
+{
+	return (addr >= (unsigned long)(__va(0)) &&
+		addr < (unsigned long)(__va(max_pfn << PAGE_SHIFT)));
+}
 
 static void *map_memory_to_shadow(unsigned long addr)
 {
@@ -283,13 +285,3 @@ void release(unsigned long *thread_vc, unsigned long *sync_vc)
 	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
 		thread_vc[i] = max(thread_vc[i], sync_vc[i]);
 }
-
-/*
-static void store_release(unsigned long *thread_vc, unsigned long *sync_vc)
-{
-	int i;
-
-	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
-		sync_vc[i] = thread_vc[i];
-}
-*/
