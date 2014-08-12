@@ -175,17 +175,10 @@ static void *map_memory_to_shadow(unsigned long addr)
 	return page->shadow + shadow_offset;
 }
 
-static void report_race(struct task_struct *task,
-		struct shadow old, struct shadow new)
+static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
+			struct shadow *slot, struct shadow value, bool stored)
 {
-	REPEAT_N_AND_STOP(10)
-	pr_err("TSan: race detected.\n");
-	/* TODO. */
-}
-
-static bool update_one_shadow_slot(struct task_struct *task,
-	struct shadow *slot, struct shadow value, bool stored)
-{
+	struct race_info info;
 	struct shadow old = *slot; /* FIXME: atomic. */
 
 	if (*(unsigned long *)(&old) == 0) {
@@ -213,7 +206,11 @@ static bool update_one_shadow_slot(struct task_struct *task,
 		if (old.is_read && value.is_read)
 			return false;
 
-		report_race(task, old, value);
+		info.addr = addr;
+		info.old = old;
+		info.new = value;
+		info.strip_addr = _RET_IP_;
+		report_race(&info);
 	}
 
 	/* TODO: ranges intersection. */
@@ -228,7 +225,7 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 
 	struct task_struct *task = current_thread_info()->task;	
 	int thread_id = task->pid;
-	struct shadow *slots = map_memory_to_shadow(addr);
+	struct shadow *slots = map_memory_to_shadow(addr); /* FIXME: might be NULL */
 	unsigned long current_clock = ++task->clock[thread_id];
 
 	/* TODO(xairy): log memory access. */
@@ -244,7 +241,7 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 
 	stored = false;
 	for (i = 0; i < KTSAN_SHADOW_SLOTS; i++)
-		stored |= update_one_shadow_slot(task, &slots[i],
+		stored |= update_one_shadow_slot(addr, task, &slots[i],
 						 value, stored);
 
 	if (!stored) {

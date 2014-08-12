@@ -20,4 +20,15 @@ struct shadow {
 /* Fow testing purposes. */
 void ktsan_access_memory(unsigned long addr, size_t size, bool is_read);
 
+#define KTSAN_MAX_STACK_TRACE_FRAMES 64
+
+struct race_info {
+	unsigned long addr;
+	struct shadow old;
+	struct shadow new;
+	unsigned long strip_addr;
+};
+
+void report_race(struct race_info* info);
+
 #endif /* __X86_MM_KTSAN_KTSAN_H */
