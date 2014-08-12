@@ -22,17 +22,6 @@ struct ktsan_thr_s {
 
 void ktsan_init(void);
 
-void ktsan_spin_lock_init(void *lock);
-
-void ktsan_spin_lock(void *lock);
-void ktsan_spin_unlock(void *lock);
-
-//void ktsan_spin_read_lock(void *lock);
-//void ktsan_spin_read_unlock(void *lock);
-
-//void ktsan_spin_write_lock(void *lock);
-//void ktsan_spin_write_unlock(void *lock);
-
 void ktsan_thr_create(ktsan_thr_t *thr, ktsan_thr_t *parent);
 void ktsan_thr_finish(ktsan_thr_t *thr);
 void ktsan_thr_start(ktsan_thr_t *thr, int cpu);
@@ -51,6 +40,10 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read);
 void ktsan_sync_acquire(void *addr);
 void ktsan_sync_release(void *addr);
 
+void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
+void ktsan_mtx_post_lock(void *addr, bool write, bool try);
+void ktsan_mtx_pre_unlock(void *addr, bool write);
+
 #else /* CONFIG_KTSAN */
 
 /* When disabled TSAN is no-op. */
@@ -59,17 +52,6 @@ struct ktsan_thr_s {
 };
 
 static inline void ktsan_init(void) {}
-
-static inline void ktsan_spin_lock_init(void *lock) {}
-
-static inline void ktsan_spin_lock(void *lock) {}
-static inline void ktsan_spin_unlock(void *lock) {}
-
-//void ktsan_spin_read_lock(void *lock) {}
-//void ktsan_spin_read_unlock(void *lock) {}
-
-//void ktsan_spin_write_lock(void *lock) {}
-//void ktsan_spin_write_unlock(void *lock) {}
 
 static inline void ktsan_thr_create(ktsan_thr_t *thr, ktsan_thr_t *parent) {}
 static inline void ktsan_thr_finish(ktsan_thr_t *thr) {}
@@ -83,6 +65,10 @@ static inline void ktsan_split_page(struct page *page, unsigned int order) {}
 
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
+
+static inline void ktsan_mtx_pre_lock(void *addr, bool write) {}
+static inline void ktsan_mtx_post_lock(void *addr, bool write) {}
+static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
 
 #endif /* CONFIG_KTSAN */
 

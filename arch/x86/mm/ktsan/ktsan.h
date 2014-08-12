@@ -88,6 +88,9 @@ void ktsan_clk_tick(ktsan_clk_t *clk, int tid)
  */
 void ktsan_acquire(ktsan_thr_t *thr, uptr_t pc, uptr_t addr);
 void ktsan_release(ktsan_thr_t *thr, uptr_t pc, uptr_t addr);
+void ktsan_pre_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write, bool try);
+void ktsan_post_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write, bool try);
+void ktsan_pre_unlock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write);
 
 /*
  * Hash table. Maps an address to an arbitrary object.
