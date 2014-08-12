@@ -1,4 +1,4 @@
-obj-y := ktsan.o thr.o clk.o report.o tests.o
+obj-y := ktsan.o thr.o sync.o clk.o tab.o report.o tests.o
 
 CFLAGS_REMOVE_ktsan.o = -pg -O0 -O1 -O2
 CFLAGS_ktsan.o = -O3
