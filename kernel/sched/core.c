@@ -2837,7 +2837,8 @@ need_resched:
 		cpu = smp_processor_id();
 		rq = cpu_rq(cpu);
 
-		ktsan_thread_start(next->pid, cpu);
+		ktsan_thr_stop(&prev->ktsan, cpu);
+		ktsan_thr_start(&next->ktsan, cpu);
 	} else
 		raw_spin_unlock_irq(&rq->lock);
 

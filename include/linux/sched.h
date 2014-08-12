@@ -1664,9 +1664,8 @@ struct task_struct {
 	unsigned int	sequential_io_avg;
 #endif
 
-#ifdef CONFIG_KTSAN
-	ktsan_thr_t *ktsan;
-#endif
+	// ThreadSanitizer state.  Empty in non-tsan build.
+	ktsan_thr_t ktsan;
 };
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */
