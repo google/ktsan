@@ -44,43 +44,6 @@ void ktsan_init(void)
 	ctx->enabled = 1;
 }
 
-void ktsan_spin_lock_init(void *lock)
-{
-	spinlock_t *spin_lock = (spinlock_t *)lock;
-	spin_lock->clock = NULL;
-}
-EXPORT_SYMBOL(ktsan_spin_lock_init);
-
-/* XXX: before actual lock or after? */
-void ktsan_spin_lock(void *lock)
-{
-	unsigned long addr = (unsigned long)lock;
-	int thread_id = current_thread_id();
-	spinlock_t *spin_lock = (spinlock_t *)lock;
-
-	REPEAT_N_AND_STOP(20) pr_err(
-		"TSan: Thread #%d locked %lu.\n", thread_id, addr);
-
-	if (!spin_lock->clock) {
-		/*spin_lock->clock = kzalloc(
-			sizeof(unsigned long) * KTSAN_MAX_THREAD_ID, GFP_KERNEL);*/
-		/*spin_lock->clock =
-			(void *)__get_free_pages(GFP_KERNEL | __GFP_NOTRACK, 3);*/
-	}
-	//BUG_ON(!spin_lock->clock);
-}
-EXPORT_SYMBOL(ktsan_spin_lock);
-
-/* XXX: before actual unlock or after? */
-void ktsan_spin_unlock(void *lock)
-{
-	unsigned long addr = (unsigned long)lock;
-	int thread_id = current_thread_id();
-	REPEAT_N_AND_STOP(20) pr_err(
-		"TSan: Thread #%d unlocked %lu.\n", thread_id, addr);
-}
-EXPORT_SYMBOL(ktsan_spin_unlock);
-
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node)
 {
@@ -313,3 +276,42 @@ void ktsan_sync_release(void *addr)
 	thr->inside = false;
 }
 EXPORT_SYMBOL(ktsan_sync_release);
+
+void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
+{
+	ktsan_thr_t *thr;
+
+	thr = &current->ktsan;
+	if (thr->inside)
+		return;
+	thr->inside = true;
+	ktsan_pre_lock(thr, (uptr_t)_RET_IP_, (uptr_t)addr, write, try);
+	thr->inside = false;
+}
+EXPORT_SYMBOL(ktsan_mtx_pre_lock);
+
+void ktsan_mtx_post_lock(void *addr, bool write, bool try)
+{
+	ktsan_thr_t *thr;
+
+	thr = &current->ktsan;
+	if (thr->inside)
+		return;
+	thr->inside = true;
+	ktsan_post_lock(thr, (uptr_t)_RET_IP_, (uptr_t)addr, write, try);
+	thr->inside = false;
+}
+EXPORT_SYMBOL(ktsan_mtx_post_lock);
+
+void ktsan_mtx_pre_unlock(void *addr, bool write)
+{
+	ktsan_thr_t *thr;
+
+	thr = &current->ktsan;
+	if (thr->inside)
+		return;
+	thr->inside = true;
+	ktsan_pre_unlock(thr, (uptr_t)_RET_IP_, (uptr_t)addr, write);
+	thr->inside = false;
+}
+EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
