@@ -15,11 +15,7 @@
 #include <asm/page_64.h>
 #include <asm/thread_info.h>
 
-static struct {
-	int enabled;
-} ctx = {
-	.enabled = 0,
-};
+ktsan_ctx_t ktsan_ctx;
 
 /* XXX: for debugging. */
 #define REPEAT_N_AND_STOP(n) \
@@ -31,12 +27,21 @@ static int current_thread_id(void)
 	return current_thread_info()->task->pid;
 }
 
-void ktsan_enable(void)
-
+void ktsan_init(void)
 {
-	/* XXX: race on ctx.enabled? */
-	// ctx.enabled = 0;
-	ctx.enabled = 1;
+	ktsan_ctx_t *ctx;
+	ktsan_thr_t *thr;
+
+	ctx = &ktsan_ctx;
+	thr = &current->ktsan;
+	BUG_ON(ctx->enabled);
+	BUG_ON(thr->inside);
+	thr->inside = true;
+
+	ktsan_tab_init(&ctx->synctab, 10007, sizeof(ktsan_sync_t));
+
+	thr->inside = false;
+	ctx->enabled = 1;
 }
 
 void ktsan_spin_lock_init(void *lock)
@@ -282,3 +287,29 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 		slots[current_clock % KTSAN_SHADOW_SLOTS] = value; /* FIXME: atomic?*/
 	}
 }
+
+void ktsan_sync_acquire(void *addr)
+{
+	ktsan_thr_t *thr;
+
+	thr = &current->ktsan;
+	if (thr->inside)
+		return;
+	thr->inside = true;
+	ktsan_acquire(thr, (uptr_t)_RET_IP_, (uptr_t)addr);
+	thr->inside = false;
+}
+EXPORT_SYMBOL(ktsan_sync_acquire);
+
+void ktsan_sync_release(void *addr)
+{
+	ktsan_thr_t *thr;
+
+	thr = &current->ktsan;
+	if (thr->inside)
+		return;
+	thr->inside = true;
+	ktsan_release(thr, (uptr_t)_RET_IP_, (uptr_t)addr);
+	thr->inside = false;
+}
+EXPORT_SYMBOL(ktsan_sync_release);
