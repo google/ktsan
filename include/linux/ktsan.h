@@ -27,8 +27,6 @@ void ktsan_thr_finish(ktsan_thr_t *thr);
 void ktsan_thr_start(ktsan_thr_t *thr, int cpu);
 void ktsan_thr_stop(ktsan_thr_t *thr, int cpu);
 
-/* TODO(xairy): trylock? */
-
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node);
 void ktsan_free_page(struct page *page, unsigned int order);
