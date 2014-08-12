@@ -2,6 +2,7 @@
 #define __X86_MM_KTSAN_KTSAN_H
 
 #include <linux/ktsan.h>
+#include <linux/spinlock.h>
 
 #define KTSAN_SHADOW_SLOTS_LOG 2
 #define KTSAN_SHADOW_SLOTS (1 << KTSAN_SHADOW_SLOTS_LOG)
@@ -11,7 +12,14 @@
 #define KTSAN_THREAD_ID_BITS     13
 #define KTSAN_CLOCK_BITS         42
 
+typedef unsigned long uptr_t;
 typedef unsigned long ktsan_time_t;
+
+typedef struct ktsan_tab_s	ktsan_tab_t;
+typedef struct ktsan_tab_obj_s	ktsan_tab_obj_t;
+typedef struct ktsan_tab_part_s	ktsan_tab_part_t;
+typedef struct ktsan_sync_s	ktsan_sync_t;
+typedef struct ktsan_ctx_s	ktsan_ctx_t;
 
 struct ktsan_clk_s {
 	ktsan_time_t time[KTSAN_MAX_THREAD_ID];
@@ -27,8 +35,37 @@ struct shadow {
 	unsigned long is_freed  : 1;
 };
 
+struct ktsan_tab_obj_s {
+	spinlock_t		lock;
+	ktsan_tab_obj_t		*link;
+	uptr_t			addr;
+};
+
+struct ktsan_tab_part_s {
+	spinlock_t		lock;
+	ktsan_tab_obj_t		*head;
+};
+
+struct ktsan_tab_s {
+	unsigned		size;
+	unsigned		objsize;
+	ktsan_tab_part_t	*parts;
+};
+
+struct ktsan_sync_s {
+	ktsan_tab_obj_t		tab;
+	ktsan_clk_t		clk;
+};
+
+struct ktsan_ctx_s {
+	int			enabled;
+	ktsan_tab_t		synctab;
+};
+
+extern ktsan_ctx_t ktsan_ctx;
+
 /*
- * Clocks
+ * Clocks.
  */
 ktsan_clk_t *ktsan_clk_create(ktsan_thr_t *thr);
 void ktsan_clk_destroy(ktsan_thr_t *thr, ktsan_clk_t *clk);
@@ -45,6 +82,20 @@ void ktsan_clk_tick(ktsan_clk_t *clk, int tid)
 {
 	clk->time[tid]++;
 }
+
+/*
+ * Synchronization.
+ */
+void ktsan_acquire(ktsan_thr_t *thr, uptr_t pc, uptr_t addr);
+void ktsan_release(ktsan_thr_t *thr, uptr_t pc, uptr_t addr);
+
+/*
+ * Hash table. Maps an address to an arbitrary object.
+ * The object must start with ktsan_tab_obj_t.
+ */
+void ktsan_tab_init(ktsan_tab_t *tab, unsigned size, unsigned objsize);
+void ktsan_tab_destroy(ktsan_tab_t *tab);
+void *ktsan_tab_access(ktsan_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
 /* Fow testing purposes. */
 void ktsan_access_memory(unsigned long addr, size_t size, bool is_read);
