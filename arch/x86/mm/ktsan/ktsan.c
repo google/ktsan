@@ -28,26 +28,6 @@ static struct {
 	static int scary_counter_##__LINE__ = 0; \
 	if (++scary_counter_##__LINE__ < (n))
 
-/*
-#if ASAN_COLORED_OUTPUT_ENABLE
-	#define COLOR(x) (x)
-#else
-	#define COLOR(x) ""
-#endif
-*/
-#define COLOR(x) (x)
-
-#define COLOR_NORMAL  COLOR("\x1B[0m")
-#define COLOR_RED     COLOR("\x1B[1;31m")
-#define COLOR_GREEN   COLOR("\x1B[1;32m")
-#define COLOR_YELLOW  COLOR("\x1B[1;33m")
-#define COLOR_BLUE    COLOR("\x1B[1;34m")
-#define COLOR_MAGENTA COLOR("\x1B[1;35m")
-#define COLOR_WHITE   COLOR("\x1B[1;37m")
-
-#define KTSAN_PRINT(fmt, args...) \
-	pr_err("%sTsan: %s"fmt, COLOR_GREEN, COLOR_NORMAL, ##args)
-
 static int current_thread_id(void)
 {
 	return current_thread_info()->task->pid;
@@ -75,8 +55,8 @@ void ktsan_spin_lock(void *lock)
 	int thread_id = current_thread_id();
 	spinlock_t *spin_lock = (spinlock_t *)lock;
 
-	REPEAT_N_AND_STOP(20) KTSAN_PRINT(
-		"Thread #%d locked %lu.\n", thread_id, addr);
+	REPEAT_N_AND_STOP(20) pr_err(
+		"TSan: Thread #%d locked %lu.\n", thread_id, addr);
 
 	if (!spin_lock->clock) {
 		/*spin_lock->clock = kzalloc(
@@ -93,8 +73,8 @@ void ktsan_spin_unlock(void *lock)
 {
 	unsigned long addr = (unsigned long)lock;
 	int thread_id = current_thread_id();
-	REPEAT_N_AND_STOP(20) KTSAN_PRINT(
-		"Thread #%d unlocked %lu.\n", thread_id, addr);
+	REPEAT_N_AND_STOP(20) pr_err(
+		"TSan: Thread #%d unlocked %lu.\n", thread_id, addr);
 }
 EXPORT_SYMBOL(ktsan_spin_unlock);
 
@@ -107,8 +87,8 @@ EXPORT_SYMBOL(ktsan_thread_create);
 
 void ktsan_thread_start(int thread_id, int cpu)
 {
-	REPEAT_N_AND_STOP(10) KTSAN_PRINT(
-		"Thread #%d started on cpu #%d.\n", thread_id, cpu);
+	REPEAT_N_AND_STOP(10) pr_err(
+		"TSan: Thread #%d started on cpu #%d.\n", thread_id, cpu);
 }
 EXPORT_SYMBOL(ktsan_thread_start);
 
@@ -265,6 +245,7 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 	for (i = 0; i < KTSAN_SHADOW_SLOTS; i++)
 		stored |= update_one_shadow_slot(task, &slots[i],
 						 value, stored);
+
 	if (!stored) {
 		/* Evict random shadow slot. */
 		slots[current_clock % KTSAN_SHADOW_SLOTS] = value; /* FIXME: atomic?*/
