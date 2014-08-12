@@ -1,6 +1,8 @@
 #ifndef __X86_MM_KTSAN_KTSAN_H
 #define __X86_MM_KTSAN_KTSAN_H
 
+#include <linux/ktsan.h>
+
 #define KTSAN_SHADOW_SLOTS_LOG 2
 #define KTSAN_SHADOW_SLOTS (1 << KTSAN_SHADOW_SLOTS_LOG)
 
@@ -8,6 +10,16 @@
 
 #define KTSAN_THREAD_ID_BITS     13
 #define KTSAN_CLOCK_BITS         42
+
+typedef struct ktsan_clk_s ktsan_clk_t;
+
+struct ktsan_clk_s {
+	unsigned long time[KTSAN_MAX_THREAD_ID];
+};
+
+struct ktsan_thr_s {
+	ktsan_clk_t clk;
+};
 
 struct shadow {
 	unsigned long thread_id : KTSAN_THREAD_ID_BITS;

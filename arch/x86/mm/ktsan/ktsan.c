@@ -78,12 +78,13 @@ void ktsan_spin_unlock(void *lock)
 }
 EXPORT_SYMBOL(ktsan_spin_unlock);
 
-void ktsan_thread_create(struct task_struct* task)
+ktsan_thr_t *ktsan_thr_create(ktsan_thr_t* parent)
 {
-	memset(task->clock, 0, sizeof(task->clock));
-}
-EXPORT_SYMBOL(ktsan_thread_create);
+	ktsan_thr_t *thr;
 
+	thr = kzalloc(sizeof(*thr), GFP_KERNEL);
+	return thr;
+}
 
 void ktsan_thread_start(int thread_id, int cpu)
 {
@@ -210,7 +211,7 @@ static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
 		}
 
 		/* Happens-before? */
-		if (task->clock[old.thread_id] >= old.clock) {
+		if (task->ktsan->clk.time[old.thread_id] >= old.clock) {
 			*slot = value; /* FIXME: atomic. */
 			return true;
 		}
@@ -257,7 +258,7 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 	struct task_struct *task = current_thread_info()->task;	
 	int thread_id = task->pid;
 	struct shadow *slots = map_memory_to_shadow(addr); /* FIXME: might be NULL */
-	unsigned long current_clock = ++task->clock[thread_id];
+	unsigned long current_clock = ++task->ktsan->clk.time[thread_id];
 
 	/* TODO: long accesses, size > 8. */
 
