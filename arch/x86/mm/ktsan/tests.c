@@ -18,10 +18,10 @@ static int race_thread_first(void *arg)
 	int *value = (int *)arg;
 
 	do {
-		ktsan_access_memory((unsigned long)arg, 4, true);
+		ktsan_access_memory((unsigned long)arg + 1, 2, true);
 		schedule();
 	} while (*value == 0);
-	ktsan_access_memory((unsigned long)arg, 4, false);
+	ktsan_access_memory((unsigned long)arg + 1, 2, false);
 	*value = 0;
 
 	return *value;
@@ -44,7 +44,7 @@ static void ktsan_test_race(void)
 	char thread_name_first[] = "thread-race-first";
 	char thread_name_second[] = "thread-race-second";
 
-	int* value = kmalloc(1, GFP_KERNEL);
+	int* value = kmalloc(sizeof(int), GFP_KERNEL);
 	BUG_ON(!value);
 
 	pr_err("TSan: starting test, race expected.\n");
