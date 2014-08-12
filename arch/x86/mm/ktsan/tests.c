@@ -18,10 +18,10 @@ static int race_thread_first(void *arg)
 	int *value = (int *)arg;
 
 	do {
-		ktsan_access_memory((unsigned long)arg, 1, true);
+		ktsan_access_memory((unsigned long)arg, 4, true);
 		schedule();
 	} while (*value == 0);
-	ktsan_access_memory((unsigned long)arg, 1, false);
+	ktsan_access_memory((unsigned long)arg, 4, false);
 	*value = 0;
 
 	return *value;
@@ -31,7 +31,7 @@ static int race_thread_second(void *arg)
 {
 	int *value = (int *)arg;
 
-	ktsan_access_memory((unsigned long)arg, 1, false);
+	ktsan_access_memory((unsigned long)arg, 4, false);
 	*value = 1;
 
 	return *value;
