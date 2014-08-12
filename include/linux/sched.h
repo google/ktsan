@@ -1705,7 +1705,7 @@ struct task_struct {
 #endif
 
 #ifdef CONFIG_KTSAN
-	unsigned long clock[KTSAN_MAX_THREAD_ID];
+	ktsan_thr_t *ktsan;
 #endif
 };
 
