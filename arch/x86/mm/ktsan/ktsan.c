@@ -11,6 +11,21 @@ ktsan_ctx_t ktsan_ctx;
 	static int scary_counter_##__LINE__ = 0; \
 	if (++scary_counter_##__LINE__ < (n))
 
+#define ENTER() \
+	ktsan_thr_t *thr; \
+	uptr_t pc; \
+ \
+	thr = &current->ktsan;\
+	if (thr->inside) \
+		return; \
+	thr->inside = true; \
+	pc = (uptr_t)_RET_IP_ \
+/**/
+
+#define LEAVE() \
+	thr->inside = false \
+/**/
+
 void ktsan_init(void)
 {
 	ktsan_ctx_t *ctx;
@@ -30,65 +45,40 @@ void ktsan_init(void)
 
 void ktsan_sync_acquire(void *addr)
 {
-	ktsan_thr_t *thr;
-
-	thr = &current->ktsan;
-	if (thr->inside)
-		return;
-	thr->inside = true;
-	ktsan_acquire(thr, (uptr_t)_RET_IP_, (uptr_t)addr);
-	thr->inside = false;
+	ENTER();
+	ktsan_acquire(thr, pc, (uptr_t)addr);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_sync_acquire);
 
 void ktsan_sync_release(void *addr)
 {
-	ktsan_thr_t *thr;
-
-	thr = &current->ktsan;
-	if (thr->inside)
-		return;
-	thr->inside = true;
-	ktsan_release(thr, (uptr_t)_RET_IP_, (uptr_t)addr);
-	thr->inside = false;
+	ENTER();
+	ktsan_release(thr, pc, (uptr_t)addr);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_sync_release);
 
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
 {
-	ktsan_thr_t *thr;
-
-	thr = &current->ktsan;
-	if (thr->inside)
-		return;
-	thr->inside = true;
-	ktsan_pre_lock(thr, (uptr_t)_RET_IP_, (uptr_t)addr, write, try);
-	thr->inside = false;
+	ENTER();
+	ktsan_pre_lock(thr, pc, (uptr_t)addr, write, try);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_lock);
 
 void ktsan_mtx_post_lock(void *addr, bool write, bool try)
 {
-	ktsan_thr_t *thr;
-
-	thr = &current->ktsan;
-	if (thr->inside)
-		return;
-	thr->inside = true;
-	ktsan_post_lock(thr, (uptr_t)_RET_IP_, (uptr_t)addr, write, try);
-	thr->inside = false;
+	ENTER();
+	ktsan_post_lock(thr, pc, (uptr_t)addr, write, try);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_post_lock);
 
 void ktsan_mtx_pre_unlock(void *addr, bool write)
 {
-	ktsan_thr_t *thr;
-
-	thr = &current->ktsan;
-	if (thr->inside)
-		return;
-	thr->inside = true;
-	ktsan_pre_unlock(thr, (uptr_t)_RET_IP_, (uptr_t)addr, write);
-	thr->inside = false;
+	ENTER();
+	ktsan_pre_unlock(thr, pc, (uptr_t)addr, write);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
