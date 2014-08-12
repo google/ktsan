@@ -1,3 +1,4 @@
+#include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
@@ -12,15 +13,26 @@
 
 /* KTsan test: race. */
 
-static int thread_race(void *arg)
+static int race_thread_first(void *arg)
 {
-	int i;
 	int *value = (int *)arg;
 
-	for (i = 0; i < 500 * 1000 * 1000; i++) {
-		ktsan_access_memory((unsigned long)arg, 1, false);
-		(*value)++;
-	}
+	do {
+		ktsan_access_memory((unsigned long)arg, 1, true);
+		schedule();
+	} while (*value == 0);
+	ktsan_access_memory((unsigned long)arg, 1, false);
+	*value = 0;
+
+	return *value;
+}
+
+static int race_thread_second(void *arg)
+{
+	int *value = (int *)arg;
+
+	ktsan_access_memory((unsigned long)arg, 1, false);
+	*value = 1;
 
 	return *value;
 }
@@ -37,8 +49,8 @@ static void ktsan_test_race(void)
 
 	pr_err("TSan: starting test, race expected.\n");
 
-	thread_first = kthread_create(thread_race, value, thread_name_first);
-	thread_second = kthread_create(thread_race, value, thread_name_second);
+	thread_first = kthread_create(race_thread_first, value, thread_name_first);
+	thread_second = kthread_create(race_thread_second, value, thread_name_second);
 
 	if (!thread_first || !thread_second) {
 		pr_err("TSan: could not create kernel threads.\n");
@@ -47,6 +59,8 @@ static void ktsan_test_race(void)
 
 	wake_up_process(thread_first);
 	wake_up_process(thread_second);
+
+	msleep(100);
 
 	kthread_stop(thread_first);
 	kthread_stop(thread_second);
