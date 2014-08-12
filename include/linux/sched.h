@@ -1779,9 +1779,9 @@ struct task_struct {
 	unsigned long	task_state_change;
 #endif
 	int pagefault_disabled;
-#ifdef CONFIG_KTSAN
-	ktsan_thr_t *ktsan;
-#endif
+
+	// ThreadSanitizer state.  Empty in non-tsan build.
+	ktsan_thr_t ktsan;
 };
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */
