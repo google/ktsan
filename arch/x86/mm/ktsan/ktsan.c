@@ -175,6 +175,18 @@ static void *map_memory_to_shadow(unsigned long addr)
 	return page->shadow + shadow_offset;
 }
 
+static bool ranges_intersect(int first_offset, int first_size,
+			     int second_offset, int second_size)
+{
+	if (first_offset + first_size < second_offset)
+		return false;
+
+	if (second_offset + second_size < first_offset)
+		return false;
+
+	return true;
+}
+
 static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
 			struct shadow *slot, struct shadow value, bool stored)
 {
@@ -211,9 +223,28 @@ static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
 		info.new = value;
 		info.strip_addr = _RET_IP_;
 		report_race(&info);
+
+		return false;
 	}
 
-	/* TODO: ranges intersection. */
+	/* Do the memory accesses intersect? */
+	if (ranges_intersect(old.offset, (1 << old.size),
+			     value.offset, (1 << value.size))) {
+		if (old.thread_id == value.thread_id)
+			return false;
+		if (old.is_read && value.is_read)
+			return false;
+
+		/* TODO: compare clock. */
+
+		info.addr = addr;
+		info.old = old;
+		info.new = value;
+		info.strip_addr = _RET_IP_;
+		report_race(&info);
+
+		return false;
+	}
 
 	return false;
 }
@@ -228,12 +259,15 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 	struct shadow *slots = map_memory_to_shadow(addr); /* FIXME: might be NULL */
 	unsigned long current_clock = ++task->clock[thread_id];
 
+	/* TODO: long accesses, size > 8. */
+
 	/* TODO(xairy): log memory access. */
 
 	struct shadow value;
 	value.thread_id = task->pid;
 	value.clock = current_clock;
-	value.offset = addr & KTSAN_GRAIN;
+	value.offset = addr & ~KTSAN_GRAIN;
+
 	switch (size) {
 	case 1:
 		value.size = 0;
