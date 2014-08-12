@@ -74,13 +74,13 @@ void report_race(struct race_info *info)
 	pr_err("==================================================================\n");
 	pr_err("ThreadSanitizer: data-race in %s\n", function);
 	pr_err("%s of size %d by thread T%d:\n",
-		info->new.is_read ? "Read" : "Write",
-		(1 << info->new.size), info->new.thread_id);
+		info->new.read ? "Read" : "Write",
+		(1 << info->new.size), info->new.tid);
 	print_current_stack_trace(info->strip_addr); /* FIXME: ret ip */
 
 	pr_err("Previous %s of size %d by thread T%d\n",
-		info->old.is_read ? "read" : "write",
-		(1 << info->old.size), info->old.thread_id);
+		info->old.read ? "read" : "write",
+		(1 << info->old.size), info->old.tid);
 
 	pr_err("DBG: addr: %lx\n", info->addr);
 	pr_err("DBG: first offset: %d, second offset: %d\n",

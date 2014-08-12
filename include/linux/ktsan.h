@@ -6,17 +6,15 @@
 #include <linux/types.h>
 
 typedef struct ktsan_thr_s ktsan_thr_t;
-
 struct page;
 
 #ifdef CONFIG_KTSAN
 
-#define KTSAN_MAX_THREAD_ID 4096
-
 typedef struct ktsan_clk_s ktsan_clk_t;
 
 struct ktsan_thr_s {
-	bool		inside;
+	unsigned	id;
+	bool		inside;	/* Already inside of ktsan runtime */
 	ktsan_clk_t	*clk;
 };
 
@@ -27,20 +25,26 @@ void ktsan_thr_finish(ktsan_thr_t *thr);
 void ktsan_thr_start(ktsan_thr_t *thr, int cpu);
 void ktsan_thr_stop(ktsan_thr_t *thr, int cpu);
 
-void ktsan_alloc_page(struct page *page, unsigned int order,
-		     gfp_t flags, int node);
-void ktsan_free_page(struct page *page, unsigned int order);
-void ktsan_split_page(struct page *page, unsigned int order);
-
-/* FIXME(xairy): for now. */
-void ktsan_access_memory(unsigned long addr, size_t size, bool is_read);
-
 void ktsan_sync_acquire(void *addr);
 void ktsan_sync_release(void *addr);
 
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
 void ktsan_mtx_post_lock(void *addr, bool write, bool try);
 void ktsan_mtx_pre_unlock(void *addr, bool write);
+
+void ktsan_read1(void *addr);
+void ktsan_read2(void *addr);
+void ktsan_read4(void *addr);
+void ktsan_read8(void *addr);
+void ktsan_write1(void *addr);
+void ktsan_write2(void *addr);
+void ktsan_write4(void *addr);
+void ktsan_write8(void *addr);
+
+void ktsan_alloc_page(struct page *page, unsigned int order,
+		     gfp_t flags, int node);
+void ktsan_free_page(struct page *page, unsigned int order);
+void ktsan_split_page(struct page *page, unsigned int order);
 
 #else /* CONFIG_KTSAN */
 
@@ -56,17 +60,26 @@ static inline void ktsan_thr_finish(ktsan_thr_t *thr) {}
 static inline void ktsan_thr_start(ktsan_thr_t *thr, int cpu) {}
 static inline void ktsan_thr_stop(ktsan_thr_t *thr, int cpu) {}
 
-static inline void ktsan_alloc_page(struct page *page, unsigned int order,
-		     gfp_t flags, int node) {}
-static inline void ktsan_free_page(struct page *page, unsigned int order) {}
-static inline void ktsan_split_page(struct page *page, unsigned int order) {}
-
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
 
 static inline void ktsan_mtx_pre_lock(void *addr, bool write) {}
 static inline void ktsan_mtx_post_lock(void *addr, bool write) {}
 static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
+
+static inline void ktsan_read1(void *addr) {}
+static inline void ktsan_read2(void *addr) {}
+static inline void ktsan_read4(void *addr) {}
+static inline void ktsan_read8(void *addr) {}
+static inline void ktsan_write1(void *addr) {}
+static inline void ktsan_write2(void *addr) {}
+static inline void ktsan_write4(void *addr) {}
+static inline void ktsan_write8(void *addr) {}
+
+static inline void ktsan_alloc_page(struct page *page, unsigned int order,
+		     gfp_t flags, int node) {}
+static inline void ktsan_free_page(struct page *page, unsigned int order) {}
+static inline void ktsan_split_page(struct page *page, unsigned int order) {}
 
 #endif /* CONFIG_KTSAN */
 

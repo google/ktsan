@@ -12,6 +12,8 @@
 #define KTSAN_THREAD_ID_BITS     13
 #define KTSAN_CLOCK_BITS         42
 
+#define KTSAN_MAX_THREAD_ID 4096
+
 typedef unsigned long uptr_t;
 typedef unsigned long ktsan_time_t;
 
@@ -26,13 +28,11 @@ struct ktsan_clk_s {
 };
 
 struct shadow {
-	unsigned long thread_id : KTSAN_THREAD_ID_BITS;
-	unsigned long clock     : KTSAN_CLOCK_BITS;
-	unsigned long offset    : 3;
-	unsigned long size      : 2;
-	unsigned long is_read   : 1;
-	unsigned long is_atomic : 1;
-	unsigned long is_freed  : 1;
+	unsigned long tid	: KTSAN_THREAD_ID_BITS;
+	unsigned long clock	: KTSAN_CLOCK_BITS;
+	unsigned long offset	: 3;
+	unsigned long size	: 2;
+	unsigned long read	: 1;
 };
 
 struct ktsan_tab_obj_s {
@@ -100,8 +100,10 @@ void ktsan_tab_init(ktsan_tab_t *tab, unsigned size, unsigned objsize);
 void ktsan_tab_destroy(ktsan_tab_t *tab);
 void *ktsan_tab_access(ktsan_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
-/* Fow testing purposes. */
-void ktsan_access_memory(unsigned long addr, size_t size, bool is_read);
+/*
+ * Generic memory access.
+ */
+void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
 
 #define KTSAN_MAX_STACK_TRACE_FRAMES 64
 
