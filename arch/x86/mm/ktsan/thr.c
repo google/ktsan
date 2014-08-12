@@ -1,13 +1,13 @@
 #include "ktsan.h"
 
-//#include <linux/gfp.h>
 #include <linux/kernel.h>
-//#include <linux/slab.h>
+#include <linux/sched.h>
 
 void ktsan_thr_create(ktsan_thr_t *thr, ktsan_thr_t *parent)
 {
 	memset(thr, 0, sizeof(*thr));
 	thr->clk = ktsan_clk_create(thr);
+	thr->id = current_thread_info()->task->pid;
 }
 
 void ktsan_thr_finish(ktsan_thr_t *thr)
