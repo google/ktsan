@@ -5,6 +5,8 @@
 
 #include <linux/types.h>
 
+typedef struct ktsan_thr_s ktsan_thr_t;
+
 struct page;
 
 #ifdef CONFIG_KTSAN
@@ -23,7 +25,7 @@ void ktsan_spin_unlock(void *lock);
 //void ktsan_spin_write_lock(void *lock);
 //void ktsan_spin_write_unlock(void *lock);
 
-void ktsan_thread_create(struct task_struct* task);
+ktsan_thr_t *ktsan_thr_create(ktsan_thr_t* parent);
 
 void ktsan_thread_start(int thread_id, int cpu);
 // void ktsan_thread_stop(int thread_id, int cpu);
