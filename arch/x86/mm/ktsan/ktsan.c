@@ -178,6 +178,7 @@ static void *map_memory_to_shadow(unsigned long addr)
 static void report_race(struct task_struct *task,
 		struct shadow old, struct shadow new)
 {
+	REPEAT_N_AND_STOP(10)
 	pr_err("TSan: race detected.\n");
 	/* TODO. */
 }
