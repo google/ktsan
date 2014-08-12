@@ -44,7 +44,7 @@ static bool ranges_intersect(int first_offset, int first_size,
 	return true;
 }
 
-static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
+static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 			struct shadow *slot, struct shadow value, bool stored)
 {
 	struct race_info info;
@@ -61,18 +61,18 @@ static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
 	/* Is the memory access equal to the previous? */
 	if (value.offset == old.offset && value.size == old.size) {
 		/* Same thread? */
-		if (value.thread_id == old.thread_id) {
+		if (value.tid == old.tid) {
 			/* TODO. */
 			return false;
 		}
 
 		/* Happens-before? */
-		if (ktsan_clk_get(task->ktsan.clk, old.thread_id) >= old.clock) {
+		if (ktsan_clk_get(thr->clk, old.tid) >= old.clock) {
 			*slot = value; /* FIXME: atomic. */
 			return true;
 		}
 
-		if (old.is_read && value.is_read)
+		if (old.read && value.read)
 			return false;
 
 		info.addr = addr;
@@ -87,9 +87,9 @@ static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
 	/* Do the memory accesses intersect? */
 	if (ranges_intersect(old.offset, (1 << old.size),
 			     value.offset, (1 << value.size))) {
-		if (old.thread_id == value.thread_id)
+		if (old.tid == value.tid)
 			return false;
-		if (old.is_read && value.is_read)
+		if (old.read && value.read)
 			return false;
 
 		/* TODO: compare clock. */
@@ -106,53 +106,30 @@ static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
 	return false;
 }
 
-void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
+void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 {
 	struct shadow value;
 	unsigned long current_clock;
-	struct task_struct *task;	
 	struct shadow *slots;
-	int i, thread_id;
+	int i;
 	bool stored;
 
-	task = current_thread_info()->task;	
-	thread_id = task->pid;
 	slots = map_memory_to_shadow(addr); /* FIXME: might be NULL */
 
-	ktsan_clk_tick(task->ktsan.clk, thread_id);
-	current_clock = ktsan_clk_get(task->ktsan.clk, thread_id);
-
-	/* TODO: long accesses, size > 8. */
+	ktsan_clk_tick(thr->clk, thr->id);
+	current_clock = ktsan_clk_get(thr->clk, thr->id);
 
 	/* TODO(xairy): log memory access. */
 
-	value.thread_id = task->pid;
+	value.tid = thr->id;
 	value.clock = current_clock;
 	value.offset = addr & ~KTSAN_GRAIN;
-
-	switch (size) {
-	case 1:
-		value.size = 0;
-		break;
-	case 2:
-		value.size = 1;
-		break;
-	case 4:
-		value.size = 2;
-		break;
-	case 8:
-		value.size = 3;
-		break;
-	default:
-		BUG_ON(true); /* FIXME: 16-byte accesses? */
-	}
-	value.is_read = is_read;
-	value.is_atomic = 0; /* FIXME. */
-	value.is_freed = 0; /* FIXME. */
+	value.size = size;
+	value.read = read;
 
 	stored = false;
 	for (i = 0; i < KTSAN_SHADOW_SLOTS; i++)
-		stored |= update_one_shadow_slot(addr, task, &slots[i],
+		stored |= update_one_shadow_slot(thr, addr, &slots[i],
 						 value, stored);
 
 	if (!stored) {

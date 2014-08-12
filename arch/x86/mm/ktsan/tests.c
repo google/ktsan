@@ -1,3 +1,5 @@
+#include "ktsan.h"
+
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
@@ -18,10 +20,10 @@ static int race_thread_first(void *arg)
 	int *value = (int *)arg;
 
 	do {
-		ktsan_access_memory((unsigned long)arg + 1, 2, true);
+		ktsan_read2((char*)arg + 1);
 		schedule();
 	} while (*value == 0);
-	ktsan_access_memory((unsigned long)arg + 1, 2, false);
+	ktsan_write2((char*)arg + 1);
 	*value = 0;
 
 	return *value;
@@ -31,7 +33,7 @@ static int race_thread_second(void *arg)
 {
 	int *value = (int *)arg;
 
-	ktsan_access_memory((unsigned long)arg, 4, false);
+	ktsan_write4(arg);
 	*value = 1;
 
 	return *value;

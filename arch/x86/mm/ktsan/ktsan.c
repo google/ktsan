@@ -82,3 +82,67 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
+
+void ktsan_read1(void *addr)
+{
+	ENTER();
+	ktsan_access(thr, pc, (uptr_t)addr, 0, true);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_read1);
+
+void ktsan_read2(void *addr)
+{
+	ENTER();
+	ktsan_access(thr, pc, (uptr_t)addr, 1, true);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_read2);
+
+void ktsan_read4(void *addr)
+{
+	ENTER();
+	ktsan_access(thr, pc, (uptr_t)addr, 2, true);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_read4);
+
+void ktsan_read8(void *addr)
+{
+	ENTER();
+	ktsan_access(thr, pc, (uptr_t)addr, 3, true);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_read8);
+
+void ktsan_write1(void *addr)
+{
+	ENTER();
+	ktsan_access(thr, pc, (uptr_t)addr, 0, false);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_write1);
+
+void ktsan_write2(void *addr)
+{
+	ENTER();
+	ktsan_access(thr, pc, (uptr_t)addr, 1, false);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_write2);
+
+void ktsan_write4(void *addr)
+{
+	ENTER();
+	ktsan_access(thr, pc, (uptr_t)addr, 2, false);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_write4);
+
+void ktsan_write8(void *addr)
+{
+	ENTER();
+	ktsan_access(thr, pc, (uptr_t)addr, 3, false);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_write8);
