@@ -170,7 +170,7 @@ static void *map_memory_to_shadow(unsigned long addr)
 	if (!page->shadow)
 		return NULL;
 
-	aligned_addr = round_down(addr, sizeof(unsigned long));
+	aligned_addr = round_down(addr, KTSAN_GRAIN);
 	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KTSAN_SHADOW_SLOTS;
 	return page->shadow + shadow_offset;
 }
@@ -233,8 +233,23 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 	struct shadow value;
 	value.thread_id = task->pid;
 	value.clock = current_clock;
-	value.offset = 0; /* FIXME. */
-	value.size = 1; /* FIXME. */
+	value.offset = addr & KTSAN_GRAIN;
+	switch (size) {
+	case 1:
+		value.size = 0;
+		break;
+	case 2:
+		value.size = 1;
+		break;
+	case 4:
+		value.size = 2;
+		break;
+	case 8:
+		value.size = 3;
+		break;
+	default:
+		BUG_ON(true); /* FIXME: 16-byte accesses? */
+	}
 	value.is_read = is_read;
 	value.is_atomic = 0; /* FIXME. */
 	value.is_freed = 0; /* FIXME. */
