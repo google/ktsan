@@ -72,10 +72,12 @@ static void ktsan_test_race(void)
 
 /* KTSan test: no race. */
 
+/*
 static void ktsan_test_no_race(void)
 {
 
 }
+*/
 
 /* Other testing routines. */
 

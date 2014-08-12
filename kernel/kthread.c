@@ -322,9 +322,7 @@ struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
 		set_cpus_allowed_ptr(task, cpu_all_mask);
 	}
 	kfree(create);
-#ifdef CONFIG_KTSAN
-	task->ktsan = ktsan_thr_create(current->ktsan); 
-#endif
+	ktsan_thr_create(&task->ktsan, &current->ktsan); 
 	return task;
 }
 EXPORT_SYMBOL(kthread_create_on_node);

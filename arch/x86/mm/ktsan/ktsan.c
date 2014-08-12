@@ -1,4 +1,4 @@
-#include <linux/ktsan.h>
+#include "ktsan.h"
 
 #include <linux/gfp.h>
 #include <linux/kernel.h>
@@ -14,8 +14,6 @@
 #include <asm/page.h>
 #include <asm/page_64.h>
 #include <asm/thread_info.h>
-
-#include "ktsan.h"
 
 static struct {
 	int enabled;
@@ -77,26 +75,6 @@ void ktsan_spin_unlock(void *lock)
 		"TSan: Thread #%d unlocked %lu.\n", thread_id, addr);
 }
 EXPORT_SYMBOL(ktsan_spin_unlock);
-
-ktsan_thr_t *ktsan_thr_create(ktsan_thr_t* parent)
-{
-	ktsan_thr_t *thr;
-
-	thr = kzalloc(sizeof(*thr), GFP_KERNEL);
-	return thr;
-}
-
-void ktsan_thread_start(int thread_id, int cpu)
-{
-	REPEAT_N_AND_STOP(10) pr_err(
-		"TSan: Thread #%d started on cpu #%d.\n", thread_id, cpu);
-}
-EXPORT_SYMBOL(ktsan_thread_start);
-
-void ktsan_thread_stop(int thread_id, int cpu)
-{
-}
-EXPORT_SYMBOL(ktsan_thread_stop);
 
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node)
@@ -211,7 +189,7 @@ static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
 		}
 
 		/* Happens-before? */
-		if (task->ktsan->clk.time[old.thread_id] >= old.clock) {
+		if (ktsan_clk_get(task->ktsan.clk, old.thread_id) >= old.clock) {
 			*slot = value; /* FIXME: atomic. */
 			return true;
 		}
@@ -252,19 +230,24 @@ static bool update_one_shadow_slot(unsigned long addr, struct task_struct *task,
 
 void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 {
+	struct shadow value;
+	unsigned long current_clock;
+	struct task_struct *task;	
+	struct shadow *slots;
+	int i, thread_id;
 	bool stored;
-	int i;
 
-	struct task_struct *task = current_thread_info()->task;	
-	int thread_id = task->pid;
-	struct shadow *slots = map_memory_to_shadow(addr); /* FIXME: might be NULL */
-	unsigned long current_clock = ++task->ktsan->clk.time[thread_id];
+	task = current_thread_info()->task;	
+	thread_id = task->pid;
+	slots = map_memory_to_shadow(addr); /* FIXME: might be NULL */
+
+	ktsan_clk_tick(task->ktsan.clk, thread_id);
+	current_clock = ktsan_clk_get(task->ktsan.clk, thread_id);
 
 	/* TODO: long accesses, size > 8. */
 
 	/* TODO(xairy): log memory access. */
 
-	struct shadow value;
 	value.thread_id = task->pid;
 	value.clock = current_clock;
 	value.offset = addr & ~KTSAN_GRAIN;
@@ -298,20 +281,4 @@ void ktsan_access_memory(unsigned long addr, size_t size, bool is_read)
 		/* Evict random shadow slot. */
 		slots[current_clock % KTSAN_SHADOW_SLOTS] = value; /* FIXME: atomic?*/
 	}
-}
-
-void acquire(unsigned long *thread_vc, unsigned long *sync_vc)
-{
-	int i;
-
-	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
-		sync_vc[i] = max(thread_vc[i], sync_vc[i]);
-}
-
-void release(unsigned long *thread_vc, unsigned long *sync_vc)
-{
-	int i;
-
-	for (i = 0; i < KTSAN_MAX_THREAD_ID; i++)
-		thread_vc[i] = max(thread_vc[i], sync_vc[i]);
 }
