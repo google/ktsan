@@ -1704,7 +1704,7 @@ struct task_struct {
 	unsigned long	task_state_change;
 #endif
 
-	// ThreadSanitizer state.  Empty in non-tsan build.
+	/* ThreadSanitizer state. Empty in non-tsan build. */
 	ktsan_thr_t ktsan;
 };
 

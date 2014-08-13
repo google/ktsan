@@ -106,7 +106,8 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 	return false;
 }
 
-void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
+void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+		  size_t size, bool read)
 {
 	struct shadow value;
 	unsigned long current_clock;
@@ -134,6 +135,7 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool re
 
 	if (!stored) {
 		/* Evict random shadow slot. */
-		slots[current_clock % KTSAN_SHADOW_SLOTS] = value; /* FIXME: atomic?*/
+		/* FIXME: atomic? */
+		slots[current_clock % KTSAN_SHADOW_SLOTS] = value;
 	}
 }

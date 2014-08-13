@@ -22,11 +22,13 @@ void ktsan_release(ktsan_thr_t *thr, uptr_t pc, uptr_t addr)
 	}
 }
 
-void ktsan_pre_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write, bool try)
+void ktsan_pre_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+		    bool write, bool try)
 {
 }
 
-void ktsan_post_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write, bool try)
+void ktsan_post_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+		     bool write, bool try)
 {
 /*
 	unsigned long addr = (unsigned long)lock;
@@ -38,7 +40,7 @@ void ktsan_post_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write, bool 
 
 	if (!spin_lock->clock) {
 		spin_lock->clock = kzalloc(
-			sizeof(unsigned long) * KTSAN_MAX_THREAD_ID, GFP_KERNEL);
+			sizeof(unsigned long)*KTSAN_MAX_THREAD_ID, GFP_KERNEL);
 		spin_lock->clock =
 			(void *)__get_free_pages(GFP_KERNEL | __GFP_NOTRACK, 3);
 	}
