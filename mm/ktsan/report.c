@@ -14,14 +14,14 @@
 static unsigned int compress_and_save_stack_trace(unsigned int *output,
 			unsigned int max_entries, unsigned long strip_addr)
 {
-	unsigned long stack[KTSAN_MAX_STACK_TRACE_FRAMES];
+	unsigned long stack[KT_MAX_STACK_TRACE_FRAMES];
 	unsigned int entries;
 	unsigned int beg = 0, end, i;
 
 	struct stack_trace trace_info = {
 		.nr_entries = 0,
 		.entries = stack,
-		.max_entries = KTSAN_MAX_STACK_TRACE_FRAMES,
+		.max_entries = KT_MAX_STACK_TRACE_FRAMES,
 		.skip = 0
 	};
 	save_stack_trace(&trace_info);
@@ -52,13 +52,13 @@ static void print_compressed_stack_trace(unsigned int *stack,
 
 static void print_current_stack_trace(unsigned long strip_addr)
 {
-	unsigned int stack[KTSAN_MAX_STACK_TRACE_FRAMES];
+	unsigned int stack[KT_MAX_STACK_TRACE_FRAMES];
 	unsigned int entries = compress_and_save_stack_trace(&stack[0],
-		KTSAN_MAX_STACK_TRACE_FRAMES, strip_addr);
+		KT_MAX_STACK_TRACE_FRAMES, strip_addr);
 	print_compressed_stack_trace(&stack[0], entries);
 }
 
-void report_race(struct race_info *info)
+void kt_report_race(kt_race_info_t *info)
 {
 	int i;
 	char function[MAX_FUNCTION_NAME_SIZE];

@@ -10,7 +10,7 @@ struct page;
 
 #ifdef CONFIG_KTSAN
 
-typedef struct ktsan_clk_s ktsan_clk_t;
+typedef struct kt_clk_s ktsan_clk_t;
 
 struct ktsan_thr_s {
 	unsigned	id;
@@ -20,10 +20,10 @@ struct ktsan_thr_s {
 
 void ktsan_init(void);
 
-void ktsan_thr_create(ktsan_thr_t *thr, int thr_id, ktsan_thr_t *parent);
-void ktsan_thr_finish(ktsan_thr_t *thr);
-void ktsan_thr_start(ktsan_thr_t *thr, int cpu);
-void ktsan_thr_stop(ktsan_thr_t *thr, int cpu);
+void ktsan_thr_create(ktsan_thr_t *new, int tid);
+void ktsan_thr_finish(void);
+void ktsan_thr_start(void);
+void ktsan_thr_stop(void);
 
 void ktsan_sync_acquire(void *addr);
 void ktsan_sync_release(void *addr);
@@ -55,10 +55,10 @@ struct ktsan_thr_s {
 
 static inline void ktsan_init(void) {}
 
-static inline void ktsan_thr_create(ktsan_thr_t *thr, ktsan_thr_t *parent) {}
-static inline void ktsan_thr_finish(ktsan_thr_t *thr) {}
-static inline void ktsan_thr_start(ktsan_thr_t *thr, int cpu) {}
-static inline void ktsan_thr_stop(ktsan_thr_t *thr, int cpu) {}
+static inline void ktsan_thr_create(ktsan_thr_t *new, int tid) {}
+static inline void ktsan_thr_finish(void) {}
+static inline void ktsan_thr_start(void) {}
+static inline void ktsan_thr_stop(void) {}
 
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
