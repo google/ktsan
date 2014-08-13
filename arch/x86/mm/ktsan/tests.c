@@ -15,21 +15,21 @@
 
 /* KTsan test: race. */
 
-static int race_thread_first(void *arg)
+static int race_thr_first(void *arg)
 {
 	int *value = (int *)arg;
 
 	do {
-		ktsan_read2((char*)arg + 1);
+		ktsan_read2((char *)arg + 1);
 		schedule();
 	} while (*value == 0);
-	ktsan_write2((char*)arg + 1);
+	ktsan_write2((char *)arg + 1);
 	*value = 0;
 
 	return *value;
 }
 
-static int race_thread_second(void *arg)
+static int race_thr_second(void *arg)
 {
 	int *value = (int *)arg;
 
@@ -41,31 +41,30 @@ static int race_thread_second(void *arg)
 
 static void ktsan_test_race(void)
 {
-	struct task_struct *thread_first, *thread_second;
+	struct task_struct *thr_first, *thr_second;
+	char thr_name_first[] = "thr-race-first";
+	char thr_name_second[] = "thr-race-second";
+	int *value = kmalloc(sizeof(int), GFP_KERNEL);
 
-	char thread_name_first[] = "thread-race-first";
-	char thread_name_second[] = "thread-race-second";
-
-	int* value = kmalloc(sizeof(int), GFP_KERNEL);
 	BUG_ON(!value);
 
 	pr_err("TSan: starting test, race expected.\n");
 
-	thread_first = kthread_create(race_thread_first, value, thread_name_first);
-	thread_second = kthread_create(race_thread_second, value, thread_name_second);
+	thr_first = kthread_create(race_thr_first, value, thr_name_first);
+	thr_second = kthread_create(race_thr_second, value, thr_name_second);
 
-	if (!thread_first || !thread_second) {
+	if (!thr_first || !thr_second) {
 		pr_err("TSan: could not create kernel threads.\n");
 		return;
 	}
 
-	wake_up_process(thread_first);
-	wake_up_process(thread_second);
+	wake_up_process(thr_first);
+	wake_up_process(thr_second);
 
 	msleep(100);
 
-	kthread_stop(thread_first);
-	kthread_stop(thread_second);
+	kthread_stop(thr_first);
+	kthread_stop(thr_second);
 
 	kfree(value);
 

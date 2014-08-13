@@ -75,7 +75,7 @@ typedef struct spinlock {
 	};
 
 #ifdef CONFIG_KTSAN
-	unsigned long* clock;
+	unsigned long *clock;
 #endif
 } spinlock_t;
 
