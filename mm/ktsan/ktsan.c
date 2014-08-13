@@ -3,6 +3,7 @@
 #include <linux/kernel.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
 
 kt_ctx_t kt_ctx;
 
@@ -11,19 +12,21 @@ kt_ctx_t kt_ctx;
 	static int scary_counter_##__LINE__; /* = 0; */ \
 	if (++scary_counter_##__LINE__ < (n))
 
-#define ENTER() 		\
-	kt_thr_t *thr;		\
-	uptr_t pc;		\
-				\
-	thr = &current->ktsan;	\
-	if (thr->inside)	\
-		return;		\
-	thr->inside = true;	\
-	pc = (uptr_t)_RET_IP_	\
+#define ENTER() 			\
+	kt_thr_t *thr;			\
+	uptr_t pc;			\
+					\
+	thr = current->ktsan.thr;	\
+	if (thr == NULL)		\
+		return;			\
+	if (thr->inside)		\
+		return;			\
+	thr->inside = true;		\
+	pc = (uptr_t)_RET_IP_		\
 /**/
 
-#define LEAVE()			\
-	thr->inside = false	\
+#define LEAVE()				\
+	thr->inside = false		\
 /**/
 
 void ktsan_init(void)
@@ -32,12 +35,14 @@ void ktsan_init(void)
 	kt_thr_t *thr;
 
 	ctx = &kt_ctx;
-	thr = &current->ktsan;
+	thr = current->ktsan.thr;
 	BUG_ON(ctx->enabled);
 	BUG_ON(thr->inside);
 	thr->inside = true;
 
+	ctx->cpus = alloc_percpu(kt_cpu_t);
 	kt_tab_init(&ctx->synctab, 10007, sizeof(kt_sync_t));
+	kt_stat_init();
 
 	thr->inside = false;
 	ctx->enabled = 1;
@@ -83,17 +88,28 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
-void ktsan_thr_create(ktsan_thr_t *new, int tid)
+void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
 {
-	ENTER();
-	kt_thr_create(thr, pc, new, tid);
-	LEAVE();
+	/* TODO(dvyukov): thr is NULL here, so we instantly return */
+	/* ENTER(); */
+	kt_thr_t *thr;
+	uptr_t pc;
+
+	thr = NULL;
+	pc = 0;
+
+	new->thr = kzalloc(sizeof(*new->thr), GFP_KERNEL);
+	kt_thr_create(thr, pc, new->thr, tid);
+
+	/* LEAVE(); */
 }
 
 void ktsan_thr_finish(void)
 {
 	ENTER();
 	kt_thr_finish(thr, pc);
+	kfree(thr);
+	current->ktsan.thr = NULL;
 	LEAVE();
 }
 

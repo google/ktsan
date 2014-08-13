@@ -1779,7 +1779,7 @@ struct task_struct {
 	int pagefault_disabled;
 
 	/* ThreadSanitizer state. Empty in non-tsan build. */
-	ktsan_thr_t ktsan;
+	struct ktsan_thr_s ktsan;
 /* CPU-specific state of this task */
 	struct thread_struct thread;
 /*
