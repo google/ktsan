@@ -111,6 +111,11 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 	return false;
 }
 
+/*
+   Size might be 0, 1, 2 or 3 and refers to the binary logarithm
+   of the actual access size.
+   Accessed region should fall into one 8-byte aligned region.
+*/
 void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 		  size_t size, bool read)
 {
@@ -119,6 +124,9 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 	struct shadow *slots;
 	int i;
 	bool stored;
+
+	BUG_ON((addr & ~(KTSAN_GRAIN - 1)) !=
+	       ((addr + (1 << size) - 1) & ~(KTSAN_GRAIN - 1)));
 
 	slots = map_memory_to_shadow(addr);
 	BUG_ON(!slots); /* FIXME: might be NULL */
@@ -146,4 +154,21 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 		/* Evict random shadow slot. */
 		ATOMIC_SET(slots[current_clock % KTSAN_SHADOW_SLOTS], value);
 	}
+}
+
+/* XXX: Relies the fact that log(KTSAN_GRAIN) == 3. */
+void ktsan_access_range(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+			size_t size, bool read)
+{
+	/* Handle unaligned beginning, if any. */
+	for (; (addr & ~KTSAN_GRAIN) && size; addr++, size--)
+		ktsan_access(thr, pc, addr, 0, read);
+
+	/* Handle middle part, if any. */
+	for (; size >= KTSAN_GRAIN; addr += KTSAN_GRAIN, size -= KTSAN_GRAIN)
+		ktsan_access(thr, pc, addr, 3, read);
+
+	/* Handle ending, if any. */
+	for (; size; addr++, size--)
+		ktsan_access(thr, pc, addr, 0, read);
 }
