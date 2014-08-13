@@ -12,7 +12,6 @@
 #include <linux/string.h>
 
 #include <asm/uaccess.h>
-#include <asm/thread_info.h>
 
 /* KTsan test: race. */
 

@@ -20,7 +20,7 @@ struct ktsan_thr_s {
 
 void ktsan_init(void);
 
-void ktsan_thr_create(ktsan_thr_t *thr, ktsan_thr_t *parent);
+void ktsan_thr_create(ktsan_thr_t *thr, int thr_id, ktsan_thr_t *parent);
 void ktsan_thr_finish(ktsan_thr_t *thr);
 void ktsan_thr_start(ktsan_thr_t *thr, int cpu);
 void ktsan_thr_stop(ktsan_thr_t *thr, int cpu);
