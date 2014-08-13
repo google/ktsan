@@ -1,5 +1,6 @@
 #include "ktsan.h"
 
+#include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
@@ -15,7 +16,10 @@
 
 /* KTsan test: race. */
 
-static int race_thr_first(void *arg)
+DECLARE_COMPLETION(race_thr_fst_compl);
+DECLARE_COMPLETION(race_thr_snd_compl);
+
+static int race_thr_fst_func(void *arg)
 {
 	int *value = (int *)arg;
 
@@ -26,45 +30,47 @@ static int race_thr_first(void *arg)
 	ktsan_write2((char *)arg + 1);
 	*value = 0;
 
+	complete(&race_thr_fst_compl);
+
 	return *value;
 }
 
-static int race_thr_second(void *arg)
+static int race_thr_snd_func(void *arg)
 {
 	int *value = (int *)arg;
 
 	ktsan_write4(arg);
 	*value = 1;
 
+	complete(&race_thr_snd_compl);
+
 	return *value;
 }
 
 static void ktsan_test_race(void)
 {
-	struct task_struct *thr_first, *thr_second;
-	char thr_name_first[] = "thr-race-first";
-	char thr_name_second[] = "thr-race-second";
+	struct task_struct *thr_fst, *thr_snd;
+	char thr_fst_name[] = "race-thr-fst";
+	char thr_snd_name[] = "race-thr-snd";
 	int *value = kmalloc(sizeof(int), GFP_KERNEL);
 
 	BUG_ON(!value);
 
 	pr_err("TSan: starting test, race expected.\n");
 
-	thr_first = kthread_create(race_thr_first, value, thr_name_first);
-	thr_second = kthread_create(race_thr_second, value, thr_name_second);
+	thr_fst = kthread_create(race_thr_fst_func, value, thr_fst_name);
+	thr_snd = kthread_create(race_thr_snd_func, value, thr_snd_name);
 
-	if (!thr_first || !thr_second) {
+	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
 		pr_err("TSan: could not create kernel threads.\n");
 		return;
 	}
 
-	wake_up_process(thr_first);
-	wake_up_process(thr_second);
+	wake_up_process(thr_fst);
+	wake_up_process(thr_snd);
 
-	msleep(100);
-
-	kthread_stop(thr_first);
-	kthread_stop(thr_second);
+	wait_for_completion(&race_thr_fst_compl);
+	wait_for_completion(&race_thr_snd_compl);
 
 	kfree(value);
 
