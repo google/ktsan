@@ -88,8 +88,10 @@ void ktsan_clk_tick(ktsan_clk_t *clk, int tid)
  */
 void ktsan_acquire(ktsan_thr_t *thr, uptr_t pc, uptr_t addr);
 void ktsan_release(ktsan_thr_t *thr, uptr_t pc, uptr_t addr);
-void ktsan_pre_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write, bool try);
-void ktsan_post_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write, bool try);
+void ktsan_pre_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+		    bool write, bool try);
+void ktsan_post_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+		     bool write, bool try);
 void ktsan_pre_unlock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write);
 
 /*
@@ -98,12 +100,14 @@ void ktsan_pre_unlock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write);
  */
 void ktsan_tab_init(ktsan_tab_t *tab, unsigned size, unsigned objsize);
 void ktsan_tab_destroy(ktsan_tab_t *tab);
-void *ktsan_tab_access(ktsan_tab_t *tab, uptr_t key, bool *created, bool destroy);
+void *ktsan_tab_access(ktsan_tab_t *tab, uptr_t key,
+		       bool *created, bool destroy);
 
 /*
  * Generic memory access.
  */
-void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
+void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+		  size_t size, bool read);
 
 #define KTSAN_MAX_STACK_TRACE_FRAMES 64
 
@@ -114,6 +118,6 @@ struct race_info {
 	unsigned long strip_addr;
 };
 
-void report_race(struct race_info* info);
+void report_race(struct race_info *info);
 
 #endif /* __X86_MM_KTSAN_KTSAN_H */

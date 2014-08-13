@@ -1664,7 +1664,7 @@ struct task_struct {
 	unsigned int	sequential_io_avg;
 #endif
 
-	// ThreadSanitizer state.  Empty in non-tsan build.
+	/* ThreadSanitizer state. Empty in non-tsan build. */
 	ktsan_thr_t ktsan;
 };
 
