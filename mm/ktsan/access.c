@@ -27,8 +27,8 @@ static void *map_memory_to_shadow(unsigned long addr)
 	if (!page->shadow)
 		return NULL;
 
-	aligned_addr = round_down(addr, KTSAN_GRAIN);
-	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KTSAN_SHADOW_SLOTS;
+	aligned_addr = round_down(addr, KT_GRAIN);
+	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KT_SHADOW_SLOTS;
 	return page->shadow + shadow_offset;
 }
 
@@ -44,10 +44,10 @@ static bool ranges_intersect(int first_offset, int first_size,
 	return true;
 }
 
-static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
+static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 			struct shadow *slot, struct shadow value, bool stored)
 {
-	struct race_info info;
+	kt_race_info_t info;
 	struct shadow old = *slot; /* FIXME: atomic. */
 
 	if (*(unsigned long *)(&old) == 0) {
@@ -67,7 +67,7 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 		}
 
 		/* Happens-before? */
-		if (ktsan_clk_get(thr->clk, old.tid) >= old.clock) {
+		if (kt_clk_get(thr->clk, old.tid) >= old.clock) {
 			*slot = value; /* FIXME: atomic. */
 			return true;
 		}
@@ -79,7 +79,7 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 		info.old = old;
 		info.new = value;
 		info.strip_addr = _RET_IP_;
-		report_race(&info);
+		kt_report_race(&info);
 
 		return false;
 	}
@@ -98,7 +98,7 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 		info.old = old;
 		info.new = value;
 		info.strip_addr = _RET_IP_;
-		report_race(&info);
+		kt_report_race(&info);
 
 		return false;
 	}
@@ -106,8 +106,7 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 	return false;
 }
 
-void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
-		  size_t size, bool read)
+void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 {
 	struct shadow value;
 	unsigned long current_clock;
@@ -118,19 +117,19 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 	slots = map_memory_to_shadow(addr);
 	BUG_ON(!slots); /* FIXME: might be NULL */
 
-	ktsan_clk_tick(thr->clk, thr->id);
-	current_clock = ktsan_clk_get(thr->clk, thr->id);
+	kt_clk_tick(thr->clk, thr->id);
+	current_clock = kt_clk_get(thr->clk, thr->id);
 
 	/* TODO(xairy): log memory access. */
 
 	value.tid = thr->id;
 	value.clock = current_clock;
-	value.offset = addr & ~KTSAN_GRAIN;
+	value.offset = addr & ~KT_GRAIN;
 	value.size = size;
 	value.read = read;
 
 	stored = false;
-	for (i = 0; i < KTSAN_SHADOW_SLOTS; i++)
+	for (i = 0; i < KT_SHADOW_SLOTS; i++)
 		stored |= update_one_shadow_slot(thr, addr, &slots[i],
 						 value, stored);
 
@@ -140,6 +139,6 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 	if (!stored) {
 		/* Evict random shadow slot. */
 		/* FIXME: atomic? */
-		slots[current_clock % KTSAN_SHADOW_SLOTS] = value;
+		slots[current_clock % KT_SHADOW_SLOTS] = value;
 	}
 }
