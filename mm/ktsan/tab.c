@@ -3,9 +3,9 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 
-void ktsan_tab_init(ktsan_tab_t *tab, unsigned size, unsigned objsize)
+void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize)
 {
-	ktsan_tab_part_t *part;
+	kt_tab_part_t *part;
 	unsigned i;
 
 	tab->size = size;
@@ -18,14 +18,13 @@ void ktsan_tab_init(ktsan_tab_t *tab, unsigned size, unsigned objsize)
 	}
 }
 
-void ktsan_tab_destroy(ktsan_tab_t *tab)
+void kt_tab_destroy(kt_tab_t *tab)
 {
 	kfree(tab->parts);
 	tab->parts = NULL;
 }
 
-void *ktsan_tab_access(ktsan_tab_t *tab, uptr_t key,
-		       bool *created, bool destroy)
+void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy)
 {
 	return NULL;
 }

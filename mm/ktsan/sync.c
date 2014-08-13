@@ -2,33 +2,31 @@
 
 #include <linux/kernel.h>
 
-void ktsan_acquire(ktsan_thr_t *thr, uptr_t pc, uptr_t addr)
+void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
-	ktsan_sync_t *sync;
+	kt_sync_t *sync;
 	bool created;
 
-	sync = ktsan_tab_access(&ktsan_ctx.synctab, addr, &created, false);
+	sync = kt_tab_access(&kt_ctx.synctab, addr, &created, false);
 	if (created) {
 	}
 }
 
-void ktsan_release(ktsan_thr_t *thr, uptr_t pc, uptr_t addr)
+void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
-	ktsan_sync_t *sync;
+	kt_sync_t *sync;
 	bool created;
 
-	sync = ktsan_tab_access(&ktsan_ctx.synctab, addr, &created, false);
+	sync = kt_tab_access(&kt_ctx.synctab, addr, &created, false);
 	if (created) {
 	}
 }
 
-void ktsan_pre_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
-		    bool write, bool try)
+void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 {
 }
 
-void ktsan_post_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
-		     bool write, bool try)
+void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 {
 /*
 	unsigned long addr = (unsigned long)lock;
@@ -48,7 +46,7 @@ void ktsan_post_lock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 */
 }
 
-void ktsan_pre_unlock(ktsan_thr_t *thr, uptr_t pc, uptr_t addr, bool write)
+void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
 /*
 	unsigned long addr = (unsigned long)lock;
