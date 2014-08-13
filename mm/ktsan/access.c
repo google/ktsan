@@ -44,15 +44,20 @@ static bool ranges_intersect(int first_offset, int first_size,
 	return true;
 }
 
+/* FIXME: not atomic. */
+#define ATOMIC_SET(left, right) ((left) = (right))
+
 static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 			struct shadow *slot, struct shadow value, bool stored)
 {
 	struct race_info info;
-	struct shadow old = *slot; /* FIXME: atomic. */
+	struct shadow old;
+
+	ATOMIC_SET(old, *slot);
 
 	if (*(unsigned long *)(&old) == 0) {
 		if (!stored) {
-			*slot = value; /* FIXME: atomic. */
+			ATOMIC_SET(*slot, value);
 			return true;
 		}
 		return false;
@@ -68,7 +73,7 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 
 		/* Happens-before? */
 		if (ktsan_clk_get(thr->clk, old.tid) >= old.clock) {
-			*slot = value; /* FIXME: atomic. */
+			ATOMIC_SET(*slot, value);
 			return true;
 		}
 
@@ -139,7 +144,6 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 
 	if (!stored) {
 		/* Evict random shadow slot. */
-		/* FIXME: atomic? */
-		slots[current_clock % KTSAN_SHADOW_SLOTS] = value;
+		ATOMIC_SET(slots[current_clock % KTSAN_SHADOW_SLOTS], value);
 	}
 }
