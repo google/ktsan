@@ -7,23 +7,23 @@
 ktsan_ctx_t ktsan_ctx;
 
 /* XXX: for debugging. */
-#define REPEAT_N_AND_STOP(n) \
-	static int scary_counter_##__LINE__ = 0; \
+#define REPEAT_N_AND_STOP(n)				\
+	static int scary_counter_##__LINE__; /* = 0; */ \
 	if (++scary_counter_##__LINE__ < (n))
 
-#define ENTER() \
-	ktsan_thr_t *thr; \
-	uptr_t pc; \
- \
-	thr = &current->ktsan;\
-	if (thr->inside) \
-		return; \
-	thr->inside = true; \
-	pc = (uptr_t)_RET_IP_ \
+#define ENTER() 		\
+	ktsan_thr_t *thr;	\
+	uptr_t pc;		\
+				\
+	thr = &current->ktsan;	\
+	if (thr->inside)	\
+		return;		\
+	thr->inside = true;	\
+	pc = (uptr_t)_RET_IP_	\
 /**/
 
-#define LEAVE() \
-	thr->inside = false \
+#define LEAVE()			\
+	thr->inside = false	\
 /**/
 
 void ktsan_init(void)
