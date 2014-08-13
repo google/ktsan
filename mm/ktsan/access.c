@@ -115,7 +115,8 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 	int i;
 	bool stored;
 
-	slots = map_memory_to_shadow(addr); /* FIXME: might be NULL */
+	slots = map_memory_to_shadow(addr);
+	BUG_ON(!slots); /* FIXME: might be NULL */
 
 	ktsan_clk_tick(thr->clk, thr->id);
 	current_clock = ktsan_clk_get(thr->clk, thr->id);
@@ -132,6 +133,9 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 	for (i = 0; i < KTSAN_SHADOW_SLOTS; i++)
 		stored |= update_one_shadow_slot(thr, addr, &slots[i],
 						 value, stored);
+
+	/*pr_err("thread: %d, addr: %lx, size: %u, read: %d, stored: %d\n",
+		 (int)thr->id, addr, (int)size, (int)read, stored);*/
 
 	if (!stored) {
 		/* Evict random shadow slot. */
