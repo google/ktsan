@@ -1,20 +1,14 @@
 #include "ktsan.h"
 
-#include <linux/gfp.h>
 #include <linux/kernel.h>
-#include <linux/slab.h>
 
-kt_clk_t *kt_clk_create(kt_thr_t *thr)
+void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk)
 {
-	kt_clk_t *clk;
-
-	clk = kzalloc(sizeof(*clk), GFP_KERNEL);
-	return clk;
+	memset(clk, 0, sizeof(*clk));
 }
 
 void kt_clk_destroy(kt_thr_t *thr, kt_clk_t *clk)
 {
-	kfree(clk);
 }
 
 void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src)

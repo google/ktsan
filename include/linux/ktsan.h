@@ -6,22 +6,19 @@
 #include <linux/spinlock_types.h>
 #include <linux/types.h>
 
-typedef struct ktsan_thr_s ktsan_thr_t;
 struct page;
 
 #ifdef CONFIG_KTSAN
 
-typedef struct kt_clk_s ktsan_clk_t;
+struct kt_thr_s;
 
 struct ktsan_thr_s {
-	unsigned	id;
-	bool		inside;	/* Already inside of ktsan runtime */
-	ktsan_clk_t	*clk;
+	struct kt_thr_s	*thr;
 };
 
 void ktsan_init(void);
 
-void ktsan_thr_create(ktsan_thr_t *new, int tid);
+void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
 void ktsan_thr_finish(void);
 void ktsan_thr_start(void);
 void ktsan_thr_stop(void);
@@ -49,7 +46,7 @@ void ktsan_split_page(struct page *page, unsigned int order);
 
 #else /* CONFIG_KTSAN */
 
-/* When disabled TSAN is no-op. */
+/* When disabled TSan is no-op. */
 
 struct ktsan_thr_s {
 };
