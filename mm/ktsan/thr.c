@@ -3,26 +3,32 @@
 #include <linux/kernel.h>
 #include <linux/sched.h>
 
-void ktsan_thr_create(ktsan_thr_t *thr, int thr_id, ktsan_thr_t *parent)
+void kt_thr_create(kt_thr_t *thr, uptr_t pc, ktsan_thr_t *new, int tid)
 {
-	memset(thr, 0, sizeof(*thr));
-	thr->clk = ktsan_clk_create(thr);
-	thr->id = thr_id;
+	memset(new, 0, sizeof(*new));
+	new->clk = kt_clk_create(thr);
+	new->id = tid;
 }
 
-void ktsan_thr_finish(ktsan_thr_t *thr)
+void kt_thr_finish(kt_thr_t *thr, uptr_t pc)
 {
 	/* TODO(dvyukov): call me */
-	ktsan_clk_destroy(thr, thr->clk);
+	kt_clk_destroy(thr, thr->clk);
 	memset(thr, 0, sizeof(*thr));
 }
 
-void ktsan_thr_start(ktsan_thr_t *thr, int cpu)
+void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
-	/*REPEAT_N_AND_STOP(10) pr_err(
-		"TSan: Thread #%d started on cpu #%d.\n", thread_id, cpu); */
+	int cpu;
+
+	cpu = smp_processor_id();
+	(void)cpu;
 }
 
-void ktsan_thr_stop(ktsan_thr_t *thr, int cpu)
+void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
+	int cpu;
+
+	cpu = smp_processor_id();
+	(void)cpu;
 }

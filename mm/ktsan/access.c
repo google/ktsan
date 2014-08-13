@@ -27,8 +27,8 @@ static void *map_memory_to_shadow(unsigned long addr)
 	if (!page->shadow)
 		return NULL;
 
-	aligned_addr = round_down(addr, KTSAN_GRAIN);
-	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KTSAN_SHADOW_SLOTS;
+	aligned_addr = round_down(addr, KT_GRAIN);
+	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KT_SHADOW_SLOTS;
 	return page->shadow + shadow_offset;
 }
 
@@ -47,10 +47,10 @@ static bool ranges_intersect(int first_offset, int first_size,
 /* FIXME: not atomic. */
 #define ATOMIC_SET(left, right) ((left) = (right))
 
-static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
+static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 			struct shadow *slot, struct shadow value, bool stored)
 {
-	struct race_info info;
+	kt_race_info_t info;
 	struct shadow old;
 
 	ATOMIC_SET(old, *slot);
@@ -72,7 +72,7 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 		}
 
 		/* Happens-before? */
-		if (ktsan_clk_get(thr->clk, old.tid) >= old.clock) {
+		if (kt_clk_get(thr->clk, old.tid) >= old.clock) {
 			ATOMIC_SET(*slot, value);
 			return true;
 		}
@@ -84,7 +84,7 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 		info.old = old;
 		info.new = value;
 		info.strip_addr = _RET_IP_;
-		report_race(&info);
+		kt_report_race(&info);
 
 		return false;
 	}
@@ -96,14 +96,14 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 			return false;
 		if (old.read && value.read)
 			return false;
-		if (ktsan_clk_get(thr->clk, old.tid) >= old.clock)
+		if (kt_clk_get(thr->clk, old.tid) >= old.clock)
 			return false;
 
 		info.addr = addr;
 		info.old = old;
 		info.new = value;
 		info.strip_addr = _RET_IP_;
-		report_race(&info);
+		kt_report_race(&info);
 
 		return false;
 	}
@@ -116,8 +116,7 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
    of the actual access size.
    Accessed region should fall into one 8-byte aligned region.
 */
-void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
-		  size_t size, bool read)
+void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 {
 	struct shadow value;
 	unsigned long current_clock;
@@ -125,25 +124,25 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 	int i;
 	bool stored;
 
-	BUG_ON((addr & ~(KTSAN_GRAIN - 1)) !=
-	       ((addr + (1 << size) - 1) & ~(KTSAN_GRAIN - 1)));
+	BUG_ON((addr & ~(KT_GRAIN - 1)) !=
+	       ((addr + (1 << size) - 1) & ~(KT_GRAIN - 1)));
 
 	slots = map_memory_to_shadow(addr);
 	BUG_ON(!slots); /* FIXME: might be NULL */
 
-	ktsan_clk_tick(thr->clk, thr->id);
-	current_clock = ktsan_clk_get(thr->clk, thr->id);
+	kt_clk_tick(thr->clk, thr->id);
+	current_clock = kt_clk_get(thr->clk, thr->id);
 
 	/* TODO(xairy): log memory access. */
 
 	value.tid = thr->id;
 	value.clock = current_clock;
-	value.offset = addr & ~KTSAN_GRAIN;
+	value.offset = addr & ~KT_GRAIN;
 	value.size = size;
 	value.read = read;
 
 	stored = false;
-	for (i = 0; i < KTSAN_SHADOW_SLOTS; i++)
+	for (i = 0; i < KT_SHADOW_SLOTS; i++)
 		stored |= update_one_shadow_slot(thr, addr, &slots[i],
 						 value, stored);
 
@@ -152,23 +151,23 @@ void ktsan_access(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
 
 	if (!stored) {
 		/* Evict random shadow slot. */
-		ATOMIC_SET(slots[current_clock % KTSAN_SHADOW_SLOTS], value);
+		ATOMIC_SET(slots[current_clock % KT_SHADOW_SLOTS], value);
 	}
 }
 
-/* XXX: Relies the fact that log(KTSAN_GRAIN) == 3. */
-void ktsan_access_range(ktsan_thr_t *thr, uptr_t pc, uptr_t addr,
+/* XXX: Relies the fact that log(KT_GRAIN) == 3. */
+void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 			size_t size, bool read)
 {
 	/* Handle unaligned beginning, if any. */
-	for (; (addr & ~KTSAN_GRAIN) && size; addr++, size--)
-		ktsan_access(thr, pc, addr, 0, read);
+	for (; (addr & ~KT_GRAIN) && size; addr++, size--)
+		kt_access(thr, pc, addr, 0, read);
 
 	/* Handle middle part, if any. */
-	for (; size >= KTSAN_GRAIN; addr += KTSAN_GRAIN, size -= KTSAN_GRAIN)
-		ktsan_access(thr, pc, addr, 3, read);
+	for (; size >= KT_GRAIN; addr += KT_GRAIN, size -= KT_GRAIN)
+		kt_access(thr, pc, addr, 3, read);
 
 	/* Handle ending, if any. */
 	for (; size; addr++, size--)
-		ktsan_access(thr, pc, addr, 0, read);
+		kt_access(thr, pc, addr, 0, read);
 }

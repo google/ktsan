@@ -17,14 +17,14 @@ void ktsan_alloc_page(struct page *page, unsigned int order,
 		return;
 
 	shadow = alloc_pages_node(node, flags | __GFP_NOTRACK,
-			order + KTSAN_SHADOW_SLOTS_LOG);
+			order + KT_SHADOW_SLOTS_LOG);
 	BUG_ON(!shadow);
 
 	memset(page_address(shadow), 0,
-	       PAGE_SIZE * (1 << (order + KTSAN_SHADOW_SLOTS_LOG)));
+	       PAGE_SIZE * (1 << (order + KT_SHADOW_SLOTS_LOG)));
 
 	for (i = 0; i < pages; i++)
-		page[i].shadow = page_address(&shadow[i * KTSAN_SHADOW_SLOTS]);
+		page[i].shadow = page_address(&shadow[i * KT_SHADOW_SLOTS]);
 }
 EXPORT_SYMBOL(ktsan_alloc_page);
 

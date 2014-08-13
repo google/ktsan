@@ -2814,11 +2814,12 @@ need_resched:
 		rq->curr = next;
 		++*switch_count;
 
+		ktsan_thr_stop();
+
 		rq = context_switch(rq, prev, next); /* unlocks the rq */
 		cpu = cpu_of(rq);
 
-		ktsan_thr_stop(&prev->ktsan, cpu);
-		ktsan_thr_start(&next->ktsan, cpu);
+		ktsan_thr_start();
 	} else
 		raw_spin_unlock_irq(&rq->lock);
 
