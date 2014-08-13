@@ -96,8 +96,8 @@ static bool update_one_shadow_slot(ktsan_thr_t *thr, uptr_t addr,
 			return false;
 		if (old.read && value.read)
 			return false;
-
-		/* TODO: compare clock. */
+		if (ktsan_clk_get(thr->clk, old.tid) >= old.clock)
+			return false;
 
 		info.addr = addr;
 		info.old = old;
