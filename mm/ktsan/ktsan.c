@@ -35,7 +35,11 @@ void ktsan_init(void)
 	kt_thr_t *thr;
 
 	ctx = &kt_ctx;
-	thr = current->ktsan.thr;
+
+	thr = kzalloc(sizeof(*thr), GFP_KERNEL);
+	kt_thr_create(NULL, (uptr_t)_RET_IP_, thr, current->pid);
+	current->ktsan.thr = thr;
+
 	BUG_ON(ctx->enabled);
 	BUG_ON(thr->inside);
 	thr->inside = true;
@@ -90,18 +94,10 @@ EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
 {
-	/* TODO(dvyukov): thr is NULL here, so we instantly return */
-	/* ENTER(); */
-	kt_thr_t *thr;
-	uptr_t pc;
-
-	thr = NULL;
-	pc = 0;
-
+	ENTER();
 	new->thr = kzalloc(sizeof(*new->thr), GFP_KERNEL);
 	kt_thr_create(thr, pc, new->thr, tid);
-
-	/* LEAVE(); */
+	LEAVE();
 }
 
 void ktsan_thr_finish(void)
