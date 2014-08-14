@@ -224,10 +224,7 @@ static const struct file_operations kt_tests_operations = {
 	.write = kt_tests_write,
 };
 
-static int __init ktsan_tests_init(void)
+void kt_tests_init(void)
 {
 	proc_create("ktsan_tests", S_IWUSR, NULL, &kt_tests_operations);
-	return 0;
 }
-
-device_initcall(ktsan_tests_init);

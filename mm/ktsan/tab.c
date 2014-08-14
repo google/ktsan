@@ -18,6 +18,7 @@ void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize)
 	}
 }
 
+/* Called in tests only. */
 void kt_tab_destroy(kt_tab_t *tab)
 {
 	kt_tab_obj_t *obj;
@@ -112,7 +113,7 @@ void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy)
 
 	BUG_ON(created != NULL && destroy == true);
 
-	hash = key % tab->size; /* TODO: a better hash? */
+	hash = key % tab->size;
 	part = &tab->parts[hash];
 
 	spin_lock_irqsave(&part->lock, flags);
