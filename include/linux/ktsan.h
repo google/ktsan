@@ -6,6 +6,7 @@
 #include <linux/spinlock_types.h>
 #include <linux/types.h>
 
+struct kmem_cache;
 struct page;
 
 #ifdef CONFIG_KTSAN
@@ -44,6 +45,9 @@ void ktsan_alloc_page(struct page *page, unsigned int order,
 void ktsan_free_page(struct page *page, unsigned int order);
 void ktsan_split_page(struct page *page, unsigned int order);
 
+void ktsan_slab_alloc(struct kmem_cache *cache, void *obj);
+void ktsan_slab_free(struct kmem_cache *cache, void *obj);
+
 #else /* CONFIG_KTSAN */
 
 /* When disabled TSan is no-op. */
@@ -78,6 +82,9 @@ static inline void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node) {}
 static inline void ktsan_free_page(struct page *page, unsigned int order) {}
 static inline void ktsan_split_page(struct page *page, unsigned int order) {}
+
+static inline void ktsan_slab_alloc(struct kmem_cache *cache, void *obj) {}
+static inline void ktsan_slab_free(struct kmem_cache *cache, void *obj) {}
 
 #endif /* CONFIG_KTSAN */
 
