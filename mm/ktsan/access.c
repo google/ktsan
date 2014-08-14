@@ -159,7 +159,7 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 }
 
 /* XXX: Relies the fact that log(KT_GRAIN) == 3. */
-void ktsan_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 			size_t size, bool read)
 {
 	/* Handle unaligned beginning, if any. */

@@ -35,7 +35,11 @@ void ktsan_init(void)
 	kt_thr_t *thr;
 
 	ctx = &kt_ctx;
-	thr = current->ktsan.thr;
+
+	thr = kzalloc(sizeof(*thr), GFP_KERNEL);
+	kt_thr_create(NULL, (uptr_t)_RET_IP_, thr, current->pid);
+	current->ktsan.thr = thr;
+
 	BUG_ON(ctx->enabled);
 	BUG_ON(thr->inside);
 	thr->inside = true;
@@ -43,6 +47,7 @@ void ktsan_init(void)
 	ctx->cpus = alloc_percpu(kt_cpu_t);
 	kt_tab_init(&ctx->synctab, 10007, sizeof(kt_sync_t));
 	kt_stat_init();
+	kt_tests_init();
 
 	thr->inside = false;
 	ctx->enabled = 1;
@@ -90,18 +95,10 @@ EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
 {
-	/* TODO(dvyukov): thr is NULL here, so we instantly return */
-	/* ENTER(); */
-	kt_thr_t *thr;
-	uptr_t pc;
-
-	thr = NULL;
-	pc = 0;
-
+	ENTER();
 	new->thr = kzalloc(sizeof(*new->thr), GFP_KERNEL);
 	kt_thr_create(thr, pc, new->thr, tid);
-
-	/* LEAVE(); */
+	LEAVE();
 }
 
 void ktsan_thr_finish(void)
@@ -124,6 +121,20 @@ void ktsan_thr_stop(void)
 {
 	ENTER();
 	kt_thr_stop(thr, pc);
+	LEAVE();
+}
+
+void ktsan_slab_alloc(struct kmem_cache *cache, void *obj)
+{
+	ENTER();
+	kt_slab_alloc(thr, pc, (uptr_t)obj, cache->object_size);
+	LEAVE();
+}
+
+void ktsan_slab_free(struct kmem_cache *cache, void *obj)
+{
+	ENTER();
+	kt_slab_free(thr, pc, (uptr_t)obj, cache->object_size);
 	LEAVE();
 }
 
