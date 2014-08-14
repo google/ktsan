@@ -36,8 +36,13 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 		if (obj->key == key)
 			break;
 
-	if (created == NULL && destroy == false)
-		return obj;
+	if (created == NULL && destroy == false) {
+		if (obj) {
+			spin_lock(&obj->lock); /* Correct lock type? */
+			return obj;
+		}
+		return NULL;
+	}
 
 	if (created == NULL && destroy == true) {
 		if (obj) {
@@ -97,7 +102,7 @@ void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy)
 	kt_tab_part_t *part;
 	void *result;
 
-	BUG_ON(!created && destroy);
+	BUG_ON(created != NULL && destroy == true);
 
 	hash = key % tab->size; /* TODO: a better hash? */
 	part = &tab->parts[hash];
