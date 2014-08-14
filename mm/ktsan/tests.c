@@ -13,6 +13,20 @@
 
 #include <asm/uaccess.h>
 
+#define KT_TEST_READ_1(addr) \
+	(ktsan_read1(addr), *((char *)addr))
+
+#define KT_TEST_WRITE_4(addr, value) \
+	(ktsan_write4(addr), *((int *)addr) = (value))
+
+#define KT_TEST_SPIN_LOCK(lock, thr_clk, lock_clk) \
+	spin_lock(lock); \
+	kt_clk_acquire(NULL, thr_clk, lock_clk); \
+
+#define KT_TEST_SPIN_UNLOCK(lock, thr_clk, lock_clk) \
+	kt_clk_release(NULL, thr_clk, lock_clk); \
+	spin_unlock(lock); \
+
 /* KTsan test: race. */
 
 DECLARE_COMPLETION(race_thr_fst_compl);
@@ -20,30 +34,20 @@ DECLARE_COMPLETION(race_thr_snd_compl);
 
 static int race_thr_fst_func(void *arg)
 {
-	int *value = (int *)arg;
-
-	do {
-		ktsan_read2((char *)arg + 1);
-		schedule();
-	} while (*value == 0);
-	ktsan_write2((char *)arg + 1);
-	*value = 0;
+	int value = KT_TEST_READ_1(arg);
 
 	complete(&race_thr_fst_compl);
 
-	return *value;
+	return value;
 }
 
 static int race_thr_snd_func(void *arg)
 {
-	int *value = (int *)arg;
-
-	ktsan_write4(arg);
-	*value = 1;
+	KT_TEST_WRITE_4(arg, 1);
 
 	complete(&race_thr_snd_compl);
 
-	return *value;
+	return 0;
 }
 
 static void kt_test_race(void)
@@ -78,12 +82,92 @@ static void kt_test_race(void)
 
 /* KTSan test: no race. */
 
-/*
-static void ktsan_test_no_race(void)
-{
+DECLARE_COMPLETION(no_race_thr_fst_compl);
+DECLARE_COMPLETION(no_race_thr_snd_compl);
 
+DEFINE_SPINLOCK(no_race_lock);
+kt_clk_t no_race_lock_clk;
+
+int fst_id;
+int snd_id;
+kt_clk_t *fst_clk;
+kt_clk_t *snd_clk;
+
+static int no_race_thr_fst_func(void *arg)
+{
+	int value;
+	kt_thr_t *thr = current->ktsan.thr;
+
+	KT_TEST_SPIN_LOCK(&no_race_lock, &thr->clk, &no_race_lock_clk);
+	value = KT_TEST_READ_1(arg);
+	KT_TEST_SPIN_UNLOCK(&no_race_lock, &thr->clk, &no_race_lock_clk);
+
+	complete(&no_race_thr_fst_compl);
+
+	return value;
 }
-*/
+
+static int no_race_thr_snd_func(void *arg)
+{
+	kt_thr_t *thr = current->ktsan.thr;
+
+	KT_TEST_SPIN_LOCK(&no_race_lock, &thr->clk, &no_race_lock_clk);
+	KT_TEST_WRITE_4(arg, 1);
+	KT_TEST_SPIN_UNLOCK(&no_race_lock, &thr->clk, &no_race_lock_clk);
+
+	complete(&no_race_thr_snd_compl);
+
+	return 0;
+}
+
+static void kt_test_no_race(void)
+{
+	struct task_struct *thr_fst, *thr_snd;
+	char thr_fst_name[] = "no-race-thr-fst";
+	char thr_snd_name[] = "no-race-thr-snd";
+	/*
+	 * Different kmalloc size to ensure that the address of the allocated
+	 * block of memory will be different from the one in race test for now.
+	 */
+	int *value = kmalloc(sizeof(int) * 40, GFP_KERNEL);
+
+	BUG_ON(!value);
+
+	pr_err("TSan: starting test, no race expected.\n");
+
+	kt_clk_init(NULL, &no_race_lock_clk);
+
+	thr_fst = kthread_create(no_race_thr_fst_func, value, thr_fst_name);
+	thr_snd = kthread_create(no_race_thr_snd_func, value, thr_snd_name);
+
+	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
+		pr_err("TSan: could not create kernel threads.\n");
+		return;
+	}
+
+	fst_id = thr_fst->ktsan.thr->id;
+	snd_id = thr_snd->ktsan.thr->id;
+	fst_clk = &thr_fst->ktsan.thr->clk;
+	snd_clk = &thr_snd->ktsan.thr->clk;
+
+	pr_err("%d: {%d: %lu, %d: %lu}, %d: {%d: %lu, %d: %lu}\n", 
+		fst_id, fst_id, fst_clk->time[fst_id], snd_id, snd_clk->time[snd_id],
+		snd_id,	fst_id, snd_clk->time[fst_id], snd_id, snd_clk->time[snd_id]);
+
+	wake_up_process(thr_fst);
+	wake_up_process(thr_snd);
+
+	wait_for_completion(&no_race_thr_fst_compl);
+	wait_for_completion(&no_race_thr_snd_compl);
+
+	pr_err("%d: {%d: %lu, %d: %lu}, %d: {%d: %lu, %d: %lu}\n", 
+		fst_id, fst_id, fst_clk->time[fst_id], snd_id, snd_clk->time[snd_id],
+		snd_id,	fst_id, snd_clk->time[fst_id], snd_id, snd_clk->time[snd_id]);
+
+	kfree(value);
+
+	pr_err("TSan: end of test.\n");
+}
 
  /* Hash table test. */
 
@@ -199,8 +283,13 @@ static int current_thread_id(void)
 static void kt_run_tests(void)
 {
 	pr_err("TSan: running tests, thread #%d.\n", current_thread_id());
+	pr_err("\n");
 	kt_test_hash_table();
+	pr_err("\n");
 	kt_test_race();
+	pr_err("\n");
+	kt_test_no_race();
+	pr_err("\n");
 }
 
 static ssize_t kt_tests_write(struct file *file, const char __user *buf,
