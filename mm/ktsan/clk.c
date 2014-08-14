@@ -18,3 +18,11 @@ void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src)
 	for (i = 0; i < KT_MAX_THREAD_ID; i++)
 		dst->time[i] = max(dst->time[i], src->time[i]);
 }
+
+void kt_clk_release(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src)
+{
+	int i;
+
+	for (i = 0; i < KT_MAX_THREAD_ID; i++)
+		src->time[i] = max(dst->time[i], src->time[i]);
+}
