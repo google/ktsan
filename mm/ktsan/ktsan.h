@@ -128,6 +128,11 @@ static inline void kt_stat_inc(kt_thr_t *thr, kt_stat_t what)
 }
 
 /*
+ * Tests.
+ */
+void kt_tests_init(void);
+
+/*
  * Threads.
  */
 void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
@@ -164,6 +169,12 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
 /*
+ * Slab allocator.
+ */
+void kt_slab_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
+void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
+
+/*
  * Hash table. Maps an address to an arbitrary object.
  * The object must start with kt_tab_obj_t.
  */
@@ -180,5 +191,4 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
  * Reports.
  */
 void kt_report_race(kt_race_info_t *info);
-
 #endif /* __X86_MM_KTSAN_KTSAN_H */

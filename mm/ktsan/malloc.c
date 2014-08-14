@@ -2,12 +2,12 @@
 
 #include <linux/slab.h>
 
-/* TODO: kmalloc/kfree hooks? */
-
-void ktsan_slab_alloc(struct kmem_cache *cache, void *obj)
+void kt_slab_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 {
+
 }
 
-void ktsan_slab_free(struct kmem_cache *cache, void *obj)
+void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 {
+
 }
