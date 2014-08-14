@@ -146,6 +146,7 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk);
 void kt_clk_destroy(kt_thr_t *thr, kt_clk_t *clk);
 void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
+void kt_clk_release(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
 
 static inline
 kt_time_t kt_clk_get(kt_clk_t *clk, int tid)

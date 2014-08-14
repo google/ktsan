@@ -28,6 +28,7 @@ void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 {
+	kt_clk_tick(&thr->clk, thr->id);
 /*
 	unsigned long addr = (unsigned long)lock;
 	int thread_id = current_thread_id();
@@ -48,6 +49,7 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
+	kt_clk_tick(&thr->clk, thr->id);
 /*
 	unsigned long addr = (unsigned long)lock;
 	int thread_id = current_thread_id();
