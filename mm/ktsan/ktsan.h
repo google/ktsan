@@ -48,7 +48,7 @@ struct shadow {
 struct kt_tab_obj_s {
 	spinlock_t		lock;
 	kt_tab_obj_t		*link;
-	uptr_t			addr;
+	uptr_t			key;
 };
 
 struct kt_tab_part_s {
