@@ -20,7 +20,15 @@ void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize)
 
 void kt_tab_destroy(kt_tab_t *tab)
 {
-	/* TODO(xairy): kfree all objects. */
+	kt_tab_obj_t *obj;
+	kt_tab_part_t *part;
+	unsigned i;
+
+	for (i = 0; i < tab->size; i++) {
+		part = &tab->parts[i];
+		for (obj = part->head; obj; obj = obj->link)
+			kfree(obj);
+	}
 
 	kfree(tab->parts);
 	tab->parts = NULL;
