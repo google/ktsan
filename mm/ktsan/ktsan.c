@@ -47,6 +47,7 @@ void ktsan_init(void)
 	ctx->cpus = alloc_percpu(kt_cpu_t);
 	kt_tab_init(&ctx->synctab, 10007, sizeof(kt_sync_t));
 	kt_stat_init();
+	kt_tests_init();
 
 	thr->inside = false;
 	ctx->enabled = 1;
@@ -120,6 +121,20 @@ void ktsan_thr_stop(void)
 {
 	ENTER();
 	kt_thr_stop(thr, pc);
+	LEAVE();
+}
+
+void ktsan_slab_alloc(struct kmem_cache *cache, void *obj)
+{
+	ENTER();
+	kt_slab_alloc(thr, pc, (uptr_t)obj, cache->object_size);
+	LEAVE();
+}
+
+void ktsan_slab_free(struct kmem_cache *cache, void *obj)
+{
+	ENTER();
+	kt_slab_free(thr, pc, (uptr_t)obj, cache->object_size);
 	LEAVE();
 }
 
