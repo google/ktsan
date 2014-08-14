@@ -81,6 +81,7 @@
 #include <linux/integrity.h>
 #include <linux/proc_ns.h>
 #include <linux/io.h>
+#include <linux/ktsan.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -678,6 +679,8 @@ asmlinkage __visible void __init start_kernel(void)
 	}
 
 	ftrace_init();
+
+	ktsan_init();
 
 	/* Do the rest non-__init'ed, we're now alive */
 	rest_init();
