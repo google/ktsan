@@ -44,15 +44,20 @@ static bool ranges_intersect(int first_offset, int first_size,
 	return true;
 }
 
+/* FIXME: not atomic. */
+#define ATOMIC_SET(left, right) ((left) = (right))
+
 static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 			struct shadow *slot, struct shadow value, bool stored)
 {
 	kt_race_info_t info;
-	struct shadow old = *slot; /* FIXME: atomic. */
+	struct shadow old;
+
+	ATOMIC_SET(old, *slot);
 
 	if (*(unsigned long *)(&old) == 0) {
 		if (!stored) {
-			*slot = value; /* FIXME: atomic. */
+			ATOMIC_SET(*slot, value);
 			return true;
 		}
 		return false;
@@ -68,7 +73,7 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 
 		/* Happens-before? */
 		if (kt_clk_get(&thr->clk, old.tid) >= old.clock) {
-			*slot = value; /* FIXME: atomic. */
+			ATOMIC_SET(*slot, value);
 			return true;
 		}
 
@@ -91,8 +96,8 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 			return false;
 		if (old.read && value.read)
 			return false;
-
-		/* TODO: compare clock. */
+		if (kt_clk_get(&thr->clk, old.tid) >= old.clock)
+			return false;
 
 		info.addr = addr;
 		info.old = old;
@@ -106,6 +111,11 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 	return false;
 }
 
+/*
+   Size might be 0, 1, 2 or 3 and refers to the binary logarithm
+   of the actual access size.
+   Accessed region should fall into one 8-byte aligned region.
+*/
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 {
 	struct shadow value;
@@ -113,6 +123,9 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	struct shadow *slots;
 	int i;
 	bool stored;
+
+	BUG_ON((addr & ~(KT_GRAIN - 1)) !=
+	       ((addr + (1 << size) - 1) & ~(KT_GRAIN - 1)));
 
 	kt_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
 	kt_stat_inc(thr, kt_stat_access_size1 + size);
@@ -141,7 +154,23 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 
 	if (!stored) {
 		/* Evict random shadow slot. */
-		/* FIXME: atomic? */
-		slots[current_clock % KT_SHADOW_SLOTS] = value;
+		ATOMIC_SET(slots[current_clock % KT_SHADOW_SLOTS], value);
 	}
+}
+
+/* XXX: Relies the fact that log(KT_GRAIN) == 3. */
+void ktsan_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+			size_t size, bool read)
+{
+	/* Handle unaligned beginning, if any. */
+	for (; (addr & ~KT_GRAIN) && size; addr++, size--)
+		kt_access(thr, pc, addr, 0, read);
+
+	/* Handle middle part, if any. */
+	for (; size >= KT_GRAIN; addr += KT_GRAIN, size -= KT_GRAIN)
+		kt_access(thr, pc, addr, 3, read);
+
+	/* Handle ending, if any. */
+	for (; size; addr++, size--)
+		kt_access(thr, pc, addr, 0, read);
 }
