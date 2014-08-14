@@ -46,7 +46,7 @@ static int race_thr_snd_func(void *arg)
 	return *value;
 }
 
-static void ktsan_test_race(void)
+static void kt_test_race(void)
 {
 	struct task_struct *thr_fst, *thr_snd;
 	char thr_fst_name[] = "race-thr-fst";
@@ -85,6 +85,110 @@ static void ktsan_test_no_race(void)
 }
 */
 
+ /* Hash table test. */
+
+struct kt_tab_test_s {
+	kt_tab_obj_t tab;
+	unsigned long data[4];
+};
+
+typedef struct kt_tab_test_s kt_tab_test_t;
+
+static void kt_test_hash_table(void)
+{
+	kt_tab_t tab;
+	kt_tab_test_t *obj, *obj1, *obj2, *obj3;
+	bool created;
+
+	pr_err("TSan: starting hash table test.\n");
+
+	kt_tab_init(&tab, 13, sizeof(kt_tab_test_t));
+
+	obj = kt_tab_access(&tab, 10, NULL, false);
+	BUG_ON(obj != NULL);
+
+	/* Creating. */
+
+	obj = kt_tab_access(&tab, 7, &created, false);
+	BUG_ON(obj == NULL);
+	BUG_ON(created != true);
+	BUG_ON(!spin_is_locked(&obj->tab.lock));
+	spin_unlock(&obj->tab.lock);
+
+	obj1 = kt_tab_access(&tab, 7, &created, false);
+	BUG_ON(obj1 != obj);
+	BUG_ON(created != false);
+	BUG_ON(!spin_is_locked(&obj1->tab.lock));
+	spin_unlock(&obj1->tab.lock);
+
+	obj2 = kt_tab_access(&tab, 7 + 13, &created, false);
+	BUG_ON(obj2 == NULL);
+	BUG_ON(obj2 == obj1);
+	BUG_ON(created != true);
+	BUG_ON(!spin_is_locked(&obj2->tab.lock));
+	spin_unlock(&obj2->tab.lock);
+
+	obj3 = kt_tab_access(&tab, 7 + 13, NULL, false);
+	BUG_ON(obj3 != obj2);
+	BUG_ON(!spin_is_locked(&obj3->tab.lock));
+	spin_unlock(&obj3->tab.lock);
+
+	obj3 = kt_tab_access(&tab, 3, &created, false);
+	BUG_ON(obj3 == NULL);
+	BUG_ON(obj3 == obj1 || obj3 == obj2);
+	BUG_ON(created != true);
+	BUG_ON(!spin_is_locked(&obj3->tab.lock));
+	spin_unlock(&obj3->tab.lock);
+
+	/* Accessing. */
+
+	obj = kt_tab_access(&tab, 7, NULL, false);
+	BUG_ON(obj == NULL);
+	BUG_ON(obj != obj1);
+	BUG_ON(!spin_is_locked(&obj->tab.lock));
+	spin_unlock(&obj->tab.lock);
+
+	obj = kt_tab_access(&tab, 7 + 13, &created, false);
+	BUG_ON(obj == NULL);
+	BUG_ON(obj != obj2);
+	BUG_ON(created != false);
+	BUG_ON(!spin_is_locked(&obj->tab.lock));
+	spin_unlock(&obj->tab.lock);
+
+	obj = kt_tab_access(&tab, 3, NULL, false);
+	BUG_ON(obj == NULL);
+	BUG_ON(obj != obj3);
+	BUG_ON(!spin_is_locked(&obj->tab.lock));
+	spin_unlock(&obj->tab.lock);
+
+	/* Destroying. */
+
+	obj = kt_tab_access(&tab, 3, NULL, true);
+	BUG_ON(obj == NULL);
+	BUG_ON(obj != obj3);
+	BUG_ON(!spin_is_locked(&obj3->tab.lock));
+	spin_unlock(&obj3->tab.lock);
+	kfree(obj3);
+
+	obj = kt_tab_access(&tab, 7 + 13, NULL, true);
+	BUG_ON(obj == NULL);
+	BUG_ON(obj != obj2);
+	BUG_ON(!spin_is_locked(&obj2->tab.lock));
+	spin_unlock(&obj2->tab.lock);
+	kfree(obj2);
+
+	obj = kt_tab_access(&tab, 7, NULL, true);
+	BUG_ON(obj == NULL);
+	BUG_ON(obj != obj1);
+	BUG_ON(!spin_is_locked(&obj1->tab.lock));
+	spin_unlock(&obj1->tab.lock);
+	kfree(obj1);
+
+	kt_tab_destroy(&tab);
+
+	pr_err("TSan: end of test.\n");
+}
+
 /* Other testing routines. */
 
 static int current_thread_id(void)
@@ -92,14 +196,15 @@ static int current_thread_id(void)
 	return current_thread_info()->task->pid;
 }
 
-static void ktsan_run_tests(void)
+static void kt_run_tests(void)
 {
 	pr_err("TSan: running tests, thread #%d.\n", current_thread_id());
-	ktsan_test_race();
+	kt_test_hash_table();
+	kt_test_race();
 }
 
-static ssize_t ktsan_tests_write(struct file *file, const char __user *buf,
-				 size_t count, loff_t *offset)
+static ssize_t kt_tests_write(struct file *file, const char __user *buf,
+			      size_t count, loff_t *offset)
 {
 	char buffer[16];
 
@@ -110,18 +215,18 @@ static ssize_t ktsan_tests_write(struct file *file, const char __user *buf,
 		return -EFAULT;
 
 	if (!strcmp(buffer, "tsan_run_tests\n"))
-		ktsan_run_tests();
+		kt_run_tests();
 
 	return count;
 }
 
-static const struct file_operations ktsan_tests_operations = {
-	.write = ktsan_tests_write,
+static const struct file_operations kt_tests_operations = {
+	.write = kt_tests_write,
 };
 
 static int __init ktsan_tests_init(void)
 {
-	proc_create("ktsan_tests", S_IWUSR, NULL, &ktsan_tests_operations);
+	proc_create("ktsan_tests", S_IWUSR, NULL, &kt_tests_operations);
 	return 0;
 }
 
