@@ -10,8 +10,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 #define KT_TEST_READ_1(addr) \
 	(ktsan_read1(addr), *((char *)addr))
@@ -19,13 +18,17 @@
 #define KT_TEST_WRITE_4(addr, value) \
 	(ktsan_write4(addr), *((int *)addr) = (value))
 
-#define KT_TEST_SPIN_LOCK(lock, thr_clk, lock_clk) \
-	spin_lock(lock); \
-	kt_clk_acquire(NULL, thr_clk, lock_clk); \
+#define KT_TEST_SPIN_LOCK(lock, thr_clk, lock_clk)		\
+	do {							\
+		spin_lock(lock);				\
+		kt_clk_acquire(NULL, thr_clk, lock_clk);	\
+	} while (0)
 
-#define KT_TEST_SPIN_UNLOCK(lock, thr_clk, lock_clk) \
-	kt_clk_release(NULL, thr_clk, lock_clk); \
-	spin_unlock(lock); \
+#define KT_TEST_SPIN_UNLOCK(lock, thr_clk, lock_clk)		\
+	do {							\
+		kt_clk_release(NULL, thr_clk, lock_clk);	\
+		spin_unlock(lock);				\
+	} while (0)
 
 /* KTsan test: race. */
 
@@ -129,7 +132,7 @@ static void kt_test_spinlock(void)
 	 * Different kmalloc size to ensure that the address of the allocated
 	 * block of memory will be different from the one in race test for now.
 	 */
-	int *value = kmalloc(sizeof(int) * 40, GFP_KERNEL);
+	int *value = kmalloc(128, GFP_KERNEL);
 
 	BUG_ON(!value);
 
@@ -150,9 +153,11 @@ static void kt_test_spinlock(void)
 	fst_clk = &thr_fst->ktsan.thr->clk;
 	snd_clk = &thr_snd->ktsan.thr->clk;
 
-	pr_err("%d: {%d: %lu, %d: %lu}, %d: {%d: %lu, %d: %lu}\n", 
-		fst_id, fst_id, fst_clk->time[fst_id], snd_id, snd_clk->time[snd_id],
-		snd_id,	fst_id, snd_clk->time[fst_id], snd_id, snd_clk->time[snd_id]);
+	pr_err("%d: {%d: %lu, %d: %lu}, %d: {%d: %lu, %d: %lu}\n",
+		fst_id, fst_id, fst_clk->time[fst_id],
+			snd_id, fst_clk->time[snd_id],
+		snd_id,	fst_id, snd_clk->time[fst_id],
+			snd_id, snd_clk->time[snd_id]);
 
 	wake_up_process(thr_fst);
 	wake_up_process(thr_snd);
@@ -160,9 +165,11 @@ static void kt_test_spinlock(void)
 	wait_for_completion(&spinlock_thr_fst_compl);
 	wait_for_completion(&spinlock_thr_snd_compl);
 
-	pr_err("%d: {%d: %lu, %d: %lu}, %d: {%d: %lu, %d: %lu}\n", 
-		fst_id, fst_id, fst_clk->time[fst_id], snd_id, snd_clk->time[snd_id],
-		snd_id,	fst_id, snd_clk->time[fst_id], snd_id, snd_clk->time[snd_id]);
+	pr_err("%d: {%d: %lu, %d: %lu}, %d: {%d: %lu, %d: %lu}\n",
+		fst_id, fst_id, fst_clk->time[fst_id],
+			snd_id, fst_clk->time[snd_id],
+		snd_id,	fst_id, snd_clk->time[fst_id],
+			snd_id, snd_clk->time[snd_id]);
 
 	kfree(value);
 

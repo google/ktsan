@@ -1,11 +1,11 @@
+#include <linux/bug.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/stacktrace.h>
+#include <linux/thread_info.h>
 
-#include <asm/bug.h>
 #include <asm/page.h>
 #include <asm/page_64.h>
-#include <asm/thread_info.h>
 
 #include "ktsan.h"
 

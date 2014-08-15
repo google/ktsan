@@ -8,8 +8,8 @@ void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	bool created;
 
 	sync = kt_tab_access(&kt_ctx.synctab, addr, &created, false);
-	if (created) {
-	}
+	/*if (created) {
+	}*/
 }
 
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
@@ -18,8 +18,8 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	bool created;
 
 	sync = kt_tab_access(&kt_ctx.synctab, addr, &created, false);
-	if (created) {
-	}
+	/*if (created) {
+	}*/
 }
 
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
