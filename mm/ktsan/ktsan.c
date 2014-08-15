@@ -12,7 +12,7 @@ kt_ctx_t kt_ctx;
 	static int scary_counter_##__LINE__; /* = 0; */ \
 	if (++scary_counter_##__LINE__ < (n))
 
-#define ENTER() 			\
+#define ENTER()				\
 	kt_thr_t *thr;			\
 	uptr_t pc;			\
 					\
@@ -26,7 +26,7 @@ kt_ctx_t kt_ctx;
 /**/
 
 #define LEAVE()				\
-	thr->inside = false		\
+	(thr->inside = false)		\
 /**/
 
 void ktsan_init(void)
