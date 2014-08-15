@@ -68,10 +68,10 @@ struct kt_sync_s {
 };
 
 struct kt_race_info_s {
-	unsigned long 		addr;
-	struct shadow 		old;
-	struct shadow 		new;
-	unsigned long 		strip_addr;
+	unsigned long		addr;
+	struct shadow		old;
+	struct shadow		new;
+	unsigned long		strip_addr;
 };
 
 enum kt_stat_e {
