@@ -59,7 +59,7 @@ static void kt_test_race(void)
 
 	BUG_ON(!value);
 
-	pr_err("TSan: starting test, race expected.\n");
+	pr_err("TSan: starting race test, race expected.\n");
 
 	thr_fst = kthread_create(race_thr_fst_func, value, thr_fst_name);
 	thr_snd = kthread_create(race_thr_snd_func, value, thr_snd_name);
@@ -82,49 +82,49 @@ static void kt_test_race(void)
 
 /* KTSan test: no race. */
 
-DECLARE_COMPLETION(no_race_thr_fst_compl);
-DECLARE_COMPLETION(no_race_thr_snd_compl);
+DECLARE_COMPLETION(spinlock_thr_fst_compl);
+DECLARE_COMPLETION(spinlock_thr_snd_compl);
 
-DEFINE_SPINLOCK(no_race_lock);
-kt_clk_t no_race_lock_clk;
+DEFINE_SPINLOCK(spinlock_lock);
+kt_clk_t spinlock_lock_clk;
 
 int fst_id;
 int snd_id;
 kt_clk_t *fst_clk;
 kt_clk_t *snd_clk;
 
-static int no_race_thr_fst_func(void *arg)
+static int spinlock_thr_fst_func(void *arg)
 {
 	int value;
 	kt_thr_t *thr = current->ktsan.thr;
 
-	KT_TEST_SPIN_LOCK(&no_race_lock, &thr->clk, &no_race_lock_clk);
+	KT_TEST_SPIN_LOCK(&spinlock_lock, &thr->clk, &spinlock_lock_clk);
 	value = KT_TEST_READ_1(arg);
-	KT_TEST_SPIN_UNLOCK(&no_race_lock, &thr->clk, &no_race_lock_clk);
+	KT_TEST_SPIN_UNLOCK(&spinlock_lock, &thr->clk, &spinlock_lock_clk);
 
-	complete(&no_race_thr_fst_compl);
+	complete(&spinlock_thr_fst_compl);
 
 	return value;
 }
 
-static int no_race_thr_snd_func(void *arg)
+static int spinlock_thr_snd_func(void *arg)
 {
 	kt_thr_t *thr = current->ktsan.thr;
 
-	KT_TEST_SPIN_LOCK(&no_race_lock, &thr->clk, &no_race_lock_clk);
+	KT_TEST_SPIN_LOCK(&spinlock_lock, &thr->clk, &spinlock_lock_clk);
 	KT_TEST_WRITE_4(arg, 1);
-	KT_TEST_SPIN_UNLOCK(&no_race_lock, &thr->clk, &no_race_lock_clk);
+	KT_TEST_SPIN_UNLOCK(&spinlock_lock, &thr->clk, &spinlock_lock_clk);
 
-	complete(&no_race_thr_snd_compl);
+	complete(&spinlock_thr_snd_compl);
 
 	return 0;
 }
 
-static void kt_test_no_race(void)
+static void kt_test_spinlock(void)
 {
 	struct task_struct *thr_fst, *thr_snd;
-	char thr_fst_name[] = "no-race-thr-fst";
-	char thr_snd_name[] = "no-race-thr-snd";
+	char thr_fst_name[] = "spinlock-thr-fst";
+	char thr_snd_name[] = "spinlock-thr-snd";
 	/*
 	 * Different kmalloc size to ensure that the address of the allocated
 	 * block of memory will be different from the one in race test for now.
@@ -133,12 +133,12 @@ static void kt_test_no_race(void)
 
 	BUG_ON(!value);
 
-	pr_err("TSan: starting test, no race expected.\n");
+	pr_err("TSan: starting spinlock test, no race expected.\n");
 
-	kt_clk_init(NULL, &no_race_lock_clk);
+	kt_clk_init(NULL, &spinlock_lock_clk);
 
-	thr_fst = kthread_create(no_race_thr_fst_func, value, thr_fst_name);
-	thr_snd = kthread_create(no_race_thr_snd_func, value, thr_snd_name);
+	thr_fst = kthread_create(spinlock_thr_fst_func, value, thr_fst_name);
+	thr_snd = kthread_create(spinlock_thr_snd_func, value, thr_snd_name);
 
 	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
 		pr_err("TSan: could not create kernel threads.\n");
@@ -157,8 +157,8 @@ static void kt_test_no_race(void)
 	wake_up_process(thr_fst);
 	wake_up_process(thr_snd);
 
-	wait_for_completion(&no_race_thr_fst_compl);
-	wait_for_completion(&no_race_thr_snd_compl);
+	wait_for_completion(&spinlock_thr_fst_compl);
+	wait_for_completion(&spinlock_thr_snd_compl);
 
 	pr_err("%d: {%d: %lu, %d: %lu}, %d: {%d: %lu, %d: %lu}\n", 
 		fst_id, fst_id, fst_clk->time[fst_id], snd_id, snd_clk->time[snd_id],
@@ -288,7 +288,7 @@ static void kt_run_tests(void)
 	pr_err("\n");
 	kt_test_race();
 	pr_err("\n");
-	kt_test_no_race();
+	kt_test_spinlock();
 	pr_err("\n");
 }
 
