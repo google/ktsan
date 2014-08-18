@@ -13,10 +13,14 @@
 #define KT_THREAD_ID_BITS     13
 #define KT_CLOCK_BITS         42
 
-#define KT_MAX_THREAD_ID 4096
+#define KT_MAX_THREAD_ID 1
 #define KT_MAX_STACK_TRACE_FRAMES 64
 
 #define KT_COLLECT_STATS 1
+
+void print_current_stack_trace(unsigned long strip_addr);
+
+struct page;
 
 typedef unsigned long uptr_t;
 typedef unsigned long kt_time_t;
@@ -32,6 +36,7 @@ typedef enum kt_stat_e		kt_stat_t;
 typedef struct kt_stats_s	kt_stats_t;
 typedef struct kt_cpu_s		kt_cpu_t;
 typedef struct kt_race_info_s	kt_race_info_t;
+typedef struct kt_cache_s	kt_cache_t;
 
 struct kt_clk_s {
 	kt_time_t time[KT_MAX_THREAD_ID];
@@ -43,6 +48,20 @@ struct shadow {
 	unsigned long offset	: 3;
 	unsigned long size	: 2;
 	unsigned long read	: 1;
+};
+
+struct kt_cache_s {
+	int			order;
+	struct page		*pages;
+	unsigned long		addr;
+	unsigned long		space;
+
+	size_t			obj_size;
+	int			obj_max_num;
+	int			obj_num;
+
+	int			head;
+	spinlock_t		lock;
 };
 
 struct kt_tab_obj_s {
@@ -60,6 +79,8 @@ struct kt_tab_s {
 	unsigned		size;
 	unsigned		objsize;
 	kt_tab_part_t		*parts;
+	unsigned		objnum;
+	kt_cache_t		cache;
 };
 
 struct kt_sync_s {
@@ -94,7 +115,7 @@ struct kt_cpu_s {
 
 struct kt_thr_s {
 	unsigned		id;
-	bool			inside;	/* Already inside of ktsan runtime */
+	volatile bool		inside;	/* Already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
 };
@@ -157,7 +178,7 @@ kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
 static inline
 void kt_clk_tick(kt_clk_t *clk, int tid)
 {
-	clk->time[tid]++;
+	//clk->time[tid]++;
 }
 
 /*
@@ -192,4 +213,13 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
  * Reports.
  */
 void kt_report_race(kt_race_info_t *info);
+
+/*
+ * Internal allocator.
+ */
+void kt_cache_create(kt_cache_t *cache, size_t obj_size);
+void kt_cache_destroy(kt_cache_t *cache);
+void *kt_cache_alloc(kt_cache_t *cache);
+void kt_cache_free(kt_cache_t *cache, void *obj);
+
 #endif /* __X86_MM_KTSAN_KTSAN_H */

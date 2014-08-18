@@ -259,21 +259,21 @@ static void kt_test_hash_table(void)
 	BUG_ON(obj != obj3);
 	BUG_ON(!spin_is_locked(&obj3->tab.lock));
 	spin_unlock(&obj3->tab.lock);
-	kfree(obj3);
+	kt_cache_free(&tab.cache, obj3);
 
 	obj = kt_tab_access(&tab, 7 + 13, NULL, true);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj2);
 	BUG_ON(!spin_is_locked(&obj2->tab.lock));
 	spin_unlock(&obj2->tab.lock);
-	kfree(obj2);
+	kt_cache_free(&tab.cache, obj2);
 
 	obj = kt_tab_access(&tab, 7, NULL, true);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj1);
 	BUG_ON(!spin_is_locked(&obj1->tab.lock));
 	spin_unlock(&obj1->tab.lock);
-	kfree(obj1);
+	kt_cache_free(&tab.cache, obj1);
 
 	kt_tab_destroy(&tab);
 
@@ -290,13 +290,14 @@ static int current_thread_id(void)
 static void kt_run_tests(void)
 {
 	pr_err("TSan: running tests, thread #%d.\n", current_thread_id());
+	pr_err("TSan: objects in sync tab: %d.\n", kt_ctx.synctab.objnum);
 	pr_err("\n");
 	kt_test_hash_table();
 	pr_err("\n");
-	kt_test_race();
+	/*kt_test_race();
 	pr_err("\n");
 	kt_test_spinlock();
-	pr_err("\n");
+	pr_err("\n");*/
 }
 
 static ssize_t kt_tests_write(struct file *file, const char __user *buf,
