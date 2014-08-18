@@ -4,29 +4,45 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/irqflags.h>
 
 kt_ctx_t kt_ctx;
-
-/* XXX: for debugging. */
-#define REPEAT_N_AND_STOP(n)				\
-	static int scary_counter_##__LINE__; /* = 0; */ \
-	if (++scary_counter_##__LINE__ < (n))
 
 #define ENTER()				\
 	kt_thr_t *thr;			\
 	uptr_t pc;			\
+	unsigned long flags;		\
 					\
+	if (in_irq())			\
+		return;			\
+	if (in_softirq())		\
+		return;			\
+	if (in_interrupt())		\
+		return;			\
+	if (in_serving_softirq())	\
+		return;			\
+	if (in_nmi())			\
+		return;			\
+					\
+	if (!kt_ctx.enabled)		\
+		return;			\
+					\
+	if (!current)			\
+		return;			\
 	thr = current->ktsan.thr;	\
 	if (thr == NULL)		\
 		return;			\
 	if (thr->inside)		\
 		return;			\
+					\
+	local_irq_save(flags);		\
 	thr->inside = true;		\
 	pc = (uptr_t)_RET_IP_		\
 /**/
 
 #define LEAVE()				\
-	(thr->inside = false)		\
+	thr->inside = false;		\
+	local_irq_restore(flags)	\
 /**/
 
 void ktsan_init(void)
@@ -51,6 +67,8 @@ void ktsan_init(void)
 
 	thr->inside = false;
 	ctx->enabled = 1;
+
+	pr_err("TSan: enabled.\n");
 }
 
 void ktsan_sync_acquire(void *addr)
