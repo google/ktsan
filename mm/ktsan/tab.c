@@ -10,12 +10,16 @@ void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize)
 
 	tab->size = size;
 	tab->objsize = objsize;
+
 	tab->parts = kmalloc_array(size, sizeof(*tab->parts), GFP_KERNEL);
 	for (i = 0; i < size; i++) {
 		part = &tab->parts[i];
 		spin_lock_init(&part->lock);
 		part->head = NULL;
 	}
+
+	tab->objnum = 0;
+	kt_cache_create(&tab->cache, objsize);
 }
 
 /* Called in tests only. */
@@ -33,6 +37,8 @@ void kt_tab_destroy(kt_tab_t *tab)
 
 	kfree(tab->parts);
 	tab->parts = NULL;
+
+	kt_cache_destroy(&tab->cache);
 }
 
 static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
@@ -61,6 +67,8 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 			else
 				prev->link = obj->link;
 
+			tab->objnum--;
+
 			spin_lock(&obj->lock); /* Correct lock type? */
 			return obj;
 		}
@@ -70,13 +78,16 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 	if (created != NULL && destroy == false) {
 		if (!obj) {
 			/* Create object. */
-			obj = kmalloc(tab->objsize, GFP_KERNEL);
-			BUG_ON(!obj);
+			obj = kt_cache_alloc(&tab->cache);
+			if (!obj)
+				return NULL;
 
 			spin_lock_init(&obj->lock);
 			obj->link = part->head;
 			part->head = obj;
 			obj->key = key;
+
+			tab->objnum++;
 
 			*created = true;
 		} else {
@@ -97,7 +108,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
  * When (created == NULL) and (destroy == true)
  *      removes the object from the table if it exists and returns it,
  *      returns NULL otherwise.
- *      The object must be freed by the caller via kfree.
+ *      The object must be freed by the caller via kt_cache_free.
  * When (created != NULL) and (destory == false)
  *      creates an object if it doesn't exist and returns it.
  *      Sets *created = false if the object existed, *c = true otherwise.
