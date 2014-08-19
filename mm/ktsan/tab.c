@@ -1,6 +1,7 @@
 #include "ktsan.h"
 
 #include <linux/kernel.h>
+#include <linux/sched.h>
 #include <linux/slab.h>
 
 void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize)
@@ -53,7 +54,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 
 	if (created == NULL && destroy == false) {
 		if (obj) {
-			spin_lock(&obj->lock); /* Correct lock type? */
+			spin_lock(&obj->lock);
 			return obj;
 		}
 		return NULL;
@@ -69,7 +70,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 
 			tab->objnum--;
 
-			spin_lock(&obj->lock); /* Correct lock type? */
+			spin_lock(&obj->lock);
 			return obj;
 		}
 		return NULL;
@@ -94,7 +95,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 			*created = false;
 		}
 
-		spin_lock(&obj->lock); /* Correct lock type? */
+		spin_lock(&obj->lock);
 		return obj;
 	}
 
@@ -117,7 +118,6 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
  */
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy)
 {
-	unsigned long flags;
 	unsigned int hash;
 	kt_tab_part_t *part;
 	void *result;
@@ -127,9 +127,9 @@ void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy)
 	hash = key % tab->size;
 	part = &tab->parts[hash];
 
-	spin_lock_irqsave(&part->lock, flags);
+	spin_lock(&part->lock);
 	result = kt_part_access(tab, part, key, created, destroy);
-	spin_unlock_irqrestore(&part->lock, flags);
+	spin_unlock(&part->lock);
 
 	return result;
 }
