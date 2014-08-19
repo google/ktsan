@@ -2,6 +2,7 @@
 
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/spinlock.h>
 
 void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 {
