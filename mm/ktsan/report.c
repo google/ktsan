@@ -50,7 +50,7 @@ static void print_compressed_stack_trace(unsigned int *stack,
 	}
 }
 
-void print_current_stack_trace(unsigned long strip_addr)
+static void print_current_stack_trace(unsigned long strip_addr)
 {
 	unsigned int stack[KT_MAX_STACK_TRACE_FRAMES];
 	unsigned int entries = compress_and_save_stack_trace(&stack[0],

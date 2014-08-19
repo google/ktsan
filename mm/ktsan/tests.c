@@ -252,7 +252,7 @@ static void kt_test_hash_table(void)
 	BUG_ON(!spin_is_locked(&obj->tab.lock));
 	spin_unlock(&obj->tab.lock);
 
-	/* Destroying. */
+	/* Destriying. */
 
 	obj = kt_tab_access(&tab, 3, NULL, true);
 	BUG_ON(obj == NULL);
