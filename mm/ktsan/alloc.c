@@ -20,7 +20,7 @@ void kt_cache_create(kt_cache_t *cache, size_t obj_size)
 	unsigned int i;
 
 	cache->order = 10;
-	cache->pages = alloc_pages(GFP_KERNEL, cache->order); 
+	cache->pages = alloc_pages(GFP_KERNEL, cache->order);
 	BUG_ON(!cache->pages);
 	cache->addr = (unsigned long)page_address(cache->pages);
 	cache->space = (1 << cache->order) * PAGE_SIZE;
@@ -30,9 +30,8 @@ void kt_cache_create(kt_cache_t *cache, size_t obj_size)
 	cache->obj_num = 0;
 
 	BUG_ON(cache->obj_max_num == 0);
-	for (i = 0; i < cache->obj_max_num - 1; i++) {
+	for (i = 0; i < cache->obj_max_num - 1; i++)
 		INDEX_TO_OBJ(i)->link = i + 1;
-	}
 	INDEX_TO_OBJ(cache->obj_max_num - 1)->link = -1;
 
 	cache->head = 0;

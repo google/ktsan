@@ -4,6 +4,13 @@
 #include <linux/ktsan.h>
 #include <linux/spinlock.h>
 #include <linux/percpu.h>
+#include <linux/types.h>
+
+/* XXX: for debugging. */
+#define KT_MGK(x, y) x ## y
+#define KT_MGK2(x, y) KT_MGK(x, y)
+#define REPEAT_N_AND_STOP(n) \
+	static int KT_MGK2(scary_, __LINE__); if (++KT_MGK2(scary_, __LINE__) < (n))
 
 #define KT_SHADOW_SLOTS_LOG 2
 #define KT_SHADOW_SLOTS (1 << KT_SHADOW_SLOTS_LOG)
@@ -17,8 +24,6 @@
 #define KT_MAX_STACK_TRACE_FRAMES 64
 
 #define KT_COLLECT_STATS 1
-
-void print_current_stack_trace(unsigned long strip_addr);
 
 struct page;
 
@@ -115,7 +120,7 @@ struct kt_cpu_s {
 
 struct kt_thr_s {
 	unsigned		id;
-	volatile bool		inside;	/* Already inside of ktsan runtime */
+	atomic_t		inside;	/* Already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
 };
@@ -178,7 +183,7 @@ kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
 static inline
 void kt_clk_tick(kt_clk_t *clk, int tid)
 {
-	//clk->time[tid]++;
+	/*clk->time[tid]++;*/
 }
 
 /*

@@ -1,54 +1,76 @@
 #include "ktsan.h"
 
+#include <linux/atomic.h>
+#include <linux/irqflags.h>
 #include <linux/kernel.h>
+#include <linux/nmi.h>
+#include <linux/preempt.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
-#include <linux/irqflags.h>
 
 kt_ctx_t kt_ctx;
 
-#define ENTER()				\
-	kt_thr_t *thr;			\
-	uptr_t pc;			\
-	unsigned long flags;		\
-					\
-	if (in_irq())			\
-		return;			\
-	if (in_softirq())		\
-		return;			\
-	if (in_interrupt())		\
-		return;			\
-	if (in_serving_softirq())	\
-		return;			\
-	if (in_nmi())			\
-		return;			\
-					\
-	if (!kt_ctx.enabled)		\
-		return;			\
-					\
-	if (!current)			\
-		return;			\
-	thr = current->ktsan.thr;	\
-	if (thr == NULL)		\
-		return;			\
-	if (thr->inside)		\
-		return;			\
-					\
+#define DISABLE_INTERRUPTS(flags)	\
+	preempt_disable();		\
 	local_irq_save(flags);		\
-	thr->inside = true;		\
-	pc = (uptr_t)_RET_IP_		\
+	stop_nmi()			\
 /**/
 
-#define LEAVE()				\
-	thr->inside = false;		\
-	local_irq_restore(flags)	\
+#define ENABLE_INTERRUPTS(flags)	\
+	restart_nmi();			\
+	local_irq_restore(flags);	\
+	preempt_enable()		\
+/**/
+
+#define IN_INTERRUPT()			\
+	(in_irq() ||			\
+	 in_softirq() ||		\
+	 in_interrupt() ||		\
+	 in_serving_softirq() ||	\
+	 in_nmi())			\
+/**/
+
+#define ENTER()							\
+	kt_thr_t *thr;						\
+	uptr_t pc;						\
+	unsigned long flags;					\
+	int inside;						\
+								\
+	if (IN_INTERRUPT())					\
+		return;						\
+								\
+	if (!kt_ctx.enabled)					\
+		return;						\
+	if (!current)						\
+		return;						\
+	if (!current->ktsan.thr)				\
+		return;						\
+								\
+	DISABLE_INTERRUPTS(flags);				\
+								\
+	thr = current->ktsan.thr;				\
+	pc = (uptr_t)_RET_IP_;					\
+								\
+	inside = atomic_cmpxchg(&thr->inside, 0, 1);		\
+	if (inside != 0) {					\
+		ENABLE_INTERRUPTS(flags);			\
+		return;						\
+	}							\
+/**/
+
+#define LEAVE()							\
+	inside = atomic_cmpxchg(&thr->inside, 1, 0);		\
+	BUG_ON(inside != 1);					\
+								\
+	ENABLE_INTERRUPTS(flags)				\
 /**/
 
 void ktsan_init(void)
 {
 	kt_ctx_t *ctx;
 	kt_thr_t *thr;
+	int inside;
 
 	ctx = &kt_ctx;
 
@@ -57,15 +79,16 @@ void ktsan_init(void)
 	current->ktsan.thr = thr;
 
 	BUG_ON(ctx->enabled);
-	BUG_ON(thr->inside);
-	thr->inside = true;
+	inside = atomic_cmpxchg(&thr->inside, 0, 1);
+	BUG_ON(inside != 0);
 
 	ctx->cpus = alloc_percpu(kt_cpu_t);
 	kt_tab_init(&ctx->synctab, 10007, sizeof(kt_sync_t));
 	kt_stat_init();
 	kt_tests_init();
 
-	thr->inside = false;
+	inside = atomic_cmpxchg(&thr->inside, 1, 0);
+	BUG_ON(inside != 1);
 	ctx->enabled = 1;
 
 	pr_err("TSan: enabled.\n");
