@@ -42,7 +42,7 @@ void kt_cache_create(kt_cache_t *cache, size_t obj_size)
 {
 	unsigned int i;
 
-	cache->space = 128 * (1 << 20);
+	cache->space = 512 * (1 << 20);
 	cache->addr = reserve_memory(cache->space);
 
 	cache->obj_size = round_up(obj_size, sizeof(unsigned long));
