@@ -1,6 +1,7 @@
 #include "ktsan.h"
 
 #include <linux/gfp.h>
+#include <linux/memblock.h>
 #include <linux/mm.h>
 #include <linux/mm_types.h>
 #include <linux/spinlock.h>
@@ -15,15 +16,34 @@ typedef struct kt_cache_obj_s kt_cache_obj_t;
 #define INDEX_TO_OBJ(n) ((kt_cache_obj_t *)INDEX_TO_ADDR(n))
 #define ADDR_TO_INDEX(addr) (((addr) - cache->addr) / cache->obj_size)
 
+static uptr_t reserve_memory(uptr_t size)
+{
+	uptr_t start, end, found;
+	int rv;
+
+	start = 0;
+	end = memblock_phys_mem_size();
+	found = memblock_find_in_range(start, end, size, PAGE_SIZE);
+	BUG_ON(found == 0);
+	rv = memblock_reserve(found, size);
+	BUG_ON(rv != 0);
+	return (uptr_t)(phys_to_virt(found));
+}
+
+static void free_memory(uptr_t addr, uptr_t size)
+{
+	int rv;
+
+	rv = memblock_free(addr, size);
+	BUG_ON(rv == 0);
+}
+
 void kt_cache_create(kt_cache_t *cache, size_t obj_size)
 {
 	unsigned int i;
 
-	cache->order = 10;
-	cache->pages = alloc_pages(GFP_KERNEL, cache->order);
-	BUG_ON(!cache->pages);
-	cache->addr = (unsigned long)page_address(cache->pages);
-	cache->space = (1 << cache->order) * PAGE_SIZE;
+	cache->space = 128 * (1 << 20);
+	cache->addr = reserve_memory(cache->space);
 
 	cache->obj_size = round_up(obj_size, sizeof(unsigned long));
 	cache->obj_max_num = cache->space / cache->obj_size;
@@ -40,7 +60,7 @@ void kt_cache_create(kt_cache_t *cache, size_t obj_size)
 
 void kt_cache_destroy(kt_cache_t *cache)
 {
-	__free_pages(cache->pages, cache->order);
+	free_memory(cache->addr, cache->space);
 }
 
 void *kt_cache_alloc(kt_cache_t *cache)
