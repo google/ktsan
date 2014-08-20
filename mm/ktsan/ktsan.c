@@ -83,7 +83,8 @@ void ktsan_init(void)
 	BUG_ON(inside != 0);
 
 	ctx->cpus = alloc_percpu(kt_cpu_t);
-	kt_tab_init(&ctx->synctab, 10007, sizeof(kt_sync_t));
+	kt_tab_init(&ctx->slabtab, 10007, sizeof(kt_tab_slab_t));
+	kt_tab_init(&ctx->synctab, 10007, sizeof(kt_tab_sync_t));
 	kt_stat_init();
 	kt_tests_init();
 
