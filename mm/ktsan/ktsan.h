@@ -25,8 +25,6 @@
 
 #define KT_COLLECT_STATS 1
 
-struct page;
-
 typedef unsigned long uptr_t;
 typedef unsigned long kt_time_t;
 
@@ -35,7 +33,8 @@ typedef struct kt_clk_s		kt_clk_t;
 typedef struct kt_tab_s		kt_tab_t;
 typedef struct kt_tab_obj_s	kt_tab_obj_t;
 typedef struct kt_tab_part_s	kt_tab_part_t;
-typedef struct kt_sync_s	kt_sync_t;
+typedef struct kt_tab_sync_s	kt_tab_sync_t;
+typedef struct kt_tab_slab_s	kt_tab_slab_t;
 typedef struct kt_ctx_s		kt_ctx_t;
 typedef enum kt_stat_e		kt_stat_t;
 typedef struct kt_stats_s	kt_stats_t;
@@ -43,9 +42,13 @@ typedef struct kt_cpu_s		kt_cpu_t;
 typedef struct kt_race_info_s	kt_race_info_t;
 typedef struct kt_cache_s	kt_cache_t;
 
+/* Clocks. */
+
 struct kt_clk_s {
 	kt_time_t time[KT_MAX_THREAD_ID];
 };
+
+/* Shadow. */
 
 struct shadow {
 	unsigned long tid	: KT_THREAD_ID_BITS;
@@ -55,9 +58,16 @@ struct shadow {
 	unsigned long read	: 1;
 };
 
+struct kt_race_info_s {
+	unsigned long		addr;
+	struct shadow		old;
+	struct shadow		new;
+	unsigned long		strip_addr;
+};
+
+/* Internal allocator. */
+
 struct kt_cache_s {
-	int			order;
-	struct page		*pages;
 	unsigned long		addr;
 	unsigned long		space;
 
@@ -68,6 +78,8 @@ struct kt_cache_s {
 	int			head;
 	spinlock_t		lock;
 };
+
+/* Hash table. */
 
 struct kt_tab_obj_s {
 	spinlock_t		lock;
@@ -88,17 +100,21 @@ struct kt_tab_s {
 	kt_cache_t		cache;
 };
 
-struct kt_sync_s {
+struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
 	kt_clk_t		clk;
 };
 
-struct kt_race_info_s {
-	unsigned long		addr;
-	struct shadow		old;
-	struct shadow		new;
-	unsigned long		strip_addr;
+/* FIXME. */
+#define KT_MAX_SYNC_PER_SLAB_OBJ 32
+
+struct kt_tab_slab_s {
+	kt_tab_obj_t		tab;
+	uptr_t			syncs[KT_MAX_SYNC_PER_SLAB_OBJ];
+	int 			head;
 };
+
+/* Stats. */
 
 enum kt_stat_e {
 	kt_stat_access_read,
@@ -125,10 +141,13 @@ struct kt_thr_s {
 	kt_clk_t		clk;
 };
 
+/* Global. */
+
 struct kt_ctx_s {
 	int			enabled;
 	kt_cpu_t __percpu	*cpus;
-	kt_tab_t		synctab;
+	kt_tab_t		synctab; /* sync addr -> sync object */
+	kt_tab_t		slabtab; /* memory block -> sync objects */
 };
 
 extern kt_ctx_t kt_ctx;

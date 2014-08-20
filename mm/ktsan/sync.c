@@ -1,29 +1,78 @@
 #include "ktsan.h"
 
 #include <linux/kernel.h>
-#include <linux/sched.h>
+#include <linux/mm.h>
+#include <linux/slab.h>
 #include <linux/spinlock.h>
 
-void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
+/* XXX(xairy): move somewhere? */
+static uptr_t addr_to_slab_obj_addr(uptr_t addr)
 {
-	kt_sync_t *sync;
+	struct page *page;
+	struct kmem_cache *cache;
+	u32 offset;
+	u32 idx;
+	uptr_t obj_addr;
+
+	if (!virt_addr_valid(addr))
+		return 0;
+	page = virt_to_head_page((void *)addr);
+	if (!PageSlab(page))
+		return 0;
+	cache = page->slab_cache;
+	offset = addr - (uptr_t)page->s_mem;
+	idx = reciprocal_divide(offset, cache->reciprocal_buffer_size);
+	obj_addr = (uptr_t)(page->s_mem + cache->size * idx);
+	return obj_addr;
+}
+
+static void kt_sync_add(kt_tab_slab_t *slab, uptr_t sync)
+{
+	int i;
+
+	for (i = 0; i < slab->head; i++)
+		if (slab->syncs[i] == sync)
+			return;
+
+	if (slab->head != KT_MAX_SYNC_PER_SLAB_OBJ) {
+		slab->syncs[slab->head] = sync;
+		slab->head++;
+	}
+}
+
+static void kt_sync_ensure_created(uptr_t addr)
+{
+	kt_tab_sync_t *sync;
 	bool created;
+	uptr_t slab_obj_addr;
+	kt_tab_slab_t *slab;
 
 	sync = kt_tab_access(&kt_ctx.synctab, addr, &created, false);
 	BUG_ON(sync == NULL); /* Ran out of memory. */
 	BUG_ON(!spin_is_locked(&sync->tab.lock));
 	spin_unlock(&sync->tab.lock);
+
+	if (created) {
+		slab_obj_addr = addr_to_slab_obj_addr(addr);
+		slab = kt_tab_access(&kt_ctx.slabtab, slab_obj_addr, &created, false);
+		BUG_ON(slab == NULL); /* Ran out of memory. */
+		BUG_ON(!spin_is_locked(&slab->tab.lock));
+		if (created)
+			slab->head = 0;
+		kt_sync_add(slab, addr);
+		spin_unlock(&slab->tab.lock);
+	}
+
+}
+
+void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
+{
+	kt_sync_ensure_created(addr);
 }
 
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
-	kt_sync_t *sync;
-	bool created;
-
-	/*sync = kt_tab_access(&kt_ctx.synctab, addr, &created, false);
-	spin_unlock(&sync->tab.lock);
-	if (created) {
-	}*/
+	kt_sync_ensure_created(addr);
 }
 
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
