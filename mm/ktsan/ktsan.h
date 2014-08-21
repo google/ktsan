@@ -224,7 +224,7 @@ void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
  * Hash table. Maps an address to an arbitrary object.
  * The object must start with kt_tab_obj_t.
  */
-void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize);
+void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize, uptr_t space);
 void kt_tab_destroy(kt_tab_t *tab);
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
@@ -241,7 +241,7 @@ void kt_report_race(kt_race_info_t *info);
 /*
  * Internal allocator.
  */
-void kt_cache_create(kt_cache_t *cache, size_t obj_size);
+void kt_cache_create(kt_cache_t *cache, size_t obj_size, uptr_t space);
 void kt_cache_destroy(kt_cache_t *cache);
 void *kt_cache_alloc(kt_cache_t *cache);
 void kt_cache_free(kt_cache_t *cache, void *obj);
