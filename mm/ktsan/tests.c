@@ -193,7 +193,7 @@ static void kt_test_hash_table(void)
 
 	pr_err("TSan: starting hash table test.\n");
 
-	kt_tab_init(&tab, 13, sizeof(kt_tab_test_t));
+	kt_tab_init(&tab, 13, sizeof(kt_tab_test_t), 8 * (1UL << 20));
 
 	obj = kt_tab_access(&tab, 10, NULL, false);
 	BUG_ON(obj != NULL);
