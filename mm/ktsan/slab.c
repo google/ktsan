@@ -21,7 +21,8 @@ void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 	BUG_ON(!spin_is_locked(&slab->tab.lock));
 
 	for (i = 0; i < slab->head; i++) {
-		sync = kt_tab_access(&kt_ctx.synctab, slab->syncs[i], NULL, true);
+		sync = kt_tab_access(&kt_ctx.synctab,
+			slab->syncs[i], NULL, true);
 		if (sync == NULL)
 			continue;
 		BUG_ON(!spin_is_locked(&sync->tab.lock));

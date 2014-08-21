@@ -28,6 +28,22 @@ void print_current_stack_trace(unsigned long strip_addr);
 
 #define KT_COLLECT_STATS 1
 
+/* Both arguments must be pointers. */
+#define KT_ATOMIC_32_READ(ptr) \
+	(atomic_read((atomic_t *)(ptr)))
+#define KT_ATOMIC_32_SET(ptr, val) \
+	(atomic_set((atomic_t *)(ptr), *(u32 *)(val)))
+#define KT_ATOMIC_32_ADD(ptr, val) \
+	(atomic_add(*(u32 *)(val), (atomic_t *)(ptr)))
+
+/* Both arguments must be pointers. */
+#define KT_ATOMIC_64_READ(ptr) \
+	(atomic64_read((atomic64_t *)(ptr)))
+#define KT_ATOMIC_64_SET(ptr, val) \
+	(atomic64_set((atomic64_t *)(ptr), *(u64 *)(val)))
+#define KT_ATOMIC_64_ADD(ptr, val) \
+	(atomic64_add(*(u64 *)(val), (atomic64_t *)(ptr)))
+
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
 
@@ -131,7 +147,7 @@ enum kt_stat_e {
 };
 
 struct kt_stats_s {
-	atomic64_t		stat[kt_stat_count];
+	unsigned long		stat[kt_stat_count];
 };
 
 struct kt_cpu_s {
@@ -161,23 +177,24 @@ extern kt_ctx_t kt_ctx;
  */
 void kt_stat_init(void);
 
-static inline unsigned long kt_stat_read(atomic64_t *stat)
+static inline unsigned long kt_stat_read(unsigned long *stat)
 {
 #if KT_COLLECT_STATS
-	return atomic64_read(stat);
+	return KT_ATOMIC_64_READ(stat);
 #else
 	return 0;
 #endif
 }
 
-static inline void kt_stat_add(atomic64_t *stat, unsigned long x)
+static inline void kt_stat_add(unsigned long *stat, unsigned long x)
 {
 #if KT_COLLECT_STATS
-	atomic64_add(x, stat);
+	KT_ATOMIC_64_ADD(stat, &x);
 #endif
 }
 
-static inline void kt_thr_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
+static inline void kt_thr_stat_add(kt_thr_t *thr, kt_stat_t what,
+				   unsigned long x)
 {
 	/* This shouldn't normally happen, a warning just in case. */
 	if (thr->cpu == NULL) {
