@@ -1,5 +1,6 @@
 #include "ktsan.h"
 
+#include <linux/atomic.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/spinlock.h>
@@ -18,10 +19,12 @@ void kt_thr_finish(kt_thr_t *thr, uptr_t pc)
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
-	thr->cpu = this_cpu_ptr(kt_ctx.cpus);
+	/* FIXME(xairy): looks awful. */
+	atomic64_set((atomic64_t *)&thr->cpu, (unsigned long)this_cpu_ptr(kt_ctx.cpus));
 }
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
-	thr->cpu = NULL;
+	/* FIXME(xairy): looks awful. */
+	atomic64_set((atomic64_t *)&thr->cpu, 0);
 }

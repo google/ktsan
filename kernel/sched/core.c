@@ -2312,6 +2312,9 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 {
 	struct rq *rq = this_rq();
 
+	/* Has to be before finish_task_switch. */
+	ktsan_thr_start();
+
 	finish_task_switch(rq, prev);
 
 	/*
@@ -2333,6 +2336,9 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	       struct task_struct *next)
 {
 	struct mm_struct *mm, *oldmm;
+
+	if (current != rq->idle)
+		ktsan_thr_stop();
 
 	prepare_task_switch(rq, prev, next);
 
@@ -2369,6 +2375,11 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	switch_to(prev, next, prev);
 
 	barrier();
+
+	/* Has to be before finish_task_switch. */
+	if (current != rq->idle)
+		ktsan_thr_start();
+
 	/*
 	 * this_rq must be evaluated again because prev may have moved
 	 * CPUs since it called schedule(), thus the 'rq' on its stack
@@ -2827,8 +2838,6 @@ need_resched:
 		rq->curr = next;
 		++*switch_count;
 
-		ktsan_thr_stop();
-
 		context_switch(rq, prev, next); /* unlocks the rq */
 		/*
 		 * The context switch have flipped the stack from under us
@@ -2838,14 +2847,16 @@ need_resched:
 		 */
 		cpu = smp_processor_id();
 		rq = cpu_rq(cpu);
-
-		ktsan_thr_start();
 	} else
 		raw_spin_unlock_irq(&rq->lock);
 
 	post_schedule(rq);
 
 	sched_preempt_enable_no_resched();
+
+	if (current != rq->idle)
+		ktsan_thr_start();
+
 	if (need_resched())
 		goto need_resched;
 }
