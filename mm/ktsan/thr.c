@@ -18,10 +18,10 @@ void kt_thr_finish(kt_thr_t *thr, uptr_t pc)
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
-	/* thr->cpu = this_cpu_ptr(kt_ctx.cpus); */
+	thr->cpu = this_cpu_ptr(kt_ctx.cpus);
 }
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
-	/* thr->cpu = NULL; */
+	thr->cpu = NULL;
 }
