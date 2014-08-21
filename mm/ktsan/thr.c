@@ -19,12 +19,14 @@ void kt_thr_finish(kt_thr_t *thr, uptr_t pc)
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
-	/* FIXME(xairy): looks awful. */
-	atomic64_set((atomic64_t *)&thr->cpu, (unsigned long)this_cpu_ptr(kt_ctx.cpus));
+	void *cpu = this_cpu_ptr(kt_ctx.cpus);
+
+	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
-	/* FIXME(xairy): looks awful. */
-	atomic64_set((atomic64_t *)&thr->cpu, 0);
+	void *cpu = NULL;
+
+	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
