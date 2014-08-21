@@ -1,5 +1,6 @@
 #include "ktsan.h"
 
+#include <linux/atomic.h>
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -13,18 +14,23 @@ static struct {
 } desc[] = {
 	{kt_stat_access_read,		"kt_stat_access_read"},
 	{kt_stat_access_write,		"kt_stat_access_write"},
+	{kt_stat_sync_objects,		"kt_stat_sync_objects"},
+	{kt_stat_slab_objects,		"kt_stat_slab_objects"},
 };
 
 void kt_stat_collect(kt_stats_t *stat)
 {
 	kt_stats_t *stat1;
 	int cpu, i;
+	long cpu_stat;
 
 	memset(stat, 0, sizeof(*stat));
 	for_each_possible_cpu(cpu) {
 		stat1 = &per_cpu_ptr(kt_ctx.cpus, cpu)->stat;
-		for (i = 0; i < kt_stat_count; i++)
-			stat->stat[i] += stat1->stat[i];
+		for (i = 0; i < kt_stat_count; i++) {
+			cpu_stat = kt_stat_read(&stat1->stat[i]);
+			kt_stat_add(&stat->stat[i], cpu_stat);
+		}
 	}
 }
 
@@ -34,8 +40,9 @@ static int kt_stat_show(struct seq_file *m, void *v)
 	int i;
 
 	kt_stat_collect(&stat);
-	for (i = 0; i < sizeof(desc)/sizeof(desc[0]); i++)
-		seq_printf(m, "%s: %llu\n", desc[i].s, stat.stat[desc[i].i]);
+	for (i = 0; i < ARRAY_SIZE(desc); i++)
+		seq_printf(m, "%s: %lu\n", desc[i].s,
+			kt_stat_read(&stat.stat[desc[i].i]));
 	return 0;
 }
 

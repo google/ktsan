@@ -40,7 +40,7 @@ static void kt_sync_add(kt_tab_slab_t *slab, uptr_t sync)
 	}
 }
 
-static void kt_sync_ensure_created(uptr_t addr)
+static void kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
 	bool created;
@@ -53,12 +53,16 @@ static void kt_sync_ensure_created(uptr_t addr)
 	spin_unlock(&sync->tab.lock);
 
 	if (created) {
+		kt_thr_stat_inc(thr, kt_stat_sync_objects);
+
 		slab_obj_addr = addr_to_slab_obj_addr(addr);
 		slab = kt_tab_access(&kt_ctx.slabtab, slab_obj_addr, &created, false);
 		BUG_ON(slab == NULL); /* Ran out of memory. */
 		BUG_ON(!spin_is_locked(&slab->tab.lock));
-		if (created)
+		if (created) {
+			kt_thr_stat_inc(thr, kt_stat_slab_objects);
 			slab->head = 0;
+		}
 		kt_sync_add(slab, addr);
 		spin_unlock(&slab->tab.lock);
 	}
@@ -67,12 +71,12 @@ static void kt_sync_ensure_created(uptr_t addr)
 
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
-	kt_sync_ensure_created(addr);
+	kt_sync_ensure_created(thr, addr);
 }
 
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
-	kt_sync_ensure_created(addr);
+	kt_sync_ensure_created(thr, addr);
 }
 
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
