@@ -2540,6 +2540,9 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 {
 	struct rq *rq;
 
+	/* Has to be before finish_task_switch. */
+	ktsan_thr_start();
+
 	/* finish_task_switch() drops rq->lock and enables preemtion */
 	preempt_disable();
 	rq = finish_task_switch(prev);
@@ -2558,6 +2561,9 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	       struct task_struct *next)
 {
 	struct mm_struct *mm, *oldmm;
+
+	if (current != rq->idle)
+		ktsan_thr_stop();
 
 	prepare_task_switch(rq, prev, next);
 
@@ -2593,6 +2599,10 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	/* Here we just switch the register state and the stack. */
 	switch_to(prev, next, prev);
 	barrier();
+
+	/* Has to be before finish_task_switch. */
+	if (current != rq->idle)
+		ktsan_thr_start();
 
 	return finish_task_switch(prev);
 }
@@ -3063,6 +3073,9 @@ static void __sched __schedule(void)
 	}
 
 	balance_callback(rq);
+
+	if (current != rq->idle)
+		ktsan_thr_start();
 }
 
 static inline void sched_submit_work(struct task_struct *tsk)
