@@ -127,8 +127,8 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	BUG_ON((addr & ~(KT_GRAIN - 1)) !=
 	       ((addr + (1 << size) - 1) & ~(KT_GRAIN - 1)));
 
-	kt_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
-	kt_stat_inc(thr, kt_stat_access_size1 + size);
+	kt_thr_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
+	kt_thr_stat_inc(thr, kt_stat_access_size1 + size);
 
 	slots = map_memory_to_shadow(addr);
 	BUG_ON(!slots); /* FIXME: might be NULL */

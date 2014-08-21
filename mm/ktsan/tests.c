@@ -290,7 +290,6 @@ static int current_thread_id(void)
 static void kt_run_tests(void)
 {
 	pr_err("TSan: running tests, thread #%d.\n", current_thread_id());
-	pr_err("TSan: objects in sync tab: %d.\n", kt_ctx.synctab.objnum);
 	pr_err("\n");
 	/*kt_test_hash_table();
 	pr_err("\n");*/

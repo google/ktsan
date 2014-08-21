@@ -19,7 +19,6 @@ void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize, uptr_t space)
 		part->head = NULL;
 	}
 
-	tab->objnum = 0;
 	kt_cache_create(&tab->cache, objsize, space);
 }
 
@@ -68,8 +67,6 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 			else
 				prev->link = obj->link;
 
-			tab->objnum--;
-
 			spin_lock(&obj->lock);
 			return obj;
 		}
@@ -87,8 +84,6 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 			obj->link = part->head;
 			part->head = obj;
 			obj->key = key;
-
-			tab->objnum++;
 
 			*created = true;
 		} else {
