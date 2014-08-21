@@ -25,8 +25,8 @@
 
 #define KT_COLLECT_STATS 1
 
-typedef unsigned long uptr_t;
-typedef unsigned long kt_time_t;
+typedef unsigned long	uptr_t;
+typedef unsigned long	kt_time_t;
 
 typedef struct kt_thr_s		kt_thr_t;
 typedef struct kt_clk_s		kt_clk_t;
@@ -96,7 +96,6 @@ struct kt_tab_s {
 	unsigned		size;
 	unsigned		objsize;
 	kt_tab_part_t		*parts;
-	unsigned		objnum;
 	kt_cache_t		cache;
 };
 
@@ -123,11 +122,13 @@ enum kt_stat_e {
 	kt_stat_access_size2,
 	kt_stat_access_size4,
 	kt_stat_access_size8,
+	kt_stat_sync_objects,
+	kt_stat_slab_objects,
 	kt_stat_count,
 };
 
 struct kt_stats_s {
-	unsigned long long	stat[kt_stat_count];
+	atomic64_t		stat[kt_stat_count];
 };
 
 struct kt_cpu_s {
@@ -157,19 +158,34 @@ extern kt_ctx_t kt_ctx;
  */
 void kt_stat_init(void);
 
-static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
+static inline unsigned long kt_stat_read(atomic64_t *stat)
+{
+	return atomic64_read(stat);
+}
+
+static inline void kt_stat_add(atomic64_t *stat, unsigned long x)
+{
+	atomic64_add(x, stat);
+}
+
+static inline void kt_thr_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
 #if KT_COLLECT_STATS
 	/* TODO(dvyukov): remove this when we have cpu in all events */
 	if (thr->cpu == NULL)
 		return;
-	thr->cpu->stat.stat[what] += x;
+	kt_stat_add(&thr->cpu->stat.stat[what], x);
 #endif
 }
 
-static inline void kt_stat_inc(kt_thr_t *thr, kt_stat_t what)
+static inline void kt_thr_stat_inc(kt_thr_t *thr, kt_stat_t what)
 {
-	kt_stat_add(thr, what, 1);
+	kt_thr_stat_add(thr, what, 1);
+}
+
+static inline void kt_thr_stat_dec(kt_thr_t *thr, kt_stat_t what)
+{
+	kt_thr_stat_add(thr, what, -1);
 }
 
 /*

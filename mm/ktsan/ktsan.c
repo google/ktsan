@@ -76,6 +76,7 @@ void ktsan_init(void)
 
 	thr = kzalloc(sizeof(*thr), GFP_KERNEL);
 	kt_thr_create(NULL, (uptr_t)_RET_IP_, thr, current->pid);
+	kt_thr_start(thr, (uptr_t)_RET_IP_);
 	current->ktsan.thr = thr;
 
 	BUG_ON(ctx->enabled);
