@@ -7,6 +7,9 @@
 #include <linux/types.h>
 
 /* XXX: for debugging. */
+void print_current_stack_trace(unsigned long strip_addr);
+
+/* XXX: for debugging. */
 #define KT_MGK(x, y) x ## y
 #define KT_MGK2(x, y) KT_MGK(x, y)
 #define REPEAT_N_AND_STOP(n) \
@@ -160,22 +163,30 @@ void kt_stat_init(void);
 
 static inline unsigned long kt_stat_read(atomic64_t *stat)
 {
+#if KT_COLLECT_STATS
 	return atomic64_read(stat);
+#else
+	return 0;
+#endif
 }
 
 static inline void kt_stat_add(atomic64_t *stat, unsigned long x)
 {
+#if KT_COLLECT_STATS
 	atomic64_add(x, stat);
+#endif
 }
 
 static inline void kt_thr_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
-#if KT_COLLECT_STATS
-	/* TODO(dvyukov): remove this when we have cpu in all events */
-	if (thr->cpu == NULL)
+	/* This shouldn't normally happen, a warning just in case. */
+	if (thr->cpu == NULL) {
+		pr_err("TSan: WARNING: cpu for thread %d is NULL!\n", thr->id);
+		print_current_stack_trace((u64)_RET_IP_);
+		pr_err("\n");
 		return;
+	}
 	kt_stat_add(&thr->cpu->stat.stat[what], x);
-#endif
 }
 
 static inline void kt_thr_stat_inc(kt_thr_t *thr, kt_stat_t what)
