@@ -16,6 +16,7 @@ typedef struct kt_cache_obj_s kt_cache_obj_t;
 #define INDEX_TO_OBJ(n) ((kt_cache_obj_t *)INDEX_TO_ADDR(n))
 #define ADDR_TO_INDEX(addr) (((addr) - cache->addr) / cache->obj_size)
 
+/* Only available during early boot. */
 static uptr_t reserve_memory(uptr_t size)
 {
 	uptr_t start, end, found;
@@ -38,11 +39,11 @@ static void free_memory(uptr_t addr, uptr_t size)
 	BUG_ON(rv == 0);
 }
 
-void kt_cache_create(kt_cache_t *cache, size_t obj_size)
+void kt_cache_create(kt_cache_t *cache, size_t obj_size, uptr_t space)
 {
 	unsigned int i;
 
-	cache->space = 512 * (1 << 20);
+	cache->space = space;
 	cache->addr = reserve_memory(cache->space);
 
 	cache->obj_size = round_up(obj_size, sizeof(unsigned long));

@@ -4,7 +4,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 
-void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize)
+void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize, uptr_t space)
 {
 	kt_tab_part_t *part;
 	unsigned i;
@@ -20,7 +20,7 @@ void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize)
 	}
 
 	tab->objnum = 0;
-	kt_cache_create(&tab->cache, objsize);
+	kt_cache_create(&tab->cache, objsize, space);
 }
 
 /* Called in tests only. */
