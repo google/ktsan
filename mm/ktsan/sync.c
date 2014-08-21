@@ -56,7 +56,8 @@ static void kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 		kt_thr_stat_inc(thr, kt_stat_sync_objects);
 
 		slab_obj_addr = addr_to_slab_obj_addr(addr);
-		slab = kt_tab_access(&kt_ctx.slabtab, slab_obj_addr, &created, false);
+		slab = kt_tab_access(&kt_ctx.slabtab,
+			slab_obj_addr, &created, false);
 		BUG_ON(slab == NULL); /* Ran out of memory. */
 		BUG_ON(!spin_is_locked(&slab->tab.lock));
 		if (created) {
