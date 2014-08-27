@@ -23,8 +23,9 @@ void print_current_stack_trace(unsigned long strip_addr);
 #define KT_THREAD_ID_BITS     13
 #define KT_CLOCK_BITS         42
 
-#define KT_MAX_THREAD_ID 1
+#define KT_MAX_THREAD_ID 4096
 #define KT_MAX_STACK_TRACE_FRAMES 64
+#define KT_MAX_SYNC_PER_SLAB_OBJ 32
 
 #define KT_COLLECT_STATS 1
 
@@ -115,7 +116,8 @@ struct kt_tab_s {
 	unsigned		size;
 	unsigned		objsize;
 	kt_tab_part_t		*parts;
-	kt_cache_t		cache;
+	kt_cache_t		obj_cache;
+	kt_cache_t		parts_cache;
 };
 
 struct kt_tab_sync_s {
@@ -123,13 +125,10 @@ struct kt_tab_sync_s {
 	kt_clk_t		clk;
 };
 
-/* FIXME. */
-#define KT_MAX_SYNC_PER_SLAB_OBJ 32
-
 struct kt_tab_slab_s {
 	kt_tab_obj_t		tab;
 	uptr_t			syncs[KT_MAX_SYNC_PER_SLAB_OBJ];
-	int 			head;
+	int 			sync_num;
 };
 
 /* Stats. */
@@ -240,13 +239,15 @@ void kt_clk_release(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
 static inline
 kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
 {
+	BUG_ON(tid >= KT_MAX_THREAD_ID);
 	return clk->time[tid];
 }
 
 static inline
 void kt_clk_tick(kt_clk_t *clk, int tid)
 {
-	/*clk->time[tid]++;*/
+	BUG_ON(tid >= KT_MAX_THREAD_ID);
+	clk->time[tid]++;
 }
 
 /*
@@ -268,7 +269,7 @@ void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
  * Hash table. Maps an address to an arbitrary object.
  * The object must start with kt_tab_obj_t.
  */
-void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize, uptr_t space);
+void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize, unsigned space);
 void kt_tab_destroy(kt_tab_t *tab);
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
@@ -285,7 +286,7 @@ void kt_report_race(kt_race_info_t *info);
 /*
  * Internal allocator.
  */
-void kt_cache_create(kt_cache_t *cache, size_t obj_size, uptr_t space);
+void kt_cache_init(kt_cache_t *cache, size_t obj_size, size_t obj_max_num);
 void kt_cache_destroy(kt_cache_t *cache);
 void *kt_cache_alloc(kt_cache_t *cache);
 void kt_cache_free(kt_cache_t *cache, void *obj);
