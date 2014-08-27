@@ -16,6 +16,7 @@ struct ktsan_thr_s {
 	struct kt_thr_s	*thr;
 };
 
+void ktsan_init_early(void);
 void ktsan_init(void);
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
@@ -54,6 +55,7 @@ void ktsan_slab_free(struct kmem_cache *cache, void *obj);
 struct ktsan_thr_s {
 };
 
+static inline void ktsan_init_early(void) {}
 static inline void ktsan_init(void) {}
 
 static inline void ktsan_thr_create(ktsan_thr_t *new, int tid) {}
