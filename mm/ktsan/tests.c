@@ -259,21 +259,21 @@ static void kt_test_hash_table(void)
 	BUG_ON(obj != obj3);
 	BUG_ON(!spin_is_locked(&obj3->tab.lock));
 	spin_unlock(&obj3->tab.lock);
-	kt_cache_free(&tab.cache, obj3);
+	kt_cache_free(&tab.obj_cache, obj3);
 
 	obj = kt_tab_access(&tab, 7 + 13, NULL, true);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj2);
 	BUG_ON(!spin_is_locked(&obj2->tab.lock));
 	spin_unlock(&obj2->tab.lock);
-	kt_cache_free(&tab.cache, obj2);
+	kt_cache_free(&tab.obj_cache, obj2);
 
 	obj = kt_tab_access(&tab, 7, NULL, true);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj1);
 	BUG_ON(!spin_is_locked(&obj1->tab.lock));
 	spin_unlock(&obj1->tab.lock);
-	kt_cache_free(&tab.cache, obj1);
+	kt_cache_free(&tab.obj_cache, obj1);
 
 	kt_tab_destroy(&tab);
 

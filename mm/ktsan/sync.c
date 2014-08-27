@@ -30,14 +30,20 @@ static void kt_sync_add(kt_tab_slab_t *slab, uptr_t sync)
 {
 	int i;
 
-	for (i = 0; i < slab->head; i++)
+	BUG_ON(slab->sync_num > KT_MAX_SYNC_PER_SLAB_OBJ);
+	BUG_ON(slab->sync_num < 0);
+
+	for (i = 0; i < slab->sync_num; i++)
 		if (slab->syncs[i] == sync)
 			return;
 
-	if (slab->head != KT_MAX_SYNC_PER_SLAB_OBJ) {
-		slab->syncs[slab->head] = sync;
-		slab->head++;
+	if (slab->sync_num < KT_MAX_SYNC_PER_SLAB_OBJ) {
+		slab->syncs[slab->sync_num] = sync;
+		slab->sync_num++;
 	}
+
+	BUG_ON(slab->sync_num > KT_MAX_SYNC_PER_SLAB_OBJ);
+	BUG_ON(slab->sync_num < 0);
 }
 
 static void kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
@@ -49,8 +55,6 @@ static void kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 
 	sync = kt_tab_access(&kt_ctx.synctab, addr, &created, false);
 	BUG_ON(sync == NULL); /* Ran out of memory. */
-	BUG_ON(!spin_is_locked(&sync->tab.lock));
-	spin_unlock(&sync->tab.lock);
 
 	if (created) {
 		kt_thr_stat_inc(thr, kt_stat_sync_objects);
@@ -59,15 +63,17 @@ static void kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 		slab = kt_tab_access(&kt_ctx.slabtab,
 			slab_obj_addr, &created, false);
 		BUG_ON(slab == NULL); /* Ran out of memory. */
-		BUG_ON(!spin_is_locked(&slab->tab.lock));
+
 		if (created) {
 			kt_thr_stat_inc(thr, kt_stat_slab_objects);
-			slab->head = 0;
+			slab->sync_num = 0;
 		}
+
 		kt_sync_add(slab, addr);
 		spin_unlock(&slab->tab.lock);
 	}
 
+	spin_unlock(&sync->tab.lock);
 }
 
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
