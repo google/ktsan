@@ -70,10 +70,12 @@ void ktsan_init_early(void)
 {
 	kt_ctx_t *ctx = &kt_ctx;
 
-	kt_tab_init(&ctx->slabtab, 10007,
-		    sizeof(kt_tab_slab_t), 50000);
-	kt_tab_init(&ctx->synctab, 10007,
+	kt_tab_init(&ctx->sync_tab, 10007,
 		    sizeof(kt_tab_sync_t), 50000);
+	kt_tab_init(&ctx->slab_tab, 10007,
+		    sizeof(kt_tab_slab_t), 50000);
+	kt_tab_init(&ctx->test_tab, 13,
+		    sizeof(kt_tab_test_t), 20);
 }
 
 void ktsan_init(void)
