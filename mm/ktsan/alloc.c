@@ -1,5 +1,6 @@
 #include "ktsan.h"
 
+#include <linux/bootmem.h>
 #include <linux/gfp.h>
 #include <linux/memblock.h>
 #include <linux/mm.h>
@@ -17,20 +18,16 @@ typedef struct kt_cache_obj_s kt_cache_obj_t;
 #define ADDR_TO_INDEX(addr) (((addr) - cache->addr) / cache->obj_size)
 
 /* Only available during early boot. */
-static uptr_t reserve_memory(uptr_t size)
+static uptr_t alloc_memory(uptr_t size)
 {
-	uptr_t start, end, found;
-	int rv;
+	uptr_t found;
 
-	start = 0;
-	end = memblock_phys_mem_size();
-	found = memblock_find_in_range(start, end, size, PAGE_SIZE);
+	found = memblock_alloc(size, PAGE_SIZE);
 	BUG_ON(found == 0);
-	rv = memblock_reserve(found, size);
-	BUG_ON(rv != 0);
 	return (uptr_t)(phys_to_virt(found));
 }
 
+/* Only available during early boot. */
 static void free_memory(uptr_t addr, uptr_t size)
 {
 	int rv;
@@ -39,20 +36,22 @@ static void free_memory(uptr_t addr, uptr_t size)
 	BUG_ON(rv == 0);
 }
 
-void kt_cache_create(kt_cache_t *cache, size_t obj_size, uptr_t space)
+void kt_cache_init(kt_cache_t *cache, size_t obj_size, size_t obj_max_num)
 {
-	unsigned int i;
-
-	cache->space = space;
-	cache->addr = reserve_memory(cache->space);
+	int i;
 
 	cache->obj_size = round_up(obj_size, sizeof(unsigned long));
-	cache->obj_max_num = cache->space / cache->obj_size;
+	cache->obj_max_num = obj_max_num;
 	cache->obj_num = 0;
 
+	cache->space = cache->obj_size * cache->obj_max_num;
+	cache->addr = alloc_memory(cache->space);
+
 	BUG_ON(cache->obj_max_num == 0);
-	for (i = 0; i < cache->obj_max_num - 1; i++)
+
+	for (i = 0; i < cache->obj_max_num - 1; i++) {
 		INDEX_TO_OBJ(i)->link = i + 1;
+	}
 	INDEX_TO_OBJ(cache->obj_max_num - 1)->link = -1;
 
 	cache->head = 0;
@@ -64,15 +63,11 @@ void kt_cache_destroy(kt_cache_t *cache)
 	free_memory(cache->addr, cache->space);
 }
 
-void *kt_cache_alloc(kt_cache_t *cache)
+static void *kt_cache_alloc_impl(kt_cache_t *cache)
 {
-	unsigned long flags;
 	void *obj;
 
-	spin_lock_irqsave(&cache->lock, flags);
-
 	if (cache->head == -1) {
-		spin_unlock_irqrestore(&cache->lock, flags);
 		return NULL;
 	}
 
@@ -80,24 +75,55 @@ void *kt_cache_alloc(kt_cache_t *cache)
 	cache->head = INDEX_TO_OBJ(cache->head)->link;
 	cache->obj_num++;
 
-	spin_unlock_irqrestore(&cache->lock, flags);
+	return obj;
+}
+
+void *kt_cache_alloc(kt_cache_t *cache)
+{
+	void *obj;
+
+	spin_lock(&cache->lock);
+
+	BUG_ON(cache->head < -1);
+	BUG_ON(cache->head >= cache->obj_max_num);
+
+	obj = kt_cache_alloc_impl(cache);
+
+	BUG_ON(cache->head < -1);
+	BUG_ON(cache->head >= cache->obj_max_num);
+
+	spin_unlock(&cache->lock);
 
 	return obj;
 }
 
-void kt_cache_free(kt_cache_t *cache, void *obj)
+static void kt_cache_free_impl(kt_cache_t *cache, uptr_t addr)
 {
-	unsigned long addr;
-	unsigned long flags;
 	int index;
 
-	spin_lock_irqsave(&cache->lock, flags);
-
-	addr = (unsigned long)obj;
 	index = ADDR_TO_INDEX(addr);
 	INDEX_TO_OBJ(index)->link = cache->head;
 	cache->head = index;
 	cache->obj_num--;
+}
 
-	spin_unlock_irqrestore(&cache->lock, flags);
+void kt_cache_free(kt_cache_t *cache, void *obj)
+{
+	uptr_t addr = (uptr_t)obj;
+
+	spin_lock(&cache->lock);
+
+	BUG_ON(cache->head < -1);
+	BUG_ON(cache->head >= cache->obj_max_num);
+
+	BUG_ON(addr < cache->addr);
+	BUG_ON(addr >= cache->addr + cache->space);
+	BUG_ON((addr - cache->addr) % cache->obj_size != 0);
+
+	kt_cache_free_impl(cache, addr);
+
+	BUG_ON(cache->head < -1);
+	BUG_ON(cache->head >= cache->obj_max_num);
+
+	spin_unlock(&cache->lock);
 }
