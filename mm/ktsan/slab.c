@@ -13,7 +13,7 @@ void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 	int i;
 	kt_tab_sync_t *sync;
 
-	slab = kt_tab_access(&kt_ctx.slabtab, addr, NULL, true);
+	slab = kt_tab_access(&kt_ctx.slab_tab, addr, NULL, true);
 
 	if (slab == NULL)
 		return;
@@ -22,18 +22,18 @@ void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 	BUG_ON(slab->sync_num < 0);
 
 	for (i = 0; i < slab->sync_num; i++) {
-		sync = kt_tab_access(&kt_ctx.synctab,
+		sync = kt_tab_access(&kt_ctx.sync_tab,
 			slab->syncs[i], NULL, true);
 		BUG_ON(sync == NULL);
 
 		spin_unlock(&sync->tab.lock);
-		kt_cache_free(&kt_ctx.synctab.obj_cache, sync);
+		kt_cache_free(&kt_ctx.sync_tab.obj_cache, sync);
 
 		kt_thr_stat_dec(thr, kt_stat_sync_objects);
 	}
 
 	spin_unlock(&slab->tab.lock);
-	kt_cache_free(&kt_ctx.slabtab.obj_cache, slab);
+	kt_cache_free(&kt_ctx.slab_tab.obj_cache, slab);
 
 	kt_thr_stat_dec(thr, kt_stat_slab_objects);
 }

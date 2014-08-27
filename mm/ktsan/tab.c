@@ -25,7 +25,7 @@ void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned obj_size, unsigned obj_m
 	kt_cache_init(&tab->obj_cache, obj_size, obj_max_num);
 }
 
-/* Called in tests only. */
+/* Might be called only during early boot. */
 void kt_tab_destroy(kt_tab_t *tab)
 {
 	kt_cache_destroy(&tab->obj_cache);

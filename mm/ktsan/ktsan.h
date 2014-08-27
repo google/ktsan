@@ -55,6 +55,7 @@ typedef struct kt_tab_obj_s	kt_tab_obj_t;
 typedef struct kt_tab_part_s	kt_tab_part_t;
 typedef struct kt_tab_sync_s	kt_tab_sync_t;
 typedef struct kt_tab_slab_s	kt_tab_slab_t;
+typedef struct kt_tab_test_s	kt_tab_test_t;
 typedef struct kt_ctx_s		kt_ctx_t;
 typedef enum kt_stat_e		kt_stat_t;
 typedef struct kt_stats_s	kt_stats_t;
@@ -131,6 +132,11 @@ struct kt_tab_slab_s {
 	int 			sync_num;
 };
 
+struct kt_tab_test_s {
+	kt_tab_obj_t tab;
+	unsigned long data[4];
+};
+
 /* Stats. */
 
 enum kt_stat_e {
@@ -165,8 +171,9 @@ struct kt_thr_s {
 struct kt_ctx_s {
 	int			enabled;
 	kt_cpu_t __percpu	*cpus;
-	kt_tab_t		synctab; /* sync addr -> sync object */
-	kt_tab_t		slabtab; /* memory block -> sync objects */
+	kt_tab_t		sync_tab; /* sync addr -> sync object */
+	kt_tab_t		slab_tab; /* memory block -> sync objects */
+	kt_tab_t		test_tab;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -195,13 +202,9 @@ static inline void kt_stat_add(unsigned long *stat, unsigned long x)
 static inline void kt_thr_stat_add(kt_thr_t *thr, kt_stat_t what,
 				   unsigned long x)
 {
-	/* This shouldn't normally happen, a warning just in case. */
-	if (thr->cpu == NULL) {
-		pr_err("TSan: WARNING: cpu for thread %d is NULL!\n", thr->id);
-		print_current_stack_trace((u64)_RET_IP_);
-		pr_err("\n");
+	WARN_ON(thr->cpu == NULL);
+	if (thr->cpu == NULL)
 		return;
-	}
 	kt_stat_add(&thr->cpu->stat.stat[what], x);
 }
 
@@ -239,14 +242,18 @@ void kt_clk_release(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
 static inline
 kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
 {
-	BUG_ON(tid >= KT_MAX_THREAD_ID);
+	WARN_ON_ONCE(tid >= KT_MAX_THREAD_ID);
+	if (tid >= KT_MAX_THREAD_ID)
+		return 0;
 	return clk->time[tid];
 }
 
 static inline
 void kt_clk_tick(kt_clk_t *clk, int tid)
 {
-	BUG_ON(tid >= KT_MAX_THREAD_ID);
+	WARN_ON_ONCE(tid >= KT_MAX_THREAD_ID);
+	if (tid >= KT_MAX_THREAD_ID)
+		return;
 	clk->time[tid]++;
 }
 
