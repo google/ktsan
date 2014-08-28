@@ -4,7 +4,8 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 
-void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned obj_size, unsigned obj_max_num)
+void kt_tab_init(kt_tab_t *tab, unsigned size,
+		 unsigned obj_size, unsigned obj_max_num)
 {
 	kt_tab_part_t *part;
 	unsigned i;
