@@ -5,3 +5,4 @@ CFLAGS_ktsan.o = -O3
 
 CFLAGS_REMOVE_tests.o = -pg -O1 -O2 -O3
 CFLAGS_tests.o = -O0
+CFLAGS_tests.o = -fsanitize=thread
