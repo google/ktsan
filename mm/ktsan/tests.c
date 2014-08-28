@@ -155,6 +155,59 @@ static void kt_test_spinlock(void)
 	pr_err("TSan: end of test.\n");
 }
 
+/* KTSan test: atomic. */
+
+DECLARE_COMPLETION(atomic_thr_fst_compl);
+DECLARE_COMPLETION(atomic_thr_snd_compl);
+
+static int atomic_thr_fst_func(void *arg)
+{
+	int value = atomic_read((atomic_t *)arg);
+
+	complete(&atomic_thr_fst_compl);
+
+	return value;
+}
+
+static int atomic_thr_snd_func(void *arg)
+{
+	atomic_set((atomic_t *)arg, 1);
+
+	complete(&atomic_thr_snd_compl);
+
+	return 0;
+}
+
+static void kt_test_atomic(void)
+{
+	struct task_struct *thr_fst, *thr_snd;
+	char thr_fst_name[] = "atomic-thr-fst";
+	char thr_snd_name[] = "atomic-thr-snd";
+	int *value = kmalloc(256, GFP_KERNEL);
+
+	BUG_ON(!value);
+
+	pr_err("TSan: starting atomic test, no race expected.\n");
+
+	thr_fst = kthread_create(atomic_thr_fst_func, value, thr_fst_name);
+	thr_snd = kthread_create(atomic_thr_snd_func, value, thr_snd_name);
+
+	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
+		pr_err("TSan: could not create kernel threads.\n");
+		return;
+	}
+
+	wake_up_process(thr_fst);
+	wake_up_process(thr_snd);
+
+	wait_for_completion(&atomic_thr_fst_compl);
+	wait_for_completion(&atomic_thr_snd_compl);
+
+	kfree(value);
+
+	pr_err("TSan: end of test.\n");
+}
+
 /* Hash table test. */
 
 static void kt_test_hash_table(void)
@@ -268,6 +321,8 @@ static void kt_run_tests(void)
 	kt_test_race();
 	pr_err("\n");
 	kt_test_spinlock();
+	pr_err("\n");
+	kt_test_atomic();
 	pr_err("\n");
 }
 
