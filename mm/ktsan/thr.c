@@ -21,12 +21,24 @@ void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
 	void *cpu = this_cpu_ptr(kt_ctx.cpus);
 
+	/*pr_err("start %d on %d: %lx -> %lx\n",
+		thr->id, smp_processor_id(),
+		(uptr_t)thr->cpu, (uptr_t)cpu);
+	print_current_stack_trace((u64)_RET_IP_);
+	pr_err("\n");*/
+
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
 	void *cpu = NULL;
+
+	/*pr_err("stop %d on %d: %lx -> %lx\n",
+		thr->id, smp_processor_id(),
+		(uptr_t)thr->cpu, (uptr_t)cpu);
+	print_current_stack_trace((u64)_RET_IP_);
+	pr_err("\n");*/
 
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }

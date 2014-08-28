@@ -3073,9 +3073,6 @@ static void __sched __schedule(void)
 	}
 
 	balance_callback(rq);
-
-	if (current != rq->idle)
-		ktsan_thr_start();
 }
 
 static inline void sched_submit_work(struct task_struct *tsk)

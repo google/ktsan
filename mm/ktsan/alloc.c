@@ -49,9 +49,8 @@ void kt_cache_init(kt_cache_t *cache, size_t obj_size, size_t obj_max_num)
 
 	BUG_ON(cache->obj_max_num == 0);
 
-	for (i = 0; i < cache->obj_max_num - 1; i++) {
+	for (i = 0; i < cache->obj_max_num - 1; i++)
 		INDEX_TO_OBJ(i)->link = i + 1;
-	}
 	INDEX_TO_OBJ(cache->obj_max_num - 1)->link = -1;
 
 	cache->head = 0;
@@ -67,9 +66,8 @@ static void *kt_cache_alloc_impl(kt_cache_t *cache)
 {
 	void *obj;
 
-	if (cache->head == -1) {
+	if (cache->head == -1)
 		return NULL;
-	}
 
 	obj = (void *)INDEX_TO_ADDR(cache->head);
 	cache->head = INDEX_TO_OBJ(cache->head)->link;
