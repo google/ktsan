@@ -2834,7 +2834,6 @@ need_resched:
 	post_schedule(rq);
 
 	sched_preempt_enable_no_resched();
-
 	if (need_resched())
 		goto need_resched;
 }
