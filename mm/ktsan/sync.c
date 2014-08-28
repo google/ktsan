@@ -90,7 +90,7 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	kt_tab_sync_t *sync;
 
 	sync = kt_sync_ensure_created(thr, addr);
-	kt_clk_release(thr, &thr->clk, &sync->clk);
+	kt_clk_acquire(thr, &sync->clk, &thr->clk);
 	spin_unlock(&sync->tab.lock);
 }
 
