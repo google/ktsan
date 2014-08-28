@@ -2835,9 +2835,6 @@ need_resched:
 
 	sched_preempt_enable_no_resched();
 
-	if (current != rq->idle)
-		ktsan_thr_start();
-
 	if (need_resched())
 		goto need_resched;
 }

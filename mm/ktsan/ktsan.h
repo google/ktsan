@@ -202,9 +202,12 @@ static inline void kt_stat_add(unsigned long *stat, unsigned long x)
 static inline void kt_thr_stat_add(kt_thr_t *thr, kt_stat_t what,
 				   unsigned long x)
 {
-	WARN_ON(thr->cpu == NULL);
-	if (thr->cpu == NULL)
+	if (thr->cpu == NULL) {
+		pr_err("TSan: WARNING: cpu for thread %d is NULL!\n", thr->id);
+		print_current_stack_trace((u64)_RET_IP_);
+		pr_err("\n");
 		return;
+	}
 	kt_stat_add(&thr->cpu->stat.stat[what], x);
 }
 
@@ -276,7 +279,8 @@ void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
  * Hash table. Maps an address to an arbitrary object.
  * The object must start with kt_tab_obj_t.
  */
-void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize, unsigned space);
+void kt_tab_init(kt_tab_t *tab, unsigned size,
+		 unsigned obj_size, unsigned obj_max_num);
 void kt_tab_destroy(kt_tab_t *tab);
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
