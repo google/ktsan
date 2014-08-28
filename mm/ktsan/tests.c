@@ -12,12 +12,6 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 
-#define KT_TEST_READ_1(addr) \
-	(ktsan_read1(addr), *((char *)addr))
-
-#define KT_TEST_WRITE_4(addr, value) \
-	(ktsan_write4(addr), *((int *)addr) = (value))
-
 /* KTsan test: race. */
 
 DECLARE_COMPLETION(race_thr_fst_compl);
@@ -25,7 +19,7 @@ DECLARE_COMPLETION(race_thr_snd_compl);
 
 static int race_thr_fst_func(void *arg)
 {
-	int value = KT_TEST_READ_1(arg);
+	int value = *((char *)arg);
 
 	complete(&race_thr_fst_compl);
 
@@ -34,7 +28,7 @@ static int race_thr_fst_func(void *arg)
 
 static int race_thr_snd_func(void *arg)
 {
-	KT_TEST_WRITE_4(arg, 1);
+	*((int *)arg) = 1;
 
 	complete(&race_thr_snd_compl);
 
@@ -89,7 +83,7 @@ static int spinlock_thr_fst_func(void *arg)
 	int value;
 
 	spin_lock(&spinlock_lock);
-	value = KT_TEST_READ_1(arg);
+	value = *((char *)arg);
 	spin_unlock(&spinlock_lock);
 
 	complete(&spinlock_thr_fst_compl);
@@ -100,7 +94,7 @@ static int spinlock_thr_fst_func(void *arg)
 static int spinlock_thr_snd_func(void *arg)
 {
 	spin_lock(&spinlock_lock);
-	KT_TEST_WRITE_4(arg, 1);
+	*((int *)arg) = 1;
 	spin_unlock(&spinlock_lock);
 
 	complete(&spinlock_thr_snd_compl);
