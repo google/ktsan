@@ -71,7 +71,7 @@ static void kt_test_race(void)
 	pr_err("TSan: end of test.\n");
 }
 
-/* KTSan test: no race. */
+/* KTSan test: spinlock. */
 
 DECLARE_COMPLETION(spinlock_thr_fst_compl);
 DECLARE_COMPLETION(spinlock_thr_snd_compl);
@@ -161,7 +161,7 @@ static void kt_test_spinlock(void)
 	pr_err("TSan: end of test.\n");
 }
 
- /* Hash table test. */
+/* Hash table test. */
 
 static void kt_test_hash_table(void)
 {
