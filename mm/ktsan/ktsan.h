@@ -288,6 +288,7 @@ void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
  * Generic memory access.
  */
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
+void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 
 /*
  * Reports.
