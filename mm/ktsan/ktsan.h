@@ -85,14 +85,9 @@ struct kt_race_info_s {
 /* Internal allocator. */
 
 struct kt_cache_s {
-	unsigned long		addr;
-	unsigned long		space;
-
-	size_t			obj_size;
-	int			obj_max_num;
-	int			obj_num;
-
-	int			head;
+	unsigned long		base;
+	unsigned long		mem_size;
+	void			*head;
 	spinlock_t		lock;
 };
 
