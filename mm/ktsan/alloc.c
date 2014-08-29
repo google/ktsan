@@ -36,7 +36,9 @@ static void free_memory(uptr_t addr, uptr_t size)
 	BUG_ON(rv == 0);
 }
 
-void kt_cache_init(kt_cache_t *cache, size_t obj_size, size_t obj_max_num)
+/* Only available during early boot. */
+void __init kt_cache_init(kt_cache_t *cache, size_t obj_size,
+			  size_t obj_max_num)
 {
 	int i;
 
@@ -57,7 +59,8 @@ void kt_cache_init(kt_cache_t *cache, size_t obj_size, size_t obj_max_num)
 	spin_lock_init(&cache->lock);
 }
 
-void kt_cache_destroy(kt_cache_t *cache)
+/* Only available during early boot. */
+void __init kt_cache_destroy(kt_cache_t *cache)
 {
 	free_memory(cache->addr, cache->space);
 }
