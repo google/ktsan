@@ -4,8 +4,9 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 
-void kt_tab_init(kt_tab_t *tab, unsigned size,
-		 unsigned obj_size, unsigned obj_max_num)
+/* Only available during early boot. */
+void __init kt_tab_init(kt_tab_t *tab, unsigned size,
+			unsigned obj_size, unsigned obj_max_num)
 {
 	kt_tab_part_t *part;
 	unsigned i;
@@ -26,8 +27,8 @@ void kt_tab_init(kt_tab_t *tab, unsigned size,
 	kt_cache_init(&tab->obj_cache, obj_size, obj_max_num);
 }
 
-/* Might be called only during early boot. */
-void kt_tab_destroy(kt_tab_t *tab)
+/* Only available during early boot. */
+void __init kt_tab_destroy(kt_tab_t *tab)
 {
 	kt_cache_destroy(&tab->obj_cache);
 	kt_cache_destroy(&tab->parts_cache);
