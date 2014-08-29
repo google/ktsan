@@ -34,8 +34,8 @@ kt_ctx_t kt_ctx;
 #define ENTER()							\
 	kt_thr_t *thr;						\
 	uptr_t pc;						\
-	unsigned long flags;					\
-	int inside;						\
+	unsigned long kt_flags;					\
+	int kt_inside_was;					\
 								\
 	if (IN_INTERRUPT())					\
 		return;						\
@@ -47,23 +47,23 @@ kt_ctx_t kt_ctx;
 	if (!current->ktsan.thr)				\
 		return;						\
 								\
-	DISABLE_INTERRUPTS(flags);				\
+	DISABLE_INTERRUPTS(kt_flags);				\
 								\
 	thr = current->ktsan.thr;				\
 	pc = (uptr_t)_RET_IP_;					\
 								\
-	inside = atomic_cmpxchg(&thr->inside, 0, 1);		\
-	if (inside != 0) {					\
-		ENABLE_INTERRUPTS(flags);			\
+	kt_inside_was = atomic_cmpxchg(&thr->inside, 0, 1);	\
+	if (kt_inside_was != 0) {				\
+		ENABLE_INTERRUPTS(kt_flags);			\
 		return;						\
 	}							\
 /**/
 
 #define LEAVE()							\
-	inside = atomic_cmpxchg(&thr->inside, 1, 0);		\
-	BUG_ON(inside != 1);					\
+	kt_inside_was = atomic_cmpxchg(&thr->inside, 1, 0);	\
+	BUG_ON(kt_inside_was != 1);				\
 								\
-	ENABLE_INTERRUPTS(flags)				\
+	ENABLE_INTERRUPTS(kt_flags)				\
 /**/
 
 void __init ktsan_init_early(void)
