@@ -22,7 +22,6 @@
 
 #define KT_MAX_THREAD_ID 4096
 #define KT_MAX_STACK_TRACE_FRAMES 64
-#define KT_MAX_SYNC_PER_SLAB_OBJ 32
 
 #define KT_COLLECT_STATS 1
 
@@ -121,12 +120,12 @@ struct kt_tab_s {
 struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
 	kt_clk_t		clk;
+	kt_tab_sync_t		*next; /* next sync object in slab object */
 };
 
 struct kt_tab_slab_s {
 	kt_tab_obj_t		tab;
-	uptr_t			syncs[KT_MAX_SYNC_PER_SLAB_OBJ];
-	int			sync_num;
+	kt_tab_sync_t		*head;
 };
 
 struct kt_tab_test_s {
