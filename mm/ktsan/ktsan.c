@@ -71,9 +71,9 @@ void __init ktsan_init_early(void)
 	kt_ctx_t *ctx = &kt_ctx;
 
 	kt_tab_init(&ctx->sync_tab, 10007,
-		    sizeof(kt_tab_sync_t), 50000);
+		    sizeof(kt_tab_sync_t), 60000);
 	kt_tab_init(&ctx->slab_tab, 10007,
-		    sizeof(kt_tab_slab_t), 50000);
+		    sizeof(kt_tab_slab_t), 60000);
 	kt_tab_init(&ctx->test_tab, 13,
 		    sizeof(kt_tab_test_t), 20);
 }
