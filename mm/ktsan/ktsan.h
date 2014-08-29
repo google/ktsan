@@ -7,9 +7,6 @@
 #include <linux/types.h>
 
 /* XXX: for debugging. */
-void print_current_stack_trace(unsigned long strip_addr);
-
-/* XXX: for debugging. */
 #define KT_MGK(x, y) x ## y
 #define KT_MGK2(x, y) KT_MGK(x, y)
 #define REPEAT_N_AND_STOP(n) \
@@ -183,7 +180,12 @@ struct kt_ctx_s {
 extern kt_ctx_t kt_ctx;
 
 /*
- * Statistics.  Enabled only when KT_COLLECT_STATS = 1.
+ * Misc.
+ */
+void kt_print_current_stack_trace(unsigned long strip_addr);
+
+/*
+ * Statistics. Enabled only when KT_COLLECT_STATS = 1.
  */
 void kt_stat_init(void);
 
@@ -209,7 +211,7 @@ static inline void kt_thr_stat_add(kt_thr_t *thr, kt_stat_t what,
 	/* FIXME(xairy): thr->cpu might be NULL sometimes. */
 	if (thr->cpu == NULL) {
 		pr_err("TSan: WARNING: cpu for thread %d is NULL!\n", thr->id);
-		print_current_stack_trace((u64)_RET_IP_);
+		kt_print_current_stack_trace((u64)_RET_IP_);
 		pr_err("\n");
 		thr->cpu = this_cpu_ptr(kt_ctx.cpus);
 	}

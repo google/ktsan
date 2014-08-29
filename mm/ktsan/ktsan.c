@@ -66,7 +66,7 @@ kt_ctx_t kt_ctx;
 	ENABLE_INTERRUPTS(flags)				\
 /**/
 
-void ktsan_init_early(void)
+void __init ktsan_init_early(void)
 {
 	kt_ctx_t *ctx = &kt_ctx;
 
