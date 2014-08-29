@@ -37,6 +37,9 @@ kt_ctx_t kt_ctx;
 	unsigned long kt_flags;					\
 	int kt_inside_was;					\
 								\
+	/* Sometimes thread #1 is scheduled without calling	\
+	   ktsan_thr_start(). Some of such cases are caused	\
+	   by interrupts. Ignoring them for now. */		\
 	if (IN_INTERRUPT())					\
 		return;						\
 								\
