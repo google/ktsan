@@ -188,8 +188,7 @@ void kt_print_current_stack_trace(unsigned long strip_addr);
  */
 void kt_stat_init(void);
 
-static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what,
-				   unsigned long x)
+static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
 #if KT_COLLECT_STATS
 	/* FIXME(xairy): thr->cpu might be NULL sometimes. */
