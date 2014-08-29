@@ -50,7 +50,7 @@ static void print_compressed_stack_trace(unsigned int *stack,
 	}
 }
 
-void print_current_stack_trace(unsigned long strip_addr)
+void kt_print_current_stack_trace(unsigned long strip_addr)
 {
 	unsigned int stack[KT_MAX_STACK_TRACE_FRAMES];
 	unsigned int entries = compress_and_save_stack_trace(&stack[0],
@@ -76,7 +76,7 @@ void kt_report_race(kt_race_info_t *info)
 	pr_err("%s of size %d by thread T%d:\n",
 		info->new.read ? "Read" : "Write",
 		(1 << info->new.size), info->new.tid);
-	print_current_stack_trace(info->strip_addr); /* FIXME: ret ip */
+	kt_print_current_stack_trace(info->strip_addr); /* FIXME: ret ip */
 
 	pr_err("Previous %s of size %d by thread T%d\n",
 		info->old.read ? "read" : "write",
