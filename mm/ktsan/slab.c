@@ -30,10 +30,12 @@ void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 		kt_cache_free(&kt_ctx.sync_tab.obj_cache, sync);
 
 		kt_thr_stat_dec(thr, kt_stat_sync_objects);
+		kt_thr_stat_inc(thr, kt_stat_sync_free);
 	}
 
 	spin_unlock(&slab->tab.lock);
 	kt_cache_free(&kt_ctx.slab_tab.obj_cache, slab);
 
 	kt_thr_stat_dec(thr, kt_stat_slab_objects);
+	kt_thr_stat_inc(thr, kt_stat_slab_free);
 }

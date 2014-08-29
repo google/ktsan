@@ -58,6 +58,7 @@ static kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 
 	if (created) {
 		kt_thr_stat_inc(thr, kt_stat_sync_objects);
+		kt_thr_stat_inc(thr, kt_stat_sync_alloc);
 
 		slab_obj_addr = addr_to_slab_obj_addr(addr);
 		slab = kt_tab_access(&kt_ctx.slab_tab,
@@ -66,6 +67,7 @@ static kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 
 		if (created) {
 			kt_thr_stat_inc(thr, kt_stat_slab_objects);
+			kt_thr_stat_inc(thr, kt_stat_slab_alloc);
 			slab->sync_num = 0;
 		}
 

@@ -147,7 +147,11 @@ enum kt_stat_e {
 	kt_stat_access_size4,
 	kt_stat_access_size8,
 	kt_stat_sync_objects,
+	kt_stat_sync_alloc,
+	kt_stat_sync_free,
 	kt_stat_slab_objects,
+	kt_stat_slab_alloc,
+	kt_stat_slab_free,
 	kt_stat_count,
 };
 
