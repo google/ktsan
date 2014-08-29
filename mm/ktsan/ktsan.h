@@ -7,9 +7,6 @@
 #include <linux/types.h>
 
 /* XXX: for debugging. */
-void print_current_stack_trace(unsigned long strip_addr);
-
-/* XXX: for debugging. */
 #define KT_MGK(x, y) x ## y
 #define KT_MGK2(x, y) KT_MGK(x, y)
 #define REPEAT_N_AND_STOP(n) \
@@ -25,7 +22,6 @@ void print_current_stack_trace(unsigned long strip_addr);
 
 #define KT_MAX_THREAD_ID 4096
 #define KT_MAX_STACK_TRACE_FRAMES 64
-#define KT_MAX_SYNC_PER_SLAB_OBJ 32
 
 #define KT_COLLECT_STATS 1
 
@@ -89,14 +85,9 @@ struct kt_race_info_s {
 /* Internal allocator. */
 
 struct kt_cache_s {
-	unsigned long		addr;
-	unsigned long		space;
-
-	size_t			obj_size;
-	int			obj_max_num;
-	int			obj_num;
-
-	int			head;
+	unsigned long		base;
+	unsigned long		mem_size;
+	void			*head;
 	spinlock_t		lock;
 };
 
@@ -124,12 +115,12 @@ struct kt_tab_s {
 struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
 	kt_clk_t		clk;
+	kt_tab_sync_t		*next; /* next sync object in slab object */
 };
 
 struct kt_tab_slab_s {
 	kt_tab_obj_t		tab;
-	uptr_t			syncs[KT_MAX_SYNC_PER_SLAB_OBJ];
-	int 			sync_num;
+	kt_tab_sync_t		*head;
 };
 
 struct kt_tab_test_s {
@@ -147,7 +138,11 @@ enum kt_stat_e {
 	kt_stat_access_size4,
 	kt_stat_access_size8,
 	kt_stat_sync_objects,
+	kt_stat_sync_alloc,
+	kt_stat_sync_free,
 	kt_stat_slab_objects,
+	kt_stat_slab_alloc,
+	kt_stat_slab_free,
 	kt_stat_count,
 };
 
@@ -179,47 +174,37 @@ struct kt_ctx_s {
 extern kt_ctx_t kt_ctx;
 
 /*
- * Statistics.  Enabled only when KT_COLLECT_STATS = 1.
+ * Misc.
+ */
+void kt_print_current_stack_trace(unsigned long strip_addr);
+
+/*
+ * Statistics. Enabled only when KT_COLLECT_STATS = 1.
  */
 void kt_stat_init(void);
 
-static inline unsigned long kt_stat_read(unsigned long *stat)
+static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
 #if KT_COLLECT_STATS
-	return KT_ATOMIC_64_READ(stat);
-#else
-	return 0;
-#endif
-}
-
-static inline void kt_stat_add(unsigned long *stat, unsigned long x)
-{
-#if KT_COLLECT_STATS
-	KT_ATOMIC_64_ADD(stat, &x);
-#endif
-}
-
-static inline void kt_thr_stat_add(kt_thr_t *thr, kt_stat_t what,
-				   unsigned long x)
-{
 	/* FIXME(xairy): thr->cpu might be NULL sometimes. */
 	if (thr->cpu == NULL) {
 		pr_err("TSan: WARNING: cpu for thread %d is NULL!\n", thr->id);
-		print_current_stack_trace((u64)_RET_IP_);
+		kt_print_current_stack_trace((u64)_RET_IP_);
 		pr_err("\n");
 		thr->cpu = this_cpu_ptr(kt_ctx.cpus);
 	}
-	kt_stat_add(&thr->cpu->stat.stat[what], x);
+	thr->cpu->stat.stat[what] += x;
+#endif
 }
 
-static inline void kt_thr_stat_inc(kt_thr_t *thr, kt_stat_t what)
+static inline void kt_stat_inc(kt_thr_t *thr, kt_stat_t what)
 {
-	kt_thr_stat_add(thr, what, 1);
+	kt_stat_add(thr, what, 1);
 }
 
-static inline void kt_thr_stat_dec(kt_thr_t *thr, kt_stat_t what)
+static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
 {
-	kt_thr_stat_add(thr, what, -1);
+	kt_stat_add(thr, what, -1);
 }
 
 /*
