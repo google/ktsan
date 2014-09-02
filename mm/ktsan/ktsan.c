@@ -37,19 +37,22 @@ kt_ctx_t kt_ctx;
 	uptr_t pc;						\
 	unsigned long kt_flags;					\
 	int kt_inside_was;					\
+	bool event_handled;					\
+								\
+	event_handled = false;					\
 								\
 	/* Sometimes thread #1 is scheduled without calling	\
 	   ktsan_thr_start(). Some of such cases are caused	\
 	   by interrupts. Ignoring them for now. */		\
 	if (IN_INTERRUPT())					\
-		return;						\
+		goto exit;					\
 								\
 	if (!kt_ctx.enabled)					\
-		return;						\
+		goto exit;					\
 	if (!current)						\
-		return;						\
+		goto exit;					\
 	if (!current->ktsan.thr)				\
-		return;						\
+		goto exit;					\
 								\
 	DISABLE_INTERRUPTS(kt_flags);				\
 								\
@@ -59,15 +62,19 @@ kt_ctx_t kt_ctx;
 	kt_inside_was = atomic_cmpxchg(&thr->inside, 0, 1);	\
 	if (kt_inside_was != 0) {				\
 		ENABLE_INTERRUPTS(kt_flags);			\
-		return;						\
+		goto exit;					\
 	}							\
+								\
+	event_handled = true;					\
 /**/
 
 #define LEAVE()							\
 	kt_inside_was = atomic_cmpxchg(&thr->inside, 1, 0);	\
 	BUG_ON(kt_inside_was != 1);				\
 								\
-	ENABLE_INTERRUPTS(kt_flags)				\
+	ENABLE_INTERRUPTS(kt_flags);				\
+								\
+	exit:							\
 /**/
 
 void __init ktsan_init_early(void)
@@ -110,46 +117,6 @@ void ktsan_init(void)
 	pr_err("TSan: enabled.\n");
 }
 
-void ktsan_sync_acquire(void *addr)
-{
-	ENTER();
-	kt_sync_acquire(thr, pc, (uptr_t)addr);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_sync_acquire);
-
-void ktsan_sync_release(void *addr)
-{
-	ENTER();
-	kt_sync_release(thr, pc, (uptr_t)addr);
-	LEAVE();
-}
-EXPORT_SYMBOL(kt_sync_release);
-
-void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
-{
-	ENTER();
-	kt_mtx_pre_lock(thr, pc, (uptr_t)addr, write, try);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_mtx_pre_lock);
-
-void ktsan_mtx_post_lock(void *addr, bool write, bool try)
-{
-	ENTER();
-	kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_mtx_post_lock);
-
-void ktsan_mtx_pre_unlock(void *addr, bool write)
-{
-	ENTER();
-	kt_mtx_pre_unlock(thr, pc, (uptr_t)addr, write);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
-
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
 {
 	ENTER();
@@ -181,6 +148,22 @@ void ktsan_thr_stop(void)
 	LEAVE();
 }
 
+void ktsan_sync_acquire(void *addr)
+{
+	ENTER();
+	kt_sync_acquire(thr, pc, (uptr_t)addr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_sync_acquire);
+
+void ktsan_sync_release(void *addr)
+{
+	ENTER();
+	kt_sync_release(thr, pc, (uptr_t)addr);
+	LEAVE();
+}
+EXPORT_SYMBOL(kt_sync_release);
+
 void ktsan_memblock_alloc(struct kmem_cache *cache, void *obj)
 {
 	ENTER();
@@ -194,6 +177,55 @@ void ktsan_memblock_free(struct kmem_cache *cache, void *obj)
 	kt_memblock_free(thr, pc, (uptr_t)obj, cache->object_size);
 	LEAVE();
 }
+
+void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
+{
+	ENTER();
+	kt_mtx_pre_lock(thr, pc, (uptr_t)addr, write, try);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_mtx_pre_lock);
+
+void ktsan_mtx_post_lock(void *addr, bool write, bool try)
+{
+	ENTER();
+	kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_mtx_post_lock);
+
+void ktsan_mtx_pre_unlock(void *addr, bool write)
+{
+	ENTER();
+	kt_mtx_pre_unlock(thr, pc, (uptr_t)addr, write);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
+
+int ktsan_atomic32_read(const void *addr)
+{
+	int rv;
+
+	ENTER();
+	rv = kt_atomic32_read(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_pure_read(addr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic32_read);
+
+void ktsan_atomic32_set(void *addr, int value)
+{
+	ENTER();
+	kt_atomic32_set(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic32_pure_set(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic32_set);
 
 void ktsan_read1(void *addr)
 {
