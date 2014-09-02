@@ -9,6 +9,9 @@ void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 {
 	new->id = tid;
 	kt_clk_init(thr, &new->clk);
+
+	/*pr_err("! created thread #%d by thread #%d\n\n",
+		(int)tid, ((thr == NULL) ? -1 : (int)thr->id));*/
 }
 
 void kt_thr_finish(kt_thr_t *thr, uptr_t pc)
