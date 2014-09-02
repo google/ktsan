@@ -67,6 +67,47 @@ static void kt_test_race(void)
 	pr_err("TSan: end of test.\n");
 }
 
+/* ktsan test: thread create. */
+
+DECLARE_COMPLETION(thr_crt_thr_compl);
+
+static int thr_crt_thr_func(void *arg)
+{
+	*((int *)arg) = 1;
+
+	complete(&thr_crt_thr_compl);
+
+	return 0;
+}
+
+static void kt_test_thread_create(void)
+{
+	struct task_struct *thr;
+	char thr_name[] = "thr-crt-thr";
+	int *value = kmalloc(32, GFP_KERNEL);
+
+	BUG_ON(!value);
+
+	pr_err("TSan: starting thread create test, no race expected.\n");
+
+	*value = 0;
+
+	thr = kthread_create(thr_crt_thr_func, value, thr_name);
+
+	if (IS_ERR(thr)) {
+		pr_err("TSan: could not create kernel thread.\n");
+		return;
+	}
+
+	wake_up_process(thr);
+
+	wait_for_completion(&thr_crt_thr_compl);
+
+	kfree(value);
+
+	pr_err("TSan: end of test.\n");
+}
+
 /* ktsan test: spinlock. */
 
 DECLARE_COMPLETION(spinlock_thr_fst_compl);
@@ -112,7 +153,7 @@ static void kt_test_spinlock(void)
 	 * Different kmalloc size to ensure that the address of the allocated
 	 * block of memory will be different from the one in race test for now.
 	 */
-	int *value = kmalloc(64, GFP_KERNEL);
+	int *value = kmalloc(32, GFP_KERNEL);
 
 	BUG_ON(!value);
 
@@ -182,7 +223,7 @@ static void kt_test_atomic(void)
 	struct task_struct *thr_fst, *thr_snd;
 	char thr_fst_name[] = "atomic-thr-fst";
 	char thr_snd_name[] = "atomic-thr-snd";
-	int *value = kmalloc(128, GFP_KERNEL);
+	int *value = kmalloc(32, GFP_KERNEL);
 
 	BUG_ON(!value);
 
@@ -241,7 +282,7 @@ static void kt_test_completion(void)
 	struct task_struct *thr_fst, *thr_snd;
 	char thr_fst_name[] = "compl-thr-fst";
 	char thr_snd_name[] = "compl-thr-snd";
-	int *value = kmalloc(256, GFP_KERNEL);
+	int *value = kmalloc(32, GFP_KERNEL);
 
 	BUG_ON(!value);
 
@@ -302,7 +343,7 @@ static void kt_test_mutex(void)
 	struct task_struct *thr_fst, *thr_snd;
 	char thr_fst_name[] = "mutex-thr-fst";
 	char thr_snd_name[] = "mutex-thr-snd";
-	int *value = kmalloc(512, GFP_KERNEL);
+	int *value = kmalloc(32, GFP_KERNEL);
 
 	BUG_ON(!value);
 
@@ -363,7 +404,7 @@ static void kt_test_semaphore(void)
 	struct task_struct *thr_fst, *thr_snd;
 	char thr_fst_name[] = "sema-thr-fst";
 	char thr_snd_name[] = "sema-thr-snd";
-	int *value = kmalloc(1024, GFP_KERNEL);
+	int *value = kmalloc(32, GFP_KERNEL);
 
 	BUG_ON(!value);
 
@@ -499,6 +540,8 @@ static void kt_run_tests(void)
 	kt_test_hash_table();
 	pr_err("\n");
 	kt_test_race();
+	pr_err("\n");
+	kt_test_thread_create();
 	pr_err("\n");
 	kt_test_spinlock();
 	pr_err("\n");
