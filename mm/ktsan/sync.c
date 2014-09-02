@@ -98,3 +98,11 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 	kt_clk_tick(&thr->clk, thr->id);
 	kt_sync_release(thr, pc, addr);
 }
+
+int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr) {
+	return kt_atomic32_pure_read((const void *)addr);
+}
+
+void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value) {
+	kt_atomic32_pure_set((void *)addr, value);
+}
