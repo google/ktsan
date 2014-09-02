@@ -44,20 +44,20 @@
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
 
-typedef struct kt_thr_s		kt_thr_t;
-typedef struct kt_clk_s		kt_clk_t;
-typedef struct kt_tab_s		kt_tab_t;
-typedef struct kt_tab_obj_s	kt_tab_obj_t;
-typedef struct kt_tab_part_s	kt_tab_part_t;
-typedef struct kt_tab_sync_s	kt_tab_sync_t;
-typedef struct kt_tab_slab_s	kt_tab_slab_t;
-typedef struct kt_tab_test_s	kt_tab_test_t;
-typedef struct kt_ctx_s		kt_ctx_t;
-typedef enum kt_stat_e		kt_stat_t;
-typedef struct kt_stats_s	kt_stats_t;
-typedef struct kt_cpu_s		kt_cpu_t;
-typedef struct kt_race_info_s	kt_race_info_t;
-typedef struct kt_cache_s	kt_cache_t;
+typedef struct kt_thr_s			kt_thr_t;
+typedef struct kt_clk_s			kt_clk_t;
+typedef struct kt_tab_s			kt_tab_t;
+typedef struct kt_tab_obj_s		kt_tab_obj_t;
+typedef struct kt_tab_part_s		kt_tab_part_t;
+typedef struct kt_tab_sync_s		kt_tab_sync_t;
+typedef struct kt_tab_memblock_s	kt_tab_memblock_t;
+typedef struct kt_tab_test_s		kt_tab_test_t;
+typedef struct kt_ctx_s			kt_ctx_t;
+typedef enum kt_stat_e			kt_stat_t;
+typedef struct kt_stats_s		kt_stats_t;
+typedef struct kt_cpu_s			kt_cpu_t;
+typedef struct kt_race_info_s		kt_race_info_t;
+typedef struct kt_cache_s		kt_cache_t;
 
 /* Clocks. */
 
@@ -115,10 +115,10 @@ struct kt_tab_s {
 struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
 	kt_clk_t		clk;
-	kt_tab_sync_t		*next; /* next sync object in slab object */
+	kt_tab_sync_t		*next; /* next sync object in memblock */
 };
 
-struct kt_tab_slab_s {
+struct kt_tab_memblock_s {
 	kt_tab_obj_t		tab;
 	kt_tab_sync_t		*head;
 };
@@ -140,9 +140,9 @@ enum kt_stat_e {
 	kt_stat_sync_objects,
 	kt_stat_sync_alloc,
 	kt_stat_sync_free,
-	kt_stat_slab_objects,
-	kt_stat_slab_alloc,
-	kt_stat_slab_free,
+	kt_stat_memblock_objects,
+	kt_stat_memblock_alloc,
+	kt_stat_memblock_free,
 	kt_stat_count,
 };
 
@@ -167,7 +167,7 @@ struct kt_ctx_s {
 	int			enabled;
 	kt_cpu_t __percpu	*cpus;
 	kt_tab_t		sync_tab; /* sync addr -> sync object */
-	kt_tab_t		slab_tab; /* memory block -> sync objects */
+	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
 };
 
@@ -255,10 +255,10 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
 /*
- * Slab allocator.
+ * Memory block allocation.
  */
-void kt_slab_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
-void kt_slab_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
+void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
+void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 
 /*
  * Hash table. Maps an address to an arbitrary object.
