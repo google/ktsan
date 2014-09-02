@@ -26,20 +26,13 @@
 #define KT_COLLECT_STATS 1
 
 /* Both arguments must be pointers. */
-#define KT_ATOMIC_32_READ(ptr) \
-	(atomic_read((atomic_t *)(ptr)))
-#define KT_ATOMIC_32_SET(ptr, val) \
-	(atomic_set((atomic_t *)(ptr), *(u32 *)(val)))
-#define KT_ATOMIC_32_ADD(ptr, val) \
-	(atomic_add(*(u32 *)(val), (atomic_t *)(ptr)))
-
-/* Both arguments must be pointers. */
 #define KT_ATOMIC_64_READ(ptr) \
 	(atomic64_read((atomic64_t *)(ptr)))
 #define KT_ATOMIC_64_SET(ptr, val) \
 	(atomic64_set((atomic64_t *)(ptr), *(u64 *)(val)))
 #define KT_ATOMIC_64_ADD(ptr, val) \
 	(atomic64_add(*(u64 *)(val), (atomic64_t *)(ptr)))
+/* TODO(xairy): use kt_atomic_pure_* when implemented. */
 
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
@@ -173,14 +166,12 @@ struct kt_ctx_s {
 
 extern kt_ctx_t kt_ctx;
 
-/*
- * Misc.
- */
+/* Misc. */
+
 void kt_print_current_stack_trace(unsigned long strip_addr);
 
-/*
- * Statistics. Enabled only when KT_COLLECT_STATS = 1.
- */
+/* Statistics. Enabled only when KT_COLLECT_STATS = 1. */
+
 void kt_stat_init(void);
 
 static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
@@ -207,22 +198,19 @@ static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
 	kt_stat_add(thr, what, -1);
 }
 
-/*
- * Tests.
- */
+/* Tests. */
+
 void kt_tests_init(void);
 
-/*
- * Threads.
- */
+/* Threads. */
+
 void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
 void kt_thr_finish(kt_thr_t *thr, uptr_t pc);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
-/*
- * Clocks.
- */
+/* Clocks. */
+
 void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk);
 void kt_clk_destroy(kt_thr_t *thr, kt_clk_t *clk);
 void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
@@ -245,18 +233,23 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 	clk->time[tid]++;
 }
 
-/*
- * Synchronization.
- */
+/* Synchronization. */
+
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
-/*
- * Memory block allocation.
- */
+int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
+
+int kt_atomic32_pure_read(const void *addr);
+void kt_atomic32_pure_set(void *addr, int value);
+
+/* Memory block allocation. */
+
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 
@@ -264,25 +257,23 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
  * Hash table. Maps an address to an arbitrary object.
  * The object must start with kt_tab_obj_t.
  */
+
 void kt_tab_init(kt_tab_t *tab, unsigned size,
 		 unsigned obj_size, unsigned obj_max_num);
 void kt_tab_destroy(kt_tab_t *tab);
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
-/*
- * Generic memory access.
- */
+/* Generic memory access. */
+
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 
-/*
- * Reports.
- */
+/* Reports. */
+
 void kt_report_race(kt_race_info_t *info);
 
-/*
- * Internal allocator.
- */
+/* Internal allocator. */
+
 void kt_cache_init(kt_cache_t *cache, size_t obj_size, size_t obj_max_num);
 void kt_cache_destroy(kt_cache_t *cache);
 void *kt_cache_alloc(kt_cache_t *cache);
