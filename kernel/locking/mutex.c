@@ -25,6 +25,7 @@
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 #include <linux/debug_locks.h>
+#include <linux/ktsan.h>
 #include "mcs_spinlock.h"
 
 /*
@@ -94,6 +95,7 @@ __visible void __sched __mutex_lock_slowpath(atomic_t *lock_count);
  */
 void __sched mutex_lock(struct mutex *lock)
 {
+	ktsan_mtx_pre_lock(lock, true, false);
 	might_sleep();
 	/*
 	 * The locking fastpath is the 1->0 transition from
@@ -101,6 +103,7 @@ void __sched mutex_lock(struct mutex *lock)
 	 */
 	__mutex_fastpath_lock(&lock->count, __mutex_lock_slowpath);
 	mutex_set_owner(lock);
+	ktsan_mtx_post_lock(lock, true, false);
 }
 
 EXPORT_SYMBOL(mutex_lock);
@@ -198,6 +201,7 @@ void __sched __mutex_unlock_slowpath(atomic_t *lock_count);
  */
 void __sched mutex_unlock(struct mutex *lock)
 {
+	ktsan_mtx_pre_unlock(lock, true);
 	/*
 	 * The unlocking fastpath is the 0->1 transition from 'locked'
 	 * into 'unlocked' state:
