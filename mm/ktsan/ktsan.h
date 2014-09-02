@@ -189,7 +189,7 @@ static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 	/* FIXME(xairy): thr->cpu might be NULL sometimes. */
 	if (thr->cpu == NULL) {
 		pr_err("TSan: WARNING: cpu for thread %d is NULL!\n", thr->id);
-		kt_print_current_stack_trace((u64)_RET_IP_);
+		/*kt_print_current_stack_trace((u64)_RET_IP_);*/
 		pr_err("\n");
 		thr->cpu = this_cpu_ptr(kt_ctx.cpus);
 	}
