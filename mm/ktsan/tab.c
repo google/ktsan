@@ -1,8 +1,6 @@
 #include "ktsan.h"
 
 #include <linux/kernel.h>
-#include <linux/sched.h>
-#include <linux/slab.h>
 
 /* Only available during early boot. */
 void __init kt_tab_init(kt_tab_t *tab, unsigned size,

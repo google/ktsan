@@ -17,9 +17,9 @@ static struct {
 	{kt_stat_sync_objects,		"kt_stat_sync_objects"},
 	{kt_stat_sync_alloc,		"kt_stat_sync_alloc"},
 	{kt_stat_sync_free,		"kt_stat_sync_free"},
-	{kt_stat_slab_objects,		"kt_stat_slab_objects"},
-	{kt_stat_slab_alloc,		"kt_stat_slab_alloc"},
-	{kt_stat_slab_free,		"kt_stat_slab_free"},
+	{kt_stat_memblock_objects,	"kt_stat_memblock_objects"},
+	{kt_stat_memblock_alloc,	"kt_stat_memblock_alloc"},
+	{kt_stat_memblock_free,		"kt_stat_memblock_free"},
 };
 
 void kt_stat_collect(kt_stats_t *stat)

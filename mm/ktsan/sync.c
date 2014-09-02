@@ -3,10 +3,11 @@
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/slab.h>
+#include <linux/slab_def.h>
 #include <linux/spinlock.h>
 
 /* XXX(xairy): move somewhere? */
-static uptr_t addr_to_slab_obj_addr(uptr_t addr)
+static uptr_t addr_to_memblock_addr(uptr_t addr)
 {
 	struct page *page;
 	struct kmem_cache *cache;
@@ -30,8 +31,8 @@ static kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
 	bool created;
-	uptr_t slab_obj_addr;
-	kt_tab_slab_t *slab;
+	uptr_t memblock_addr;
+	kt_tab_memblock_t *memblock;
 
 	sync = kt_tab_access(&kt_ctx.sync_tab, addr, &created, false);
 	BUG_ON(sync == NULL); /* Ran out of memory. */
@@ -43,22 +44,22 @@ static kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 		kt_clk_init(thr, &sync->clk);
 		sync->next = NULL;
 
-		slab_obj_addr = addr_to_slab_obj_addr(addr);
-		slab = kt_tab_access(&kt_ctx.slab_tab,
-			slab_obj_addr, &created, false);
-		BUG_ON(slab == NULL); /* Ran out of memory. */
+		memblock_addr = addr_to_memblock_addr(addr);
+		memblock = kt_tab_access(&kt_ctx.memblock_tab,
+				memblock_addr, &created, false);
+		BUG_ON(memblock == NULL); /* Ran out of memory. */
 
 		if (created) {
-			kt_stat_inc(thr, kt_stat_slab_objects);
-			kt_stat_inc(thr, kt_stat_slab_alloc);
+			kt_stat_inc(thr, kt_stat_memblock_objects);
+			kt_stat_inc(thr, kt_stat_memblock_alloc);
 
-			slab->head = NULL;
+			memblock->head = NULL;
 		}
 
-		sync->next = slab->head;
-		slab->head = sync;
+		sync->next = memblock->head;
+		memblock->head = sync;
 
-		spin_unlock(&slab->tab.lock);
+		spin_unlock(&memblock->tab.lock);
 	}
 
 	return sync;
