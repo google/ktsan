@@ -1,4 +1,4 @@
-obj-y := ktsan.o thr.o shadow.o access.o memblock.o sync.o clk.o tab.o report.o stat.o tests.o alloc.o
+obj-y := ktsan.o thr.o shadow.o access.o memblock.o sync.o clk.o tab.o report.o stat.o tests.o alloc.o atomic.o
 
 CFLAGS_REMOVE_ktsan.o = -pg -O0 -O1 -O2
 CFLAGS_ktsan.o = -O3
