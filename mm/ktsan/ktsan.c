@@ -8,6 +8,7 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/slab_def.h>
 
 kt_ctx_t kt_ctx;
 
@@ -75,8 +76,8 @@ void __init ktsan_init_early(void)
 
 	kt_tab_init(&ctx->sync_tab, 10007,
 		    sizeof(kt_tab_sync_t), 70000);
-	kt_tab_init(&ctx->slab_tab, 10007,
-		    sizeof(kt_tab_slab_t), 60000);
+	kt_tab_init(&ctx->memblock_tab, 10007,
+		    sizeof(kt_tab_memblock_t), 60000);
 	kt_tab_init(&ctx->test_tab, 13,
 		    sizeof(kt_tab_test_t), 20);
 }
@@ -180,17 +181,17 @@ void ktsan_thr_stop(void)
 	LEAVE();
 }
 
-void ktsan_slab_alloc(struct kmem_cache *cache, void *obj)
+void ktsan_memblock_alloc(struct kmem_cache *cache, void *obj)
 {
 	ENTER();
-	kt_slab_alloc(thr, pc, (uptr_t)obj, cache->object_size);
+	kt_memblock_alloc(thr, pc, (uptr_t)obj, cache->object_size);
 	LEAVE();
 }
 
-void ktsan_slab_free(struct kmem_cache *cache, void *obj)
+void ktsan_memblock_free(struct kmem_cache *cache, void *obj)
 {
 	ENTER();
-	kt_slab_free(thr, pc, (uptr_t)obj, cache->object_size);
+	kt_memblock_free(thr, pc, (uptr_t)obj, cache->object_size);
 	LEAVE();
 }
 
