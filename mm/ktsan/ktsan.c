@@ -1,56 +1,112 @@
 #include "ktsan.h"
 
+#include <linux/atomic.h>
+#include <linux/irqflags.h>
 #include <linux/kernel.h>
+#include <linux/nmi.h>
+#include <linux/preempt.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 
 kt_ctx_t kt_ctx;
 
-/* XXX: for debugging. */
-#define REPEAT_N_AND_STOP(n)				\
-	static int scary_counter_##__LINE__; /* = 0; */ \
-	if (++scary_counter_##__LINE__ < (n))
-
-#define ENTER() 			\
-	kt_thr_t *thr;			\
-	uptr_t pc;			\
-					\
-	thr = current->ktsan.thr;	\
-	if (thr == NULL)		\
-		return;			\
-	if (thr->inside)		\
-		return;			\
-	thr->inside = true;		\
-	pc = (uptr_t)_RET_IP_		\
+#define DISABLE_INTERRUPTS(flags)	\
+	preempt_disable();		\
+	local_irq_save(flags);		\
+	stop_nmi()			\
 /**/
 
-#define LEAVE()				\
-	thr->inside = false		\
+#define ENABLE_INTERRUPTS(flags)	\
+	restart_nmi();			\
+	local_irq_restore(flags);	\
+	preempt_enable()		\
 /**/
+
+#define IN_INTERRUPT()			\
+	(in_irq() ||			\
+	 in_softirq() ||		\
+	 in_interrupt() ||		\
+	 in_serving_softirq() ||	\
+	 in_nmi())			\
+/**/
+
+#define ENTER()							\
+	kt_thr_t *thr;						\
+	uptr_t pc;						\
+	unsigned long kt_flags;					\
+	int kt_inside_was;					\
+								\
+	/* Sometimes thread #1 is scheduled without calling	\
+	   ktsan_thr_start(). Some of such cases are caused	\
+	   by interrupts. Ignoring them for now. */		\
+	if (IN_INTERRUPT())					\
+		return;						\
+								\
+	if (!kt_ctx.enabled)					\
+		return;						\
+	if (!current)						\
+		return;						\
+	if (!current->ktsan.thr)				\
+		return;						\
+								\
+	DISABLE_INTERRUPTS(kt_flags);				\
+								\
+	thr = current->ktsan.thr;				\
+	pc = (uptr_t)_RET_IP_;					\
+								\
+	kt_inside_was = atomic_cmpxchg(&thr->inside, 0, 1);	\
+	if (kt_inside_was != 0) {				\
+		ENABLE_INTERRUPTS(kt_flags);			\
+		return;						\
+	}							\
+/**/
+
+#define LEAVE()							\
+	kt_inside_was = atomic_cmpxchg(&thr->inside, 1, 0);	\
+	BUG_ON(kt_inside_was != 1);				\
+								\
+	ENABLE_INTERRUPTS(kt_flags)				\
+/**/
+
+void __init ktsan_init_early(void)
+{
+	kt_ctx_t *ctx = &kt_ctx;
+
+	kt_tab_init(&ctx->sync_tab, 10007,
+		    sizeof(kt_tab_sync_t), 60000);
+	kt_tab_init(&ctx->memblock_tab, 10007,
+		    sizeof(kt_tab_memblock_t), 60000);
+	kt_tab_init(&ctx->test_tab, 13,
+		    sizeof(kt_tab_test_t), 20);
+}
 
 void ktsan_init(void)
 {
 	kt_ctx_t *ctx;
 	kt_thr_t *thr;
+	int inside;
 
 	ctx = &kt_ctx;
 
 	thr = kzalloc(sizeof(*thr), GFP_KERNEL);
 	kt_thr_create(NULL, (uptr_t)_RET_IP_, thr, current->pid);
+	kt_thr_start(thr, (uptr_t)_RET_IP_);
 	current->ktsan.thr = thr;
 
 	BUG_ON(ctx->enabled);
-	BUG_ON(thr->inside);
-	thr->inside = true;
+	inside = atomic_cmpxchg(&thr->inside, 0, 1);
+	BUG_ON(inside != 0);
 
 	ctx->cpus = alloc_percpu(kt_cpu_t);
-	kt_tab_init(&ctx->synctab, 10007, sizeof(kt_sync_t));
 	kt_stat_init();
 	kt_tests_init();
 
-	thr->inside = false;
+	inside = atomic_cmpxchg(&thr->inside, 1, 0);
+	BUG_ON(inside != 1);
 	ctx->enabled = 1;
+
+	pr_err("TSan: enabled.\n");
 }
 
 void ktsan_sync_acquire(void *addr)
@@ -124,17 +180,17 @@ void ktsan_thr_stop(void)
 	LEAVE();
 }
 
-void ktsan_slab_alloc(struct kmem_cache *cache, void *obj)
+void ktsan_memblock_alloc(struct kmem_cache *cache, void *obj)
 {
 	ENTER();
-	kt_slab_alloc(thr, pc, (uptr_t)obj, cache->object_size);
+	kt_memblock_alloc(thr, pc, (uptr_t)obj, cache->object_size);
 	LEAVE();
 }
 
-void ktsan_slab_free(struct kmem_cache *cache, void *obj)
+void ktsan_memblock_free(struct kmem_cache *cache, void *obj)
 {
 	ENTER();
-	kt_slab_free(thr, pc, (uptr_t)obj, cache->object_size);
+	kt_memblock_free(thr, pc, (uptr_t)obj, cache->object_size);
 	LEAVE();
 }
 

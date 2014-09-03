@@ -17,6 +17,7 @@ struct ktsan_thr_s {
 	struct kt_thr_s	*thr;
 };
 
+void ktsan_init_early(void);
 void ktsan_init(void);
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
@@ -45,8 +46,8 @@ void ktsan_alloc_page(struct page *page, unsigned int order,
 void ktsan_free_page(struct page *page, unsigned int order);
 void ktsan_split_page(struct page *page, unsigned int order);
 
-void ktsan_slab_alloc(struct kmem_cache *cache, void *obj);
-void ktsan_slab_free(struct kmem_cache *cache, void *obj);
+void ktsan_memblock_alloc(struct kmem_cache *cache, void *obj);
+void ktsan_memblock_free(struct kmem_cache *cache, void *obj);
 
 #else /* CONFIG_KTSAN */
 
@@ -55,6 +56,7 @@ void ktsan_slab_free(struct kmem_cache *cache, void *obj);
 struct ktsan_thr_s {
 };
 
+static inline void ktsan_init_early(void) {}
 static inline void ktsan_init(void) {}
 
 static inline void ktsan_thr_create(ktsan_thr_t *new, int tid) {}
@@ -83,8 +85,8 @@ static inline void ktsan_alloc_page(struct page *page, unsigned int order,
 static inline void ktsan_free_page(struct page *page, unsigned int order) {}
 static inline void ktsan_split_page(struct page *page, unsigned int order) {}
 
-static inline void ktsan_slab_alloc(struct kmem_cache *cache, void *obj) {}
-static inline void ktsan_slab_free(struct kmem_cache *cache, void *obj) {}
+static inline void ktsan_memblock_alloc(struct kmem_cache *cache, void *obj) {}
+static inline void ktsan_memblock_free(struct kmem_cache *cache, void *obj) {}
 
 #endif /* CONFIG_KTSAN */
 

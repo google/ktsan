@@ -1,37 +1,35 @@
 #include "ktsan.h"
 
 #include <linux/kernel.h>
-#include <linux/slab.h>
 
-void kt_tab_init(kt_tab_t *tab, unsigned size, unsigned objsize)
+/* Only available during early boot. */
+void __init kt_tab_init(kt_tab_t *tab, unsigned size,
+			unsigned obj_size, unsigned obj_max_num)
 {
 	kt_tab_part_t *part;
 	unsigned i;
 
 	tab->size = size;
-	tab->objsize = objsize;
-	tab->parts = kmalloc_array(size, sizeof(*tab->parts), GFP_KERNEL);
+	tab->objsize = obj_size;
+
+	kt_cache_init(&tab->parts_cache, sizeof(*tab->parts) * size, 1);
+	tab->parts = kt_cache_alloc(&tab->parts_cache);
+	BUG_ON(tab->parts == NULL);
+
 	for (i = 0; i < size; i++) {
 		part = &tab->parts[i];
 		spin_lock_init(&part->lock);
 		part->head = NULL;
 	}
+
+	kt_cache_init(&tab->obj_cache, obj_size, obj_max_num);
 }
 
-/* Called in tests only. */
-void kt_tab_destroy(kt_tab_t *tab)
+/* Only available during early boot. */
+void __init kt_tab_destroy(kt_tab_t *tab)
 {
-	kt_tab_obj_t *obj;
-	kt_tab_part_t *part;
-	unsigned i;
-
-	for (i = 0; i < tab->size; i++) {
-		part = &tab->parts[i];
-		for (obj = part->head; obj; obj = obj->link)
-			kfree(obj);
-	}
-
-	kfree(tab->parts);
+	kt_cache_destroy(&tab->obj_cache);
+	kt_cache_destroy(&tab->parts_cache);
 	tab->parts = NULL;
 }
 
@@ -45,33 +43,35 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 		if (obj->key == key)
 			break;
 
+	/* Get object if exists. */
 	if (created == NULL && destroy == false) {
 		if (obj) {
-			spin_lock(&obj->lock); /* Correct lock type? */
+			spin_lock(&obj->lock);
 			return obj;
 		}
 		return NULL;
 	}
 
+	/* Remove object from table if exists. */
 	if (created == NULL && destroy == true) {
 		if (obj) {
-			/* Remove object from table. */
-			if (prev == NULL)
+			if (!prev)
 				part->head = obj->link;
 			else
 				prev->link = obj->link;
 
-			spin_lock(&obj->lock); /* Correct lock type? */
+			spin_lock(&obj->lock);
 			return obj;
 		}
 		return NULL;
 	}
 
+	/* Create object if not exists. */
 	if (created != NULL && destroy == false) {
 		if (!obj) {
-			/* Create object. */
-			obj = kmalloc(tab->objsize, GFP_KERNEL);
-			BUG_ON(!obj);
+			obj = kt_cache_alloc(&tab->obj_cache);
+			if (!obj)
+				return NULL;
 
 			spin_lock_init(&obj->lock);
 			obj->link = part->head;
@@ -83,7 +83,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 			*created = false;
 		}
 
-		spin_lock(&obj->lock); /* Correct lock type? */
+		spin_lock(&obj->lock);
 		return obj;
 	}
 
@@ -97,7 +97,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
  * When (created == NULL) and (destroy == true)
  *      removes the object from the table if it exists and returns it,
  *      returns NULL otherwise.
- *      The object must be freed by the caller via kfree.
+ *      The object must be freed by the caller via kt_cache_free.
  * When (created != NULL) and (destory == false)
  *      creates an object if it doesn't exist and returns it.
  *      Sets *created = false if the object existed, *c = true otherwise.
@@ -106,19 +106,27 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
  */
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy)
 {
-	unsigned long flags;
 	unsigned int hash;
 	kt_tab_part_t *part;
 	void *result;
+	kt_tab_obj_t *obj;
 
 	BUG_ON(created != NULL && destroy == true);
 
 	hash = key % tab->size;
 	part = &tab->parts[hash];
 
-	spin_lock_irqsave(&part->lock, flags);
+	spin_lock(&part->lock);
+
+	for (obj = part->head; obj != NULL; obj = obj->link)
+		BUG_ON((uptr_t)obj < PAGE_OFFSET);
+
 	result = kt_part_access(tab, part, key, created, destroy);
-	spin_unlock_irqrestore(&part->lock, flags);
+
+	for (obj = part->head; obj != NULL; obj = obj->link)
+		BUG_ON((uptr_t)obj < PAGE_OFFSET);
+
+	spin_unlock(&part->lock);
 
 	return result;
 }

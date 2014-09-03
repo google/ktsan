@@ -1,5 +1,6 @@
 #include "ktsan.h"
 
+#include <linux/atomic.h>
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -13,6 +14,12 @@ static struct {
 } desc[] = {
 	{kt_stat_access_read,		"kt_stat_access_read"},
 	{kt_stat_access_write,		"kt_stat_access_write"},
+	{kt_stat_sync_objects,		"kt_stat_sync_objects"},
+	{kt_stat_sync_alloc,		"kt_stat_sync_alloc"},
+	{kt_stat_sync_free,		"kt_stat_sync_free"},
+	{kt_stat_memblock_objects,	"kt_stat_memblock_objects"},
+	{kt_stat_memblock_alloc,	"kt_stat_memblock_alloc"},
+	{kt_stat_memblock_free,		"kt_stat_memblock_free"},
 };
 
 void kt_stat_collect(kt_stats_t *stat)
@@ -34,8 +41,8 @@ static int kt_stat_show(struct seq_file *m, void *v)
 	int i;
 
 	kt_stat_collect(&stat);
-	for (i = 0; i < sizeof(desc)/sizeof(desc[0]); i++)
-		seq_printf(m, "%s: %llu\n", desc[i].s, stat.stat[desc[i].i]);
+	for (i = 0; i < ARRAY_SIZE(desc); i++)
+		seq_printf(m, "%s: %lu\n", desc[i].s, stat.stat[desc[i].i]);
 	return 0;
 }
 
