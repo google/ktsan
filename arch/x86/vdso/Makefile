@@ -80,6 +80,11 @@ CFLAGS_REMOVE_vclock_gettime.o = -pg
 CFLAGS_REMOVE_vgetcpu.o = -pg
 CFLAGS_REMOVE_vvar.o = -pg
 
+KTSAN_SANITIZE_vdso-note.o = n
+KTSAN_SANITIZE_vclock_gettime.o = n
+KTSAN_SANITIZE_vgetcpu.o = n
+KTSAN_SANITIZE_vvar.o = n
+
 #
 # X32 processes use x32 vDSO to access 64bit kernel data.
 #

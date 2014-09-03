@@ -119,6 +119,16 @@ _c_flags += $(if $(patsubst n%,, \
 		$(CFLAGS_GCOV))
 endif
 
+#
+# Enable ThreadSanitizer flags for kernel except some files or directories
+# we don't want to check (depends on variables KTSAN_SANITIZE_obj.o, KTSAN_SANITIZE)
+#
+ifeq ($(CONFIG_KTSAN),y)
+_c_flags += $(if $(patsubst n%,, \
+	$(KTSAN_SANITIZE_$(basetarget).o)$(KTSAN_SANITIZE)), \
+	$(CFLAGS_KTSAN))
+endif
+
 # If building the kernel in a separate objtree expand all occurrences
 # of -Idir to -I$(srctree)/dir except for absolute paths (starting with '/').
 
