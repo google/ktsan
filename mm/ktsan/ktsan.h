@@ -21,7 +21,7 @@
 #define KT_CLOCK_BITS         42
 
 #define KT_MAX_THREAD_ID 4096
-#define KT_MAX_STACK_TRACE_FRAMES 64
+#define KT_MAX_STACK_FRAMES 64
 
 #define KT_COLLECT_STATS 1
 
@@ -51,6 +51,14 @@ typedef struct kt_stats_s		kt_stats_t;
 typedef struct kt_cpu_s			kt_cpu_t;
 typedef struct kt_race_info_s		kt_race_info_t;
 typedef struct kt_cache_s		kt_cache_t;
+typedef struct kt_stack_s		kt_stack_t;
+
+/* Stack. */
+
+struct kt_stack_s {
+	unsigned int pc[KT_MAX_STACK_FRAMES];
+	int size;
+};
 
 /* Clocks. */
 
@@ -166,9 +174,9 @@ struct kt_ctx_s {
 
 extern kt_ctx_t kt_ctx;
 
-/* Misc. */
+/* Stack. */
 
-void kt_print_current_stack_trace(unsigned long strip_addr);
+void kt_stack_print_current(unsigned long strip_addr);
 
 /* Statistics. Enabled only when KT_COLLECT_STATS = 1. */
 
