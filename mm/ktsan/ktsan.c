@@ -307,6 +307,22 @@ void ktsan_write16(void *addr)
 }
 EXPORT_SYMBOL(ktsan_write16);
 
+void ktsan_func_entry(void *call_pc)
+{
+	ENTER();
+	/* TODO. */
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_func_entry);
+
+void ktsan_func_exit(void *call_pc)
+{
+	ENTER();
+	/* TODO. */
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_func_exit);
+
 void __tsan_read1(unsigned long addr) __attribute__ ((alias ("ktsan_read1")));
 EXPORT_SYMBOL(__tsan_read1);
 
@@ -336,3 +352,9 @@ EXPORT_SYMBOL(__tsan_write8);
 
 void __tsan_write16(unsigned long addr) __attribute__ ((alias ("ktsan_write16")));
 EXPORT_SYMBOL(__tsan_write16);
+
+void __tsan_func_entry(unsigned long addr) __attribute__ ((alias ("ktsan_func_entry")));
+EXPORT_SYMBOL(__tsan_func_entry);
+
+void __tsan_func_exit(unsigned long addr) __attribute__ ((alias ("ktsan_func_exit")));
+EXPORT_SYMBOL(__tsan_func_exit);
