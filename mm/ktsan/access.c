@@ -149,8 +149,8 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 		stored |= update_one_shadow_slot(thr, addr, &slots[i],
 						 value, stored);
 
-	pr_err("thread: %d, addr: %lx, size: %u, read: %d, stored: %d\n",
-		 (int)thr->id, addr, (int)size, (int)read, stored);
+	/*pr_err("thread: %d, addr: %lx, size: %u, read: %d, stored: %d\n",
+		 (int)thr->id, addr, (int)size, (int)read, stored);*/
 
 	if (!stored) {
 		/* Evict random shadow slot. */

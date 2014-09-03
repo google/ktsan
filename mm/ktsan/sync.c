@@ -100,9 +100,11 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 }
 
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr) {
+	/* TODO(xairy). */
 	return kt_atomic32_pure_read((const void *)addr);
 }
 
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value) {
+	/* TODO(xairy). */
 	kt_atomic32_pure_set((void *)addr, value);
 }
