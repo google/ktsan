@@ -8,6 +8,8 @@
 #
 KASAN_SANITIZE := n
 
+KTSAN_SANITIZE := n
+
 always := realmode.bin realmode.relocs
 
 wakeup-objs	:= wakeup_asm.o wakemain.o video-mode.o
