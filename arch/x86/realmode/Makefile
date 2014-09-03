@@ -7,6 +7,7 @@
 #
 #
 KASAN_SANITIZE := n
+KTSAN_SANITIZE := n
 subdir- := rm
 
 obj-y += init.o
