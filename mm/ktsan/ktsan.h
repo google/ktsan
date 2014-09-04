@@ -20,7 +20,7 @@
 #define KT_THREAD_ID_BITS     13
 #define KT_CLOCK_BITS         42
 
-#define KT_MAX_THREAD_ID 4096
+#define KT_MAX_THREAD_ID (4096 + 2048)
 #define KT_MAX_STACK_FRAMES 64
 
 #define KT_COLLECT_STATS 1
@@ -177,6 +177,9 @@ enum kt_stat_e {
 	kt_stat_memblock_objects,
 	kt_stat_memblock_alloc,
 	kt_stat_memblock_free,
+	kt_stat_threads,
+	kt_stat_thread_create,
+	kt_stat_thread_destroy,
 	kt_stat_count,
 };
 
@@ -258,7 +261,7 @@ void kt_tests_init(void);
 /* Threads. */
 
 void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
-void kt_thr_finish(kt_thr_t *thr, uptr_t pc);
+void kt_thr_finish(kt_thr_t *thr, uptr_t pc, kt_thr_t *old);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
