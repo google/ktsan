@@ -7,8 +7,6 @@
 #include <linux/preempt.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
-#include <linux/slab.h>
-#include <linux/slab_def.h>
 
 kt_ctx_t kt_ctx;
 
@@ -85,8 +83,8 @@ void __init ktsan_init_early(void)
 		    sizeof(kt_tab_sync_t), 70000);
 	kt_tab_init(&ctx->memblock_tab, 10007,
 		    sizeof(kt_tab_memblock_t), 60000);
-	kt_tab_init(&ctx->test_tab, 13,
-		    sizeof(kt_tab_test_t), 20);
+	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
+	kt_cache_init(&ctx->thr_cache, sizeof(kt_thr_t), KT_MAX_THREAD_ID);
 }
 
 void ktsan_init(void)
@@ -97,7 +95,8 @@ void ktsan_init(void)
 
 	ctx = &kt_ctx;
 
-	thr = kzalloc(sizeof(*thr), GFP_KERNEL);
+	thr = kt_cache_alloc(&ctx->thr_cache);
+	BUG_ON(thr == NULL); /* Out of memory. */
 	kt_thr_create(NULL, (uptr_t)_RET_IP_, thr, current->pid);
 	kt_thr_start(thr, (uptr_t)_RET_IP_);
 	current->ktsan.thr = thr;
@@ -120,7 +119,8 @@ void ktsan_init(void)
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
 {
 	ENTER();
-	new->thr = kzalloc(sizeof(*new->thr), GFP_KERNEL);
+	new->thr = kt_cache_alloc(&kt_ctx.thr_cache);
+	BUG_ON(new->thr == NULL); /* Out of memory. */
 	kt_thr_create(thr, pc, new->thr, tid);
 	LEAVE();
 }
@@ -129,7 +129,7 @@ void ktsan_thr_finish(void)
 {
 	ENTER();
 	kt_thr_finish(thr, pc);
-	kfree(thr);
+	kt_cache_free(&kt_ctx.thr_cache, thr);
 	current->ktsan.thr = NULL;
 	LEAVE();
 }
@@ -164,17 +164,17 @@ void ktsan_sync_release(void *addr)
 }
 EXPORT_SYMBOL(kt_sync_release);
 
-void ktsan_memblock_alloc(struct kmem_cache *cache, void *obj)
+void ktsan_memblock_alloc(void *addr, size_t size)
 {
 	ENTER();
-	kt_memblock_alloc(thr, pc, (uptr_t)obj, cache->object_size);
+	kt_memblock_alloc(thr, pc, (uptr_t)addr, size);
 	LEAVE();
 }
 
-void ktsan_memblock_free(struct kmem_cache *cache, void *obj)
+void ktsan_memblock_free(void *addr, size_t size)
 {
 	ENTER();
-	kt_memblock_free(thr, pc, (uptr_t)obj, cache->object_size);
+	kt_memblock_free(thr, pc, (uptr_t)addr, size);
 	LEAVE();
 }
 
