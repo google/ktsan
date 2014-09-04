@@ -25,6 +25,10 @@
 
 #define KT_COLLECT_STATS 1
 
+#define KT_TRACE_PARTS 64
+#define KT_TRACE_PART_SIZE (2 * 1024)
+#define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
+
 /* Both arguments must be pointers. */
 #define KT_ATOMIC_64_READ(ptr) \
 	(atomic64_read((atomic64_t *)(ptr)))
@@ -52,18 +56,47 @@ typedef struct kt_cpu_s			kt_cpu_t;
 typedef struct kt_race_info_s		kt_race_info_t;
 typedef struct kt_cache_s		kt_cache_t;
 typedef struct kt_stack_s		kt_stack_t;
+typedef enum kt_event_type_e		kt_event_type_t;
+typedef struct kt_event_s		kt_event_t;
+typedef struct kt_part_header_s		kt_part_header_t;
+typedef struct kt_trace_s		kt_trace_t;
 
 /* Stack. */
 
 struct kt_stack_s {
-	unsigned int pc[KT_MAX_STACK_FRAMES];
-	int size;
+	unsigned int		pc[KT_MAX_STACK_FRAMES];
+	int			size;
+};
+
+/* Trace. */
+
+enum kt_event_type_e {
+	kt_event_type_func_enter,
+	kt_event_type_func_exit,
+	kt_event_type_lock,
+	kt_event_type_unlock,
+};
+
+struct kt_event_s {
+	unsigned int		type;
+	unsigned int		pc;
+};
+
+struct kt_part_header_s {
+	kt_stack_t		stack;	
+};
+
+struct kt_trace_s {
+	kt_part_header_t	headers[KT_TRACE_PARTS];
+	kt_event_t		events[KT_TRACE_SIZE];
+	unsigned long		position;
+	spinlock_t		lock;
 };
 
 /* Clocks. */
 
 struct kt_clk_s {
-	kt_time_t time[KT_MAX_THREAD_ID];
+	kt_time_t		time[KT_MAX_THREAD_ID];
 };
 
 /* Shadow. */
@@ -160,6 +193,7 @@ struct kt_thr_s {
 	atomic_t		inside;	/* Already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
+	kt_trace_t		trace;
 };
 
 /* Global. */
@@ -170,11 +204,22 @@ struct kt_ctx_s {
 	kt_tab_t		sync_tab; /* sync addr -> sync object */
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
+	kt_cache_t		thr_cache;
 };
 
 extern kt_ctx_t kt_ctx;
 
 /* Stack. */
+
+static inline unsigned int pc_compress(unsigned long pc)
+{
+	return (pc & UINT_MAX);
+}
+
+static inline unsigned long pc_decompress(unsigned int pc)
+{
+	return ((ULONG_MAX - UINT_MAX) | pc);
+}
 
 void kt_stack_print_current(unsigned long strip_addr);
 

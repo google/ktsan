@@ -5,7 +5,6 @@
 
 #include <linux/types.h>
 
-struct kmem_cache;
 struct page;
 
 #ifdef CONFIG_KTSAN
@@ -23,6 +22,9 @@ void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
 void ktsan_thr_finish(void);
 void ktsan_thr_start(void);
 void ktsan_thr_stop(void);
+
+void ktsan_memblock_alloc(void *addr, size_t size);
+void ktsan_memblock_free(void *addr, size_t size);
 
 void ktsan_sync_acquire(void *addr);
 void ktsan_sync_release(void *addr);
@@ -48,9 +50,6 @@ void ktsan_alloc_page(struct page *page, unsigned int order,
 void ktsan_free_page(struct page *page, unsigned int order);
 void ktsan_split_page(struct page *page, unsigned int order);
 
-void ktsan_memblock_alloc(struct kmem_cache *cache, void *obj);
-void ktsan_memblock_free(struct kmem_cache *cache, void *obj);
-
 #else /* CONFIG_KTSAN */
 
 /* When disabled TSan is no-op. */
@@ -66,8 +65,8 @@ static inline void ktsan_thr_finish(void) {}
 static inline void ktsan_thr_start(void) {}
 static inline void ktsan_thr_stop(void) {}
 
-static inline void ktsan_memblock_alloc(struct kmem_cache *cache, void *obj) {}
-static inline void ktsan_memblock_free(struct kmem_cache *cache, void *obj) {}
+static inline void ktsan_memblock_alloc(void *addr, size_t size) {}
+static inline void ktsan_memblock_free(void *addr, size_t size) {}
 
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}

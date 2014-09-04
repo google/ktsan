@@ -11,6 +11,7 @@ obj-y := ktsan.o	\
 	 alloc.o	\
 	 atomic.o	\
 	 stack.o	\
+	 trace.o	\
 	 tests.o	
 
 CFLAGS_REMOVE_ktsan.o = -pg -O0 -O1 -O2
@@ -32,4 +33,6 @@ KTSAN_SANITIZE_stat.o = n
 KTSAN_SANITIZE_alloc.o = n
 KTSAN_SANITIZE_atomic.o = n
 KTSAN_SANITIZE_stack.o = n
+KTSAN_SANITIZE_trace.o = n
+
 KTSAN_SANITIZE_tests.o = y
