@@ -20,6 +20,9 @@ static struct {
 	{kt_stat_memblock_objects,	"kt_stat_memblock_objects"},
 	{kt_stat_memblock_alloc,	"kt_stat_memblock_alloc"},
 	{kt_stat_memblock_free,		"kt_stat_memblock_free"},
+	{kt_stat_threads,		"kt_stat_threads"},
+	{kt_stat_thread_create,		"kt_stat_thread_create"},
+	{kt_stat_thread_destroy,	"kt_stat_thread_destroy"},
 };
 
 void kt_stat_collect(kt_stats_t *stat)

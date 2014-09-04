@@ -5,6 +5,7 @@
 #include <linux/sched.h>
 #include <linux/spinlock.h>
 
+/* thr == NULL when thread #0 is being created. */
 void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 {
 	memset(new, 0, sizeof(*new));
@@ -19,14 +20,21 @@ void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 		pr_err("\n");
 	}*/
 
-	if (thr != NULL)
-		kt_clk_acquire(thr, &new->clk, &thr->clk);
+	if (thr == NULL)
+		return;
+
+	kt_clk_acquire(thr, &new->clk, &thr->clk);
+
+	kt_stat_inc(thr, kt_stat_thread_create);
+	kt_stat_inc(thr, kt_stat_threads);
 }
 
-void kt_thr_finish(kt_thr_t *thr, uptr_t pc)
+void kt_thr_finish(kt_thr_t *thr, uptr_t pc, kt_thr_t *old)
 {
-	/* TODO(dvyukov): call me */
-	kt_clk_destroy(thr, &thr->clk);
+	kt_clk_destroy(thr, &old->clk);
+
+	kt_stat_inc(thr, kt_stat_thread_destroy);
+	kt_stat_dec(thr, kt_stat_threads);
 }
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc)

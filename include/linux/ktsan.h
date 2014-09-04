@@ -19,7 +19,7 @@ void ktsan_init_early(void);
 void ktsan_init(void);
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
-void ktsan_thr_finish(void);
+void ktsan_thr_finish(struct ktsan_thr_s *old);
 void ktsan_thr_start(void);
 void ktsan_thr_stop(void);
 
