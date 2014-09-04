@@ -7,6 +7,8 @@
 
 void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 {
+	memset(new, 0, sizeof(*new));
+
 	new->id = tid;
 	kt_clk_init(thr, &new->clk);
 

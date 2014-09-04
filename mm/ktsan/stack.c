@@ -3,16 +3,6 @@
 #include <linux/kernel.h>
 #include <linux/stacktrace.h>
 
-static inline unsigned int pc_compress(unsigned long pc)
-{
-	return (pc & UINT_MAX);
-}
-
-static inline unsigned long pc_decompress(unsigned int pc)
-{
-	return ((ULONG_MAX - UINT_MAX) | pc);
-}
-
 static void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr)
 {
 	unsigned long entries[KT_MAX_STACK_FRAMES];
