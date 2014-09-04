@@ -67,8 +67,16 @@ kt_ctx_t kt_ctx;
 /**/
 
 #define LEAVE()							\
-	kt_inside_was = atomic_cmpxchg(&thr->inside, 1, 0);	\
-	BUG_ON(kt_inside_was != 1);				\
+	/* thr might become NULL in ktsan_thread_finish. */	\
+	thr = current->ktsan.thr;				\
+								\
+	if (thr) {						\
+		kt_inside_was =					\
+			atomic_cmpxchg(&thr->inside, 1, 0);	\
+		if (kt_inside_was != 1)\
+			pr_err("!# %lx\n", (uptr_t)thr);\
+		BUG_ON(kt_inside_was != 1);			\
+	}							\
 								\
 	ENABLE_INTERRUPTS(kt_flags);				\
 								\
@@ -109,6 +117,10 @@ void ktsan_init(void)
 	kt_stat_init();
 	kt_tests_init();
 
+	/* These stats were not recorded in kt_thr_create. */
+	kt_stat_inc(thr, kt_stat_thread_create);
+	kt_stat_inc(thr, kt_stat_threads);
+
 	inside = atomic_cmpxchg(&thr->inside, 1, 0);
 	BUG_ON(inside != 1);
 	ctx->enabled = 1;
@@ -125,12 +137,14 @@ void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
 	LEAVE();
 }
 
-void ktsan_thr_finish(void)
+/* XXX(xairy): rename to _destroy (pairs with _create)? */
+void ktsan_thr_finish(struct ktsan_thr_s *old)
 {
 	ENTER();
-	kt_thr_finish(thr, pc);
-	kt_cache_free(&kt_ctx.thr_cache, thr);
-	current->ktsan.thr = NULL;
+	kt_thr_finish(thr, pc, old->thr);
+	kt_cache_free(&kt_ctx.thr_cache, old->thr);
+	BUG_ON(old->thr == current->ktsan.thr && old != &current->ktsan);
+	old->thr = NULL;
 	LEAVE();
 }
 
