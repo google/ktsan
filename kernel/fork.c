@@ -1297,6 +1297,8 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	if (!p)
 		goto fork_out;
 
+	p->ktsan.thr = NULL;
+
 	ftrace_graph_init_task(p);
 
 	rt_mutex_init_task(p);
