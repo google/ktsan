@@ -20,7 +20,7 @@
 #define KT_THREAD_ID_BITS     13
 #define KT_CLOCK_BITS         42
 
-#define KT_MAX_THREAD_ID (4096 + 2048)
+#define KT_MAX_THREAD_ID 1024
 #define KT_MAX_STACK_FRAMES 64
 
 #define KT_COLLECT_STATS 1
@@ -60,6 +60,7 @@ typedef enum kt_event_type_e		kt_event_type_t;
 typedef struct kt_event_s		kt_event_t;
 typedef struct kt_part_header_s		kt_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
+typedef struct kt_id_manager_s		kt_id_manager_t;
 
 /* Stack. */
 
@@ -164,10 +165,19 @@ struct kt_tab_test_s {
 	unsigned long data[4];
 };
 
+/* Ids. */
+
+struct kt_id_manager_s {
+	int			ids[KT_MAX_THREAD_ID];
+	int			head;
+	spinlock_t		lock;
+};
+
 /* Threads. */
 
 struct kt_thr_s {
-	unsigned		id;
+	int			kid; /* kernel thread id */
+	int			id;
 	atomic_t		inside;	/* Already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
@@ -212,6 +222,7 @@ struct kt_ctx_s {
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
 	kt_cache_t		thr_cache;
+	kt_id_manager_t		thr_id_manager;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -254,6 +265,11 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 	clk->time[tid]++;
 }
 
+/* Ids. */
+
+void kt_id_init(kt_id_manager_t *mgr);
+int kt_id_new(kt_id_manager_t *mgr);
+void kt_id_free(kt_id_manager_t *mgr, int id);
 
 /* Threads. */
 
