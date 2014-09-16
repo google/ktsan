@@ -18,6 +18,7 @@ void kt_report_race(kt_race_info_t *info)
 		}
 	}
 
+	/* TODO(xairy): print kernel thread id in a report. */
 	pr_err("==================================================================\n");
 	pr_err("ThreadSanitizer: data-race in %s\n", function);
 	pr_err("%s of size %d by thread T%d:\n",
