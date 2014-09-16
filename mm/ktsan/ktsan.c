@@ -273,7 +273,8 @@ EXPORT_SYMBOL(ktsan_read8);
 void ktsan_read16(void *addr)
 {
 	ENTER();
-	kt_access_range(thr, pc, (uptr_t)addr, 16, true);
+	kt_access(thr, pc, (uptr_t)addr, 3, true);
+	kt_access(thr, pc, (uptr_t)addr + 8, 3, true);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_read16);
@@ -313,7 +314,8 @@ EXPORT_SYMBOL(ktsan_write8);
 void ktsan_write16(void *addr)
 {
 	ENTER();
-	kt_access(thr, pc, (uptr_t)addr, 16, false);
+	kt_access(thr, pc, (uptr_t)addr, 3, false);
+	kt_access(thr, pc, (uptr_t)addr + 8, 3, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_write16);
