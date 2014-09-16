@@ -2311,8 +2311,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 {
 	struct mm_struct *mm, *oldmm;
 
-	if (current != rq->idle)
-		ktsan_thr_stop();
+	ktsan_thr_stop();
 
 	prepare_task_switch(rq, prev, next);
 
@@ -2353,8 +2352,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	barrier();
 
 	/* Has to be before finish_task_switch. */
-	if (current != rq->idle)
-		ktsan_thr_start();
+	ktsan_thr_start();
 
 	/*
 	 * this_rq must be evaluated again because prev may have moved

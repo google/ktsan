@@ -1560,6 +1560,7 @@ struct task_struct *fork_idle(int cpu)
 	struct task_struct *task;
 	task = copy_process(CLONE_VM, 0, 0, NULL, &init_struct_pid, 0);
 	if (!IS_ERR(task)) {
+		ktsan_thr_create(&task->ktsan, task->pid);
 		init_idle_pids(task->pids);
 		init_idle(task, cpu);
 	}
@@ -1611,6 +1612,8 @@ long do_fork(unsigned long clone_flags,
 		struct completion vfork;
 		struct pid *pid;
 
+		ktsan_thr_create(&p->ktsan, p->pid);
+
 		trace_sched_process_fork(current, p);
 
 		pid = get_task_pid(p, PIDTYPE_PID);
@@ -1624,8 +1627,6 @@ long do_fork(unsigned long clone_flags,
 			init_completion(&vfork);
 			get_task_struct(p);
 		}
-
-		ktsan_thr_create(&p->ktsan, p->pid);
 
 		wake_up_new_task(p);
 
