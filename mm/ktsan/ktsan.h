@@ -229,12 +229,12 @@ extern kt_ctx_t kt_ctx;
 
 /* Stack. */
 
-static inline unsigned int pc_compress(unsigned long pc)
+static inline unsigned int kt_pc_compress(unsigned long pc)
 {
 	return (pc & UINT_MAX);
 }
 
-static inline unsigned long pc_decompress(unsigned int pc)
+static inline unsigned long kt_pc_decompress(unsigned int pc)
 {
 	return ((ULONG_MAX - UINT_MAX) | pc);
 }
