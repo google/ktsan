@@ -42,9 +42,9 @@ static inline int atomic_read(const atomic_t *v)
 static inline void atomic_set(atomic_t *v, int i)
 {
 #ifdef CONFIG_KTSAN
-	v->counter = i;
-#else
 	ktsan_atomic32_set(v, i);
+#else
+	v->counter = i;
 #endif
 }
 
