@@ -109,6 +109,8 @@ struct shadow {
 	unsigned long read	: 1;
 };
 
+/* Reports. */
+
 struct kt_race_info_s {
 	unsigned long		addr;
 	struct shadow		old;
@@ -162,7 +164,17 @@ struct kt_tab_test_s {
 	unsigned long data[4];
 };
 
-/* Stats. */
+/* Threads. */
+
+struct kt_thr_s {
+	unsigned		id;
+	atomic_t		inside;	/* Already inside of ktsan runtime */
+	kt_cpu_t		*cpu;
+	kt_clk_t		clk;
+	kt_trace_t		trace;
+};
+
+/* Statistics. */
 
 enum kt_stat_e {
 	kt_stat_access_read,
@@ -191,14 +203,6 @@ struct kt_cpu_s {
 	kt_stats_t		stat;
 };
 
-struct kt_thr_s {
-	unsigned		id;
-	atomic_t		inside;	/* Already inside of ktsan runtime */
-	kt_cpu_t		*cpu;
-	kt_clk_t		clk;
-	kt_trace_t		trace;
-};
-
 /* Global. */
 
 struct kt_ctx_s {
@@ -225,6 +229,84 @@ static inline unsigned long pc_decompress(unsigned int pc)
 }
 
 void kt_stack_print_current(unsigned long strip_addr);
+
+/* Clocks. */
+
+void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk);
+void kt_clk_destroy(kt_thr_t *thr, kt_clk_t *clk);
+void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
+
+static inline
+kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
+{
+	WARN_ON_ONCE(tid >= KT_MAX_THREAD_ID);
+	if (tid >= KT_MAX_THREAD_ID)
+		return 0;
+	return clk->time[tid];
+}
+
+static inline
+void kt_clk_tick(kt_clk_t *clk, int tid)
+{
+	WARN_ON_ONCE(tid >= KT_MAX_THREAD_ID);
+	if (tid >= KT_MAX_THREAD_ID)
+		return;
+	clk->time[tid]++;
+}
+
+
+/* Threads. */
+
+void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
+void kt_thr_destroy(kt_thr_t *thr, uptr_t pc, kt_thr_t *old);
+void kt_thr_start(kt_thr_t *thr, uptr_t pc);
+void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
+
+/* Synchronization. */
+
+void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+
+void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
+void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
+void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
+
+int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
+
+int kt_atomic32_pure_read(const void *addr);
+void kt_atomic32_pure_set(void *addr, int value);
+
+/* Memory block allocation. */
+
+void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
+void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
+
+/* Generic memory access. */
+
+void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
+void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
+
+/* Reports. */
+
+void kt_report_race(kt_race_info_t *info);
+
+/* Internal allocator. */
+
+void kt_cache_init(kt_cache_t *cache, size_t obj_size, size_t obj_max_num);
+void kt_cache_destroy(kt_cache_t *cache);
+void *kt_cache_alloc(kt_cache_t *cache);
+void kt_cache_free(kt_cache_t *cache, void *obj);
+
+/*
+ * Hash table. Maps an address to an arbitrary object.
+ * The object must start with kt_tab_obj_t.
+ */
+
+void kt_tab_init(kt_tab_t *tab, unsigned size,
+		 unsigned obj_size, unsigned obj_max_num);
+void kt_tab_destroy(kt_tab_t *tab);
+void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
 /* Statistics. Enabled only when KT_COLLECT_STATS = 1. */
 
@@ -257,82 +339,5 @@ static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
 /* Tests. */
 
 void kt_tests_init(void);
-
-/* Threads. */
-
-void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
-void kt_thr_destroy(kt_thr_t *thr, uptr_t pc, kt_thr_t *old);
-void kt_thr_start(kt_thr_t *thr, uptr_t pc);
-void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
-
-/* Clocks. */
-
-void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk);
-void kt_clk_destroy(kt_thr_t *thr, kt_clk_t *clk);
-void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
-
-static inline
-kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
-{
-	WARN_ON_ONCE(tid >= KT_MAX_THREAD_ID);
-	if (tid >= KT_MAX_THREAD_ID)
-		return 0;
-	return clk->time[tid];
-}
-
-static inline
-void kt_clk_tick(kt_clk_t *clk, int tid)
-{
-	WARN_ON_ONCE(tid >= KT_MAX_THREAD_ID);
-	if (tid >= KT_MAX_THREAD_ID)
-		return;
-	clk->time[tid]++;
-}
-
-/* Synchronization. */
-
-void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-
-void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
-void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
-void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
-
-int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
-
-int kt_atomic32_pure_read(const void *addr);
-void kt_atomic32_pure_set(void *addr, int value);
-
-/* Memory block allocation. */
-
-void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
-void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
-
-/*
- * Hash table. Maps an address to an arbitrary object.
- * The object must start with kt_tab_obj_t.
- */
-
-void kt_tab_init(kt_tab_t *tab, unsigned size,
-		 unsigned obj_size, unsigned obj_max_num);
-void kt_tab_destroy(kt_tab_t *tab);
-void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
-
-/* Generic memory access. */
-
-void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
-void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
-
-/* Reports. */
-
-void kt_report_race(kt_race_info_t *info);
-
-/* Internal allocator. */
-
-void kt_cache_init(kt_cache_t *cache, size_t obj_size, size_t obj_max_num);
-void kt_cache_destroy(kt_cache_t *cache);
-void *kt_cache_alloc(kt_cache_t *cache);
-void kt_cache_free(kt_cache_t *cache, void *obj);
 
 #endif /* __X86_MM_KTSAN_KTSAN_H */
