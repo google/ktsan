@@ -10,7 +10,9 @@ void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 {
 	memset(new, 0, sizeof(*new));
 
-	new->id = tid;
+	new->kid = tid;
+	new->id = kt_id_new(&kt_ctx.thr_id_manager);
+	BUG_ON(new->id == -1); /* Out of ids. */
 	kt_clk_init(thr, &new->clk);
 
 	/*if (thr != NULL) {
@@ -31,6 +33,7 @@ void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 
 void kt_thr_destroy(kt_thr_t *thr, uptr_t pc, kt_thr_t *old)
 {
+	kt_id_free(&kt_ctx.thr_id_manager, old->id);
 	kt_clk_destroy(thr, &old->clk);
 
 	kt_stat_inc(thr, kt_stat_thread_destroy);
