@@ -21,7 +21,7 @@ static void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr)
 		beg++;
 
 	for (i = 0; i < end - beg; i++)
-		stack->pc[i] = pc_compress(entries[beg + i]);
+		stack->pc[i] = kt_pc_compress(entries[beg + i]);
 	stack->size = end - beg;
 }
 
@@ -33,7 +33,7 @@ static void kt_stack_print(kt_stack_t *stack)
 	for (i = 0; i < stack->size; i++) {
 		if (stack->pc[i] == UINT_MAX || stack->pc[i] == 0)
 			break;
-		pc = pc_decompress(stack->pc[i]);
+		pc = kt_pc_decompress(stack->pc[i]);
 		pr_err(" [<%p>] %pS\n", (void *)pc, (void *)pc);
 	}
 }
