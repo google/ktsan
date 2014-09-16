@@ -101,6 +101,8 @@ void ktsan_init(void)
 
 	ctx = &kt_ctx;
 
+	kt_id_init(&ctx->thr_id_manager);
+
 	thr = kt_cache_alloc(&ctx->thr_cache);
 	BUG_ON(thr == NULL); /* Out of memory. */
 	kt_thr_create(NULL, (uptr_t)_RET_IP_, thr, current->pid);
