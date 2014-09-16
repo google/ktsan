@@ -36,15 +36,6 @@ void ktsan_mtx_pre_unlock(void *addr, bool write);
 int ktsan_atomic32_read(const void *addr);
 void ktsan_atomic32_set(void *addr, int value);
 
-void ktsan_read1(void *addr);
-void ktsan_read2(void *addr);
-void ktsan_read4(void *addr);
-void ktsan_read8(void *addr);
-void ktsan_write1(void *addr);
-void ktsan_write2(void *addr);
-void ktsan_write4(void *addr);
-void ktsan_write8(void *addr);
-
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node);
 void ktsan_free_page(struct page *page, unsigned int order);
@@ -61,7 +52,7 @@ static inline void ktsan_init_early(void) {}
 static inline void ktsan_init(void) {}
 
 static inline void ktsan_thr_create(struct ktsan_thr_s *new, int tid) {}
-static inline void ktsan_thr_destroy(void) {}
+static inline void ktsan_thr_destroy(struct ktsan_thr_s *old) {}
 static inline void ktsan_thr_start(void) {}
 static inline void ktsan_thr_stop(void) {}
 
@@ -71,24 +62,12 @@ static inline void ktsan_memblock_free(void *addr, size_t size) {}
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
 
-static inline void ktsan_mtx_pre_lock(void *addr, bool write) {}
-static inline void ktsan_mtx_post_lock(void *addr, bool write) {}
+static inline void ktsan_mtx_pre_lock(void *addr, bool write, bool try) {}
+static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try) {}
 static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
 
-static inline int ktsan_atomic32_read(const void *addr)
-{
-	return 0;
-}
-static inline void ktsan_atomic32_set(void *addr, int value) {}
-
-static inline void ktsan_read1(void *addr) {}
-static inline void ktsan_read2(void *addr) {}
-static inline void ktsan_read4(void *addr) {}
-static inline void ktsan_read8(void *addr) {}
-static inline void ktsan_write1(void *addr) {}
-static inline void ktsan_write2(void *addr) {}
-static inline void ktsan_write4(void *addr) {}
-static inline void ktsan_write8(void *addr) {}
+/* ktsan_atomic32_read is not called in non-ktsan build. */
+/* ktsan_atomic32_set is not called in non-ktsan build. */
 
 static inline void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node) {}
