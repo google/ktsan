@@ -78,7 +78,7 @@ kt_ctx_t kt_ctx;
 								\
 	ENABLE_INTERRUPTS(kt_flags);				\
 								\
-	exit:							\
+exit:								\
 /**/
 
 void __init ktsan_init_early(void)
@@ -338,38 +338,38 @@ void ktsan_func_exit(void *call_pc)
 }
 EXPORT_SYMBOL(ktsan_func_exit);
 
-void __tsan_read1(unsigned long addr) __attribute__ ((alias ("ktsan_read1")));
+void __tsan_read1(unsigned long addr) __attribute__ ((alias("ktsan_read1")));
 EXPORT_SYMBOL(__tsan_read1);
 
-void __tsan_read2(unsigned long addr) __attribute__ ((alias ("ktsan_read2")));
+void __tsan_read2(unsigned long addr) __attribute__ ((alias("ktsan_read2")));
 EXPORT_SYMBOL(__tsan_read2);
 
-void __tsan_read4(unsigned long addr) __attribute__ ((alias ("ktsan_read4")));
+void __tsan_read4(unsigned long addr) __attribute__ ((alias("ktsan_read4")));
 EXPORT_SYMBOL(__tsan_read4);
 
-void __tsan_read8(unsigned long addr) __attribute__ ((alias ("ktsan_read8")));
+void __tsan_read8(unsigned long addr) __attribute__ ((alias("ktsan_read8")));
 EXPORT_SYMBOL(__tsan_read8);
 
-void __tsan_read16(unsigned long addr) __attribute__ ((alias ("ktsan_read16")));
+void __tsan_read16(unsigned long addr) __attribute__ ((alias("ktsan_read16")));
 EXPORT_SYMBOL(__tsan_read16);
 
-void __tsan_write1(unsigned long addr) __attribute__ ((alias ("ktsan_write1")));
+void __tsan_write1(unsigned long addr) __attribute__ ((alias("ktsan_write1")));
 EXPORT_SYMBOL(__tsan_write1);
 
-void __tsan_write2(unsigned long addr) __attribute__ ((alias ("ktsan_write2")));
+void __tsan_write2(unsigned long addr) __attribute__ ((alias("ktsan_write2")));
 EXPORT_SYMBOL(__tsan_write2);
 
-void __tsan_write4(unsigned long addr) __attribute__ ((alias ("ktsan_write4")));
+void __tsan_write4(unsigned long addr) __attribute__ ((alias("ktsan_write4")));
 EXPORT_SYMBOL(__tsan_write4);
 
-void __tsan_write8(unsigned long addr) __attribute__ ((alias ("ktsan_write8")));
+void __tsan_write8(unsigned long addr) __attribute__ ((alias("ktsan_write8")));
 EXPORT_SYMBOL(__tsan_write8);
 
-void __tsan_write16(unsigned long addr) __attribute__ ((alias ("ktsan_write16")));
+void __tsan_write16(unsigned long addr) __attribute__ ((alias("ktsan_write16")));
 EXPORT_SYMBOL(__tsan_write16);
 
-void __tsan_func_entry(unsigned long addr) __attribute__ ((alias ("ktsan_func_entry")));
+void __tsan_func_entry(unsigned long addr) __attribute__ ((alias("ktsan_func_entry")));
 EXPORT_SYMBOL(__tsan_func_entry);
 
-void __tsan_func_exit(unsigned long addr) __attribute__ ((alias ("ktsan_func_exit")));
+void __tsan_func_exit(unsigned long addr) __attribute__ ((alias("ktsan_func_exit")));
 EXPORT_SYMBOL(__tsan_func_exit);
