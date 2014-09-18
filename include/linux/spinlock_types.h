@@ -74,18 +74,11 @@ typedef struct spinlock {
 #endif
 	};
 
-#ifdef CONFIG_KTSAN
 	unsigned long *clock;
-#endif
 } spinlock_t;
 
-#ifdef CONFIG_KTSAN
-#define __SPIN_LOCK_INITIALIZER(lockname) \
-	{ { .rlock = __RAW_SPIN_LOCK_INITIALIZER(lockname) }, .clock = NULL }
-#else
 #define __SPIN_LOCK_INITIALIZER(lockname) \
 	{ { .rlock = __RAW_SPIN_LOCK_INITIALIZER(lockname) } }
-#endif
 
 #define __SPIN_LOCK_UNLOCKED(lockname) \
 	(spinlock_t ) __SPIN_LOCK_INITIALIZER(lockname)
