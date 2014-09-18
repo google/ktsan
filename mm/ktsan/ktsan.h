@@ -84,7 +84,7 @@ struct kt_event_s {
 };
 
 struct kt_part_header_s {
-	kt_stack_t		stack;	
+	kt_stack_t		stack;
 };
 
 struct kt_trace_s {
@@ -331,13 +331,9 @@ void kt_stat_init(void);
 static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
 #if KT_COLLECT_STATS
-	/* FIXME(xairy): thr->cpu might be NULL sometimes. */
-	if (thr->cpu == NULL) {
-		pr_err("TSan: WARNING: cpu for thread %d is NULL!\n", thr->id);
-		/*kt_print_current_stack_trace((u64)_RET_IP_);*/
-		pr_err("\n");
-		thr->cpu = this_cpu_ptr(kt_ctx.cpus);
-	}
+	WARN_ON(thr->cpu == NULL);
+	if (thr->cpu == NULL)
+		return;
 	thr->cpu->stat.stat[what] += x;
 #endif
 }
