@@ -3,6 +3,7 @@
 
 #include <linux/compiler.h>
 #include <linux/types.h>
+#include <linux/ktsan.h>
 #include <asm/processor.h>
 #include <asm/alternative.h>
 #include <asm/cmpxchg.h>
@@ -24,7 +25,11 @@
  */
 static inline int atomic_read(const atomic_t *v)
 {
+#ifdef CONFIG_KTSAN
+	return ktsan_atomic32_read(v);
+#else
 	return (*(volatile int *)&(v)->counter);
+#endif
 }
 
 /**
@@ -36,7 +41,11 @@ static inline int atomic_read(const atomic_t *v)
  */
 static inline void atomic_set(atomic_t *v, int i)
 {
+#ifdef CONFIG_KTSAN
+	ktsan_atomic32_set(v, i);
+#else
 	v->counter = i;
+#endif
 }
 
 /**

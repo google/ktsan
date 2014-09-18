@@ -3334,7 +3334,7 @@ slab_alloc_node(struct kmem_cache *cachep, gfp_t flags, int nodeid,
 
 	if (likely(ptr)) {
 		kmemcheck_slab_alloc(cachep, flags, ptr, cachep->object_size);
-		ktsan_memblock_alloc(cachep, ptr);
+		ktsan_memblock_alloc(ptr, cachep->object_size);
 		if (unlikely(flags & __GFP_ZERO))
 			memset(ptr, 0, cachep->object_size);
 	}
@@ -3400,7 +3400,7 @@ slab_alloc(struct kmem_cache *cachep, gfp_t flags, unsigned long caller)
 
 	if (likely(objp)) {
 		kmemcheck_slab_alloc(cachep, flags, objp, cachep->object_size);
-		ktsan_memblock_alloc(cachep, objp);
+		ktsan_memblock_alloc(objp, cachep->object_size);
 		if (unlikely(flags & __GFP_ZERO))
 			memset(objp, 0, cachep->object_size);
 	}
@@ -3520,7 +3520,7 @@ static inline void __cache_free(struct kmem_cache *cachep, void *objp,
 	kmemleak_free_recursive(objp, cachep->flags);
 	objp = cache_free_debugcheck(cachep, objp, caller);
 
-	ktsan_memblock_free(cachep, objp);
+	ktsan_memblock_free(objp, cachep->object_size);
 	kmemcheck_slab_free(cachep, objp, cachep->object_size);
 
 	/*

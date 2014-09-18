@@ -2235,6 +2235,8 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
 		if (prev->sched_class->task_dead)
 			prev->sched_class->task_dead(prev);
 
+		ktsan_thr_destroy(&prev->ktsan);
+
 		/*
 		 * Remove function-return probe instances associated with this
 		 * task and put them back on the free list.
@@ -2309,8 +2311,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 {
 	struct mm_struct *mm, *oldmm;
 
-	if (current != rq->idle)
-		ktsan_thr_stop();
+	ktsan_thr_stop();
 
 	prepare_task_switch(rq, prev, next);
 
@@ -2351,8 +2352,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	barrier();
 
 	/* Has to be before finish_task_switch. */
-	if (current != rq->idle)
-		ktsan_thr_start();
+	ktsan_thr_start();
 
 	/*
 	 * this_rq must be evaluated again because prev may have moved

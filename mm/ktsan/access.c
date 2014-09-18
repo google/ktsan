@@ -121,14 +121,13 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	int i;
 	bool stored;
 
-	BUG_ON((addr & ~(KT_GRAIN - 1)) !=
-	       ((addr + (1 << size) - 1) & ~(KT_GRAIN - 1)));
-
 	kt_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
 	kt_stat_inc(thr, kt_stat_access_size1 + size);
 
 	slots = map_memory_to_shadow(addr);
-	BUG_ON(!slots); /* FIXME: might be NULL */
+
+	if (!slots)
+		return; /* FIXME? */
 
 	kt_clk_tick(&thr->clk, thr->id);
 	current_clock = kt_clk_get(&thr->clk, thr->id);
@@ -146,8 +145,8 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 		stored |= update_one_shadow_slot(thr, addr, &slots[i],
 						 value, stored);
 
-	pr_err("thread: %d, addr: %lx, size: %u, read: %d, stored: %d\n",
-		 (int)thr->id, addr, (int)size, (int)read, stored);
+	/*pr_err("thread: %d, addr: %lx, size: %u, read: %d, stored: %d\n",
+		 (int)thr->id, addr, (int)size, (int)read, stored);*/
 
 	if (!stored) {
 		/* Evict random shadow slot. */

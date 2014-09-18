@@ -5,27 +5,23 @@
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
+#include <linux/mutex.h>
 #include <linux/printk.h>
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
+#include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/uaccess.h>
 
-#define KT_TEST_READ_1(addr) \
-	(ktsan_read1(addr), *((char *)addr))
-
-#define KT_TEST_WRITE_4(addr, value) \
-	(ktsan_write4(addr), *((int *)addr) = (value))
-
-/* KTsan test: race. */
+/* ktsan test: race. */
 
 DECLARE_COMPLETION(race_thr_fst_compl);
 DECLARE_COMPLETION(race_thr_snd_compl);
 
 static int race_thr_fst_func(void *arg)
 {
-	int value = KT_TEST_READ_1(arg);
+	int value = *((char *)arg);
 
 	complete(&race_thr_fst_compl);
 
@@ -34,7 +30,7 @@ static int race_thr_fst_func(void *arg)
 
 static int race_thr_snd_func(void *arg)
 {
-	KT_TEST_WRITE_4(arg, 1);
+	*((int *)arg) = 1;
 
 	complete(&race_thr_snd_compl);
 
@@ -46,7 +42,7 @@ static void kt_test_race(void)
 	struct task_struct *thr_fst, *thr_snd;
 	char thr_fst_name[] = "race-thr-fst";
 	char thr_snd_name[] = "race-thr-snd";
-	int *value = kmalloc(sizeof(int), GFP_KERNEL);
+	int *value = kmalloc(32, GFP_KERNEL);
 
 	BUG_ON(!value);
 
@@ -71,13 +67,53 @@ static void kt_test_race(void)
 	pr_err("TSan: end of test.\n");
 }
 
-/* KTSan test: spinlock. */
+/* ktsan test: thread create. */
+
+DECLARE_COMPLETION(thr_crt_thr_compl);
+
+static int thr_crt_thr_func(void *arg)
+{
+	*((int *)arg) = 1;
+
+	complete(&thr_crt_thr_compl);
+
+	return 0;
+}
+
+static void kt_test_thread_create(void)
+{
+	struct task_struct *thr;
+	char thr_name[] = "thr-crt-thr";
+	int *value = kmalloc(32, GFP_KERNEL);
+
+	BUG_ON(!value);
+
+	pr_err("TSan: starting thread create test, no race expected.\n");
+
+	*value = 0;
+
+	thr = kthread_create(thr_crt_thr_func, value, thr_name);
+
+	if (IS_ERR(thr)) {
+		pr_err("TSan: could not create kernel thread.\n");
+		return;
+	}
+
+	wake_up_process(thr);
+
+	wait_for_completion(&thr_crt_thr_compl);
+
+	kfree(value);
+
+	pr_err("TSan: end of test.\n");
+}
+
+/* ktsan test: spinlock. */
 
 DECLARE_COMPLETION(spinlock_thr_fst_compl);
 DECLARE_COMPLETION(spinlock_thr_snd_compl);
 
 DEFINE_SPINLOCK(spinlock_lock);
-kt_clk_t spinlock_lock_clk;
 
 int fst_id;
 int snd_id;
@@ -89,7 +125,7 @@ static int spinlock_thr_fst_func(void *arg)
 	int value;
 
 	spin_lock(&spinlock_lock);
-	value = KT_TEST_READ_1(arg);
+	value = *((char *)arg);
 	spin_unlock(&spinlock_lock);
 
 	complete(&spinlock_thr_fst_compl);
@@ -100,7 +136,7 @@ static int spinlock_thr_fst_func(void *arg)
 static int spinlock_thr_snd_func(void *arg)
 {
 	spin_lock(&spinlock_lock);
-	KT_TEST_WRITE_4(arg, 1);
+	*((int *)arg) = 1;
 	spin_unlock(&spinlock_lock);
 
 	complete(&spinlock_thr_snd_compl);
@@ -117,13 +153,11 @@ static void kt_test_spinlock(void)
 	 * Different kmalloc size to ensure that the address of the allocated
 	 * block of memory will be different from the one in race test for now.
 	 */
-	int *value = kmalloc(128, GFP_KERNEL);
+	int *value = kmalloc(32, GFP_KERNEL);
 
 	BUG_ON(!value);
 
 	pr_err("TSan: starting spinlock test, no race expected.\n");
-
-	kt_clk_init(NULL, &spinlock_lock_clk);
 
 	thr_fst = kthread_create(spinlock_thr_fst_func, value, thr_fst_name);
 	thr_snd = kthread_create(spinlock_thr_snd_func, value, thr_snd_name);
@@ -155,6 +189,240 @@ static void kt_test_spinlock(void)
 			snd_id, fst_clk->time[snd_id],
 		snd_id,	fst_id, snd_clk->time[fst_id],
 			snd_id, snd_clk->time[snd_id]);
+
+	kfree(value);
+
+	pr_err("TSan: end of test.\n");
+}
+
+/* ktsan test: atomic. */
+
+DECLARE_COMPLETION(atomic_thr_fst_compl);
+DECLARE_COMPLETION(atomic_thr_snd_compl);
+
+static int atomic_thr_fst_func(void *arg)
+{
+	int value = atomic_read((atomic_t *)arg);
+
+	complete(&atomic_thr_fst_compl);
+
+	return value;
+}
+
+static int atomic_thr_snd_func(void *arg)
+{
+	atomic_set((atomic_t *)arg, 1);
+
+	complete(&atomic_thr_snd_compl);
+
+	return 0;
+}
+
+static void kt_test_atomic(void)
+{
+	struct task_struct *thr_fst, *thr_snd;
+	char thr_fst_name[] = "atomic-thr-fst";
+	char thr_snd_name[] = "atomic-thr-snd";
+	int *value = kmalloc(32, GFP_KERNEL);
+
+	BUG_ON(!value);
+
+	pr_err("TSan: starting atomic test, no race expected.\n");
+
+	thr_fst = kthread_create(atomic_thr_fst_func, value, thr_fst_name);
+	thr_snd = kthread_create(atomic_thr_snd_func, value, thr_snd_name);
+
+	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
+		pr_err("TSan: could not create kernel threads.\n");
+		return;
+	}
+
+	wake_up_process(thr_fst);
+	wake_up_process(thr_snd);
+
+	wait_for_completion(&atomic_thr_fst_compl);
+	wait_for_completion(&atomic_thr_snd_compl);
+
+	kfree(value);
+
+	pr_err("TSan: end of test.\n");
+}
+
+/* ktsan test: completion. */
+
+DECLARE_COMPLETION(compl_thr_fst_compl);
+DECLARE_COMPLETION(compl_thr_snd_compl);
+
+DECLARE_COMPLETION(compl_access_compl);
+
+static int compl_thr_fst_func(void *arg)
+{
+	int value;
+
+	wait_for_completion(&compl_access_compl);
+	value = *((char *)arg);
+
+	complete(&compl_thr_fst_compl);
+
+	return value;
+}
+
+static int compl_thr_snd_func(void *arg)
+{
+	*((int *)arg) = 1;
+	complete(&compl_access_compl);
+
+	complete(&compl_thr_snd_compl);
+
+	return 0;
+}
+
+static void kt_test_completion(void)
+{
+	struct task_struct *thr_fst, *thr_snd;
+	char thr_fst_name[] = "compl-thr-fst";
+	char thr_snd_name[] = "compl-thr-snd";
+	int *value = kmalloc(32, GFP_KERNEL);
+
+	BUG_ON(!value);
+
+	pr_err("TSan: starting completion test, no race expected.\n");
+
+	thr_fst = kthread_create(compl_thr_fst_func, value, thr_fst_name);
+	thr_snd = kthread_create(compl_thr_snd_func, value, thr_snd_name);
+
+	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
+		pr_err("TSan: could not create kernel threads.\n");
+		return;
+	}
+
+	wake_up_process(thr_fst);
+	wake_up_process(thr_snd);
+
+	wait_for_completion(&compl_thr_fst_compl);
+	wait_for_completion(&compl_thr_snd_compl);
+
+	kfree(value);
+
+	pr_err("TSan: end of test.\n");
+}
+
+/* ktsan test: mutex. */
+
+DECLARE_COMPLETION(mutex_thr_fst_compl);
+DECLARE_COMPLETION(mutex_thr_snd_compl);
+
+DEFINE_MUTEX(mutex_access_mutex);
+
+static int mutex_thr_fst_func(void *arg)
+{
+	int value;
+
+	mutex_lock(&mutex_access_mutex);
+	value = *((char *)arg);
+	mutex_unlock(&mutex_access_mutex);
+
+	complete(&mutex_thr_fst_compl);
+
+	return value;
+}
+
+static int mutex_thr_snd_func(void *arg)
+{
+	mutex_lock(&mutex_access_mutex);
+	*((int *)arg) = 1;
+	mutex_unlock(&mutex_access_mutex);
+
+	complete(&mutex_thr_snd_compl);
+
+	return 0;
+}
+
+static void kt_test_mutex(void)
+{
+	struct task_struct *thr_fst, *thr_snd;
+	char thr_fst_name[] = "mutex-thr-fst";
+	char thr_snd_name[] = "mutex-thr-snd";
+	int *value = kmalloc(32, GFP_KERNEL);
+
+	BUG_ON(!value);
+
+	pr_err("TSan: starting mutex test, no race expected.\n");
+
+	thr_fst = kthread_create(mutex_thr_fst_func, value, thr_fst_name);
+	thr_snd = kthread_create(mutex_thr_snd_func, value, thr_snd_name);
+
+	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
+		pr_err("TSan: could not create kernel threads.\n");
+		return;
+	}
+
+	wake_up_process(thr_fst);
+	wake_up_process(thr_snd);
+
+	wait_for_completion(&mutex_thr_fst_compl);
+	wait_for_completion(&mutex_thr_snd_compl);
+
+	kfree(value);
+
+	pr_err("TSan: end of test.\n");
+}
+
+/* ktsan test: semaphore. */
+
+DECLARE_COMPLETION(sema_thr_fst_compl);
+DECLARE_COMPLETION(sema_thr_snd_compl);
+
+DEFINE_SEMAPHORE(sema_access_sema);
+
+static int sema_thr_fst_func(void *arg)
+{
+	int value;
+
+	down(&sema_access_sema);
+	value = *((char *)arg);
+	up(&sema_access_sema);
+
+	complete(&sema_thr_fst_compl);
+
+	return value;
+}
+
+static int sema_thr_snd_func(void *arg)
+{
+	down(&sema_access_sema);
+	*((int *)arg) = 1;
+	up(&sema_access_sema);
+
+	complete(&sema_thr_snd_compl);
+
+	return 0;
+}
+
+static void kt_test_semaphore(void)
+{
+	struct task_struct *thr_fst, *thr_snd;
+	char thr_fst_name[] = "sema-thr-fst";
+	char thr_snd_name[] = "sema-thr-snd";
+	int *value = kmalloc(32, GFP_KERNEL);
+
+	BUG_ON(!value);
+
+	pr_err("TSan: starting semaphore test, no race expected.\n");
+
+	thr_fst = kthread_create(sema_thr_fst_func, value, thr_fst_name);
+	thr_snd = kthread_create(sema_thr_snd_func, value, thr_snd_name);
+
+	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
+		pr_err("TSan: could not create kernel threads.\n");
+		return;
+	}
+
+	wake_up_process(thr_fst);
+	wake_up_process(thr_snd);
+
+	wait_for_completion(&sema_thr_fst_compl);
+	wait_for_completion(&sema_thr_snd_compl);
 
 	kfree(value);
 
@@ -273,7 +541,17 @@ static void kt_run_tests(void)
 	pr_err("\n");
 	kt_test_race();
 	pr_err("\n");
+	kt_test_thread_create();
+	pr_err("\n");
 	kt_test_spinlock();
+	pr_err("\n");
+	kt_test_atomic();
+	pr_err("\n");
+	kt_test_completion();
+	pr_err("\n");
+	kt_test_mutex();
+	pr_err("\n");
+	kt_test_semaphore();
 	pr_err("\n");
 }
 
