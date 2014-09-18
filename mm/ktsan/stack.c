@@ -41,6 +41,7 @@ static void kt_stack_print(kt_stack_t *stack)
 void kt_stack_print_current(unsigned long strip_addr)
 {
 	kt_stack_t stack;
+
 	kt_stack_save_current(&stack, strip_addr);
 	kt_stack_print(&stack);
 }
