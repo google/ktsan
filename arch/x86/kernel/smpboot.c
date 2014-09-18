@@ -53,6 +53,7 @@
 #include <linux/stackprotector.h>
 #include <linux/gfp.h>
 #include <linux/cpuidle.h>
+#include <linux/ktsan.h>
 
 #include <asm/acpi.h>
 #include <asm/desc.h>
@@ -226,6 +227,7 @@ static void notrace start_secondary(void *unused)
 	cpu_init();
 	x86_cpuinit.early_percpu_clock_init();
 	preempt_disable();
+	ktsan_thr_start();
 	smp_callin();
 
 	enable_start_cpu0 = 0;
