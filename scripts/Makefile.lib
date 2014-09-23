@@ -125,7 +125,7 @@ endif
 #
 ifeq ($(CONFIG_KTSAN),y)
 _c_flags += $(if $(patsubst n%,, \
-	$(KTSAN_SANITIZE_$(basetarget).o)$(KTSAN_SANITIZE)), \
+	$(KTSAN_SANITIZE_$(basetarget).o)$(KTSAN_SANITIZE)y), \
 	$(CFLAGS_KTSAN))
 endif
 

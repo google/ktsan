@@ -25,8 +25,8 @@
 
 #define KT_COLLECT_STATS 1
 
-#define KT_TRACE_PARTS 64
-#define KT_TRACE_PART_SIZE (2 * 1024)
+#define KT_TRACE_PARTS 16
+#define KT_TRACE_PART_SIZE (2 * 1024 * 32)
 #define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
 
 /* Both arguments must be pointers. */
@@ -72,10 +72,12 @@ struct kt_stack_s {
 /* Trace. */
 
 enum kt_event_type_e {
+	kt_event_type_invalid,
 	kt_event_type_func_enter,
 	kt_event_type_func_exit,
 	kt_event_type_lock,
 	kt_event_type_unlock,
+	kt_event_type_mop, /* memory operation */
 };
 
 struct kt_event_s {
@@ -85,6 +87,7 @@ struct kt_event_s {
 
 struct kt_part_header_s {
 	kt_stack_t		stack;
+	kt_time_t		clock;
 };
 
 struct kt_trace_s {
@@ -92,6 +95,7 @@ struct kt_trace_s {
 	kt_event_t		events[KT_TRACE_SIZE];
 	unsigned long		position;
 	spinlock_t		lock;
+	int			setup;
 };
 
 /* Clocks. */
@@ -239,7 +243,16 @@ static inline unsigned long kt_pc_decompress(unsigned int pc)
 	return ((ULONG_MAX - UINT_MAX) | pc);
 }
 
+void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
+void kt_stack_print(kt_stack_t *stack);
 void kt_stack_print_current(unsigned long strip_addr);
+
+/* Trace. */
+
+void kt_trace_init(kt_trace_t *trace);
+void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, uptr_t addr);
+void kt_trace_restore_stack(kt_thr_t *thr, kt_stack_t *stack);
+void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 
 /* Clocks. */
 
@@ -303,6 +316,11 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 
+/* Function tracing. */
+
+void kt_func_entry(kt_thr_t *thr, uptr_t pc);
+void kt_func_exit(kt_thr_t *thr, uptr_t pc);
+
 /* Reports. */
 
 void kt_report_race(kt_race_info_t *info);
@@ -331,7 +349,7 @@ void kt_stat_init(void);
 static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
 #if KT_COLLECT_STATS
-	WARN_ON(thr->cpu == NULL);
+	WARN_ON_ONCE(thr->cpu == NULL);
 	if (thr->cpu == NULL)
 		return;
 	thr->cpu->stat.stat[what] += x;
@@ -351,5 +369,8 @@ static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
 /* Tests. */
 
 void kt_tests_init(void);
+void kt_tests_run_noinst(void);
+void kt_tests_run_inst(void);
+void kt_tests_run(void);
 
 #endif /* __X86_MM_KTSAN_KTSAN_H */

@@ -2,6 +2,8 @@
 # Makefile for the linux kernel.
 #
 
+KTSAN_SANITIZE_nmi.o = n
+
 extra-y                := head_$(BITS).o head$(BITS).o head.o vmlinux.lds
 
 CPPFLAGS_vmlinux.lds += -U$(UTS_MACHINE)
