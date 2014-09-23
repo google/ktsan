@@ -2,6 +2,8 @@
 # Building vDSO images for x86.
 #
 
+KTSAN_SANITIZE := n
+
 KBUILD_CFLAGS += $(DISABLE_LTO)
 
 VDSO64-$(CONFIG_X86_64)		:= y

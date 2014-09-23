@@ -3,7 +3,7 @@
 #include <linux/kernel.h>
 #include <linux/stacktrace.h>
 
-static void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr)
+void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr)
 {
 	unsigned long entries[KT_MAX_STACK_FRAMES];
 	unsigned int beg = 0, end, i;
@@ -16,23 +16,23 @@ static void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr)
 	};
 	save_stack_trace(&trace_info);
 
-	end = trace_info.nr_entries;
+	/* The last frame is always 0xffffffffffffffff. */
+	end = trace_info.nr_entries - 1;
 	while (entries[beg] != strip_addr && beg < end)
 		beg++;
 
+	/* Save stack frames in reversed order (deepest first). */
 	for (i = 0; i < end - beg; i++)
-		stack->pc[i] = kt_pc_compress(entries[beg + i]);
+		stack->pc[i] = kt_pc_compress(entries[end - 1 - i]);
 	stack->size = end - beg;
 }
 
-static void kt_stack_print(kt_stack_t *stack)
+void kt_stack_print(kt_stack_t *stack)
 {
 	int i;
 	long pc;
 
-	for (i = 0; i < stack->size; i++) {
-		if (stack->pc[i] == UINT_MAX || stack->pc[i] == 0)
-			break;
+	for (i = stack->size - 1; i >= 0; i--) {
 		pc = kt_pc_decompress(stack->pc[i]);
 		pr_err(" [<%p>] %pS\n", (void *)pc, (void *)pc);
 	}

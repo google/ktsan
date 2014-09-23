@@ -2,7 +2,8 @@
 # Makefile for the linux kernel.
 #
 
-#KTSAN_SANITIZE := y
+# XXX: messes up trace.
+KTSAN_SANITIZE_softirq.o = n
 
 obj-y     = fork.o exec_domain.o panic.o \
 	    cpu.o exit.o itimer.o time.o softirq.o resource.o \
