@@ -10,6 +10,8 @@ void kt_report_race(kt_race_info_t *info)
 	int i;
 	char function[MAX_FUNCTION_NAME_SIZE];
 
+	return;
+
 	sprintf(function, "%pS", (void *)info->strip_addr);
 	for (i = 0; i < MAX_FUNCTION_NAME_SIZE; i++) {
 		if (function[i] == '+') {

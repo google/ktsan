@@ -39,14 +39,15 @@ kt_ctx_t kt_ctx;
 								\
 	event_handled = false;					\
 								\
+	if (!kt_ctx.enabled)					\
+		goto exit;					\
+								\
 	/* Sometimes thread #1 is scheduled without calling	\
 	   ktsan_thr_start(). Some of such cases are caused	\
 	   by interrupts. Ignoring them for now. */		\
 	if (IN_INTERRUPT())					\
 		goto exit;					\
 								\
-	if (!kt_ctx.enabled)					\
-		goto exit;					\
 	if (!current)						\
 		goto exit;					\
 	if (!current->ktsan.thr)				\
@@ -126,6 +127,16 @@ void ktsan_init(void)
 	ctx->enabled = 1;
 
 	pr_err("TSan: enabled.\n");
+}
+
+/* FIXME(xairy): not sure if this is the best place for this
+   function, but it requires access to ENTER and LEAVE. */
+void kt_tests_run(void)
+{
+	ENTER();
+	kt_tests_run_noinst();
+	LEAVE();
+	kt_tests_run_inst();
 }
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
@@ -325,7 +336,7 @@ EXPORT_SYMBOL(ktsan_write16);
 void ktsan_func_entry(void *call_pc)
 {
 	ENTER();
-	/* TODO. */
+	kt_func_entry(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_func_entry);
@@ -333,7 +344,7 @@ EXPORT_SYMBOL(ktsan_func_entry);
 void ktsan_func_exit(void *call_pc)
 {
 	ENTER();
-	/* TODO. */
+	kt_func_exit(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_func_exit);
