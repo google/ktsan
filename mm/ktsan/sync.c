@@ -89,12 +89,14 @@ void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 {
+	kt_trace_add_event(thr, kt_event_type_lock, addr);
 	kt_clk_tick(&thr->clk, thr->id);
 	kt_sync_acquire(thr, pc, addr);
 }
 
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
+	kt_trace_add_event(thr, kt_event_type_unlock, addr);
 	kt_clk_tick(&thr->clk, thr->id);
 	kt_sync_release(thr, pc, addr);
 }

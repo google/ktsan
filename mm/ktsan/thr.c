@@ -14,11 +14,12 @@ void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 	new->id = kt_id_new(&kt_ctx.thr_id_manager);
 	BUG_ON(new->id == -1); /* Out of ids. */
 	kt_clk_init(thr, &new->clk);
+	kt_trace_init(&new->trace);
 
 	/*if (thr != NULL) {
 		pr_err("! created thread #%d by thread #%d\n",
 			(int)tid,  (int)thr->id);
-		kt_print_current_stack_trace((uptr_t)_RET_IP_);
+		//kt_print_current_stack_trace((uptr_t)_RET_IP_);
 		pr_err("\n");
 	}*/
 
