@@ -129,6 +129,7 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	if (!slots)
 		return; /* FIXME? */
 
+	kt_trace_add_event(thr, kt_event_type_mop, addr);
 	kt_clk_tick(&thr->clk, thr->id);
 	current_clock = kt_clk_get(&thr->clk, thr->id);
 
