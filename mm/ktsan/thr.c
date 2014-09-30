@@ -70,3 +70,8 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
+
+void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
+{
+	kt_clk_acquire(thr, &other->clk, &thr->clk);
+}

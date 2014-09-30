@@ -292,6 +292,7 @@ void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
 void kt_thr_destroy(kt_thr_t *thr, uptr_t pc, kt_thr_t *old);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
+void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other);
 
 /* Synchronization. */
 

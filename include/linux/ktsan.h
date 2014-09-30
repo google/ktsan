@@ -22,6 +22,7 @@ void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
 void ktsan_thr_destroy(struct ktsan_thr_s *old);
 void ktsan_thr_start(void);
 void ktsan_thr_stop(void);
+void ktsan_thr_wakeup(struct ktsan_thr_s *other);
 
 void ktsan_memblock_alloc(void *addr, size_t size);
 void ktsan_memblock_free(void *addr, size_t size);
@@ -55,6 +56,7 @@ static inline void ktsan_thr_create(struct ktsan_thr_s *new, int tid) {}
 static inline void ktsan_thr_destroy(struct ktsan_thr_s *old) {}
 static inline void ktsan_thr_start(void) {}
 static inline void ktsan_thr_stop(void) {}
+static inline void ktsan_thr_wakeup(struct ktsan_thr_s *other) {}
 
 static inline void ktsan_memblock_alloc(void *addr, size_t size) {}
 static inline void ktsan_memblock_free(void *addr, size_t size) {}
