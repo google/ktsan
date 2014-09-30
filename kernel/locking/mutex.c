@@ -863,9 +863,12 @@ int __sched mutex_trylock(struct mutex *lock)
 {
 	int ret;
 
+	ktsan_mtx_pre_lock(lock, true, true);
 	ret = __mutex_fastpath_trylock(&lock->count, __mutex_trylock_slowpath);
-	if (ret)
+	if (ret) {
 		mutex_set_owner(lock);
+		ktsan_mtx_post_lock(lock, true, true);
+	}
 
 	return ret;
 }
