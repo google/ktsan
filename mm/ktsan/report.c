@@ -5,10 +5,12 @@
 
 #define MAX_FUNCTION_NAME_SIZE (128)
 
-void kt_report_race(kt_race_info_t *info)
+void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 {
 	int i;
 	char function[MAX_FUNCTION_NAME_SIZE];
+	kt_thr_t *old_thr;
+	kt_stack_t stack;
 
 	return;
 
@@ -26,11 +28,19 @@ void kt_report_race(kt_race_info_t *info)
 	pr_err("%s of size %d by thread T%d:\n",
 		info->new.read ? "Read" : "Write",
 		(1 << info->new.size), info->new.tid);
-	kt_stack_print_current(info->strip_addr); /* FIXME: ret ip */
+	kt_stack_print_current(info->strip_addr);
 
-	pr_err("Previous %s of size %d by thread T%d\n",
+	pr_err("Previous %s of size %d by thread T%d:\n",
 		info->old.read ? "read" : "write",
 		(1 << info->old.size), info->old.tid);
+
+	old_thr = kt_id_get_data(&kt_ctx.thr_id_manager, info->old.tid);
+	if (old_thr == NULL) {
+		pr_err("No stack available. %p\n", old_thr);
+	} else {
+		kt_trace_restore_stack(old_thr, info->old.clock, &stack);
+		kt_stack_print(&stack);
+	}
 
 	pr_err("DBG: addr: %lx\n", info->addr);
 	pr_err("DBG: first offset: %d, second offset: %d\n",
@@ -38,6 +48,5 @@ void kt_report_race(kt_race_info_t *info)
 	pr_err("DBG: first clock: %lu, second clock: %lu\n",
 		(unsigned long)info->old.clock, (unsigned long)info->new.clock);
 
-	/* TODO. */
 	pr_err("==================================================================\n");
 }

@@ -26,7 +26,7 @@
 #define KT_COLLECT_STATS 1
 
 #define KT_TRACE_PARTS 16
-#define KT_TRACE_PART_SIZE (2 * 1024 * 32)
+#define KT_TRACE_PART_SIZE (64 * 1024)
 #define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
 
 /* Both arguments must be pointers. */
@@ -252,7 +252,7 @@ void kt_stack_print_current(unsigned long strip_addr);
 
 void kt_trace_init(kt_trace_t *trace);
 void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, uptr_t addr);
-void kt_trace_restore_stack(kt_thr_t *thr, kt_stack_t *stack);
+void kt_trace_restore_stack(kt_thr_t *thr, kt_time_t clock, kt_stack_t *stack);
 void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 
 /* Clocks. */
@@ -321,11 +321,11 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 /* Function tracing. */
 
 void kt_func_entry(kt_thr_t *thr, uptr_t pc);
-void kt_func_exit(kt_thr_t *thr);
+void kt_func_exit(kt_thr_t *thr, uptr_t pc);
 
 /* Reports. */
 
-void kt_report_race(kt_race_info_t *info);
+void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
 
 /* Internal allocator. */
 

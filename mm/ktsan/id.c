@@ -10,6 +10,7 @@ void kt_id_init(kt_id_manager_t *mgr)
 		mgr->ids[i] = i + 1;
 	mgr->ids[KT_MAX_THREAD_ID - 1] = -1;
 	mgr->head = 0;
+	memset(mgr->data, 0, sizeof(mgr->data));
 	spin_lock_init(&mgr->lock);
 }
 
@@ -33,6 +34,7 @@ void kt_id_free(kt_id_manager_t *mgr, int id)
 	spin_lock(&mgr->lock);
 	mgr->ids[id] = mgr->head;
 	mgr->head = id;
+	mgr->data[id] = NULL;
 	spin_unlock(&mgr->lock);
 }
 
