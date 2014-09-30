@@ -173,6 +173,7 @@ struct kt_tab_test_s {
 
 struct kt_id_manager_s {
 	int			ids[KT_MAX_THREAD_ID];
+	void*			data[KT_MAX_THREAD_ID];
 	int			head;
 	spinlock_t		lock;
 };
@@ -281,8 +282,9 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 /* Ids. */
 
 void kt_id_init(kt_id_manager_t *mgr);
-int kt_id_new(kt_id_manager_t *mgr);
+int kt_id_new(kt_id_manager_t *mgr, void* data);
 void kt_id_free(kt_id_manager_t *mgr, int id);
+void* kt_id_get_data(kt_id_manager_t *mgr, int id);
 
 /* Threads. */
 
