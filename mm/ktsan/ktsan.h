@@ -319,7 +319,7 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 /* Function tracing. */
 
 void kt_func_entry(kt_thr_t *thr, uptr_t pc);
-void kt_func_exit(kt_thr_t *thr, uptr_t pc);
+void kt_func_exit(kt_thr_t *thr);
 
 /* Reports. */
 
