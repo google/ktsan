@@ -3,7 +3,7 @@
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
 
-static inline void kt_trace_switch(kt_trace_t *trace)
+static inline void kt_trace_switch(kt_trace_t *trace, kt_time_t clock)
 {
 	unsigned part;
 	kt_part_header_t *header;
@@ -17,7 +17,7 @@ static inline void kt_trace_switch(kt_trace_t *trace)
 	/* Remove ktsan_* and kt_* frames from stack. */
 	strip_addr = (uptr_t)__builtin_return_address(2);
 	kt_stack_save_current(&header->stack, strip_addr);
-	/* TODO: save time. */
+	header->clock = clock;
 
 	spin_unlock(&trace->lock);
 }
@@ -39,13 +39,13 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, uptr_t addr)
 
 	trace->position = clock % KT_TRACE_SIZE;
 
-	if (trace->setup == 0) {
-		kt_trace_switch(trace);
-		trace->setup = 1;
+	if (!trace->setup) {
+		kt_trace_switch(trace, clock);
+		trace->setup = true;
 	}
 
 	if ((trace->position % KT_TRACE_PART_SIZE) == 0)
-		kt_trace_switch(trace);
+		kt_trace_switch(trace, clock);
 
 	event.type = (int)type;
 	event.pc = kt_pc_compress(addr);
@@ -64,13 +64,16 @@ void kt_trace_restore_stack(kt_thr_t *thr, kt_stack_t *stack)
 
 	trace = &thr->trace;
 	clock = kt_clk_get(&thr->clk, thr->id);
+	part = (clock % KT_TRACE_SIZE) / KT_TRACE_PART_SIZE;
+	header = &trace->headers[part];
 
 	spin_lock(&trace->lock);
 
-	part = (clock % KT_TRACE_SIZE) / KT_TRACE_PART_SIZE;
-	BUG_ON(part >= KT_TRACE_PARTS);
-	header = &trace->headers[part];
-	/*BUG_ON(clock < header->clock);*/
+	if (header->clock > clock) {
+		stack->size = 0;
+		spin_unlock(&trace->lock);
+		return;
+	}
 
 	end = clock % KT_TRACE_SIZE;
 	beg = round_down(end, KT_TRACE_PART_SIZE);
