@@ -14,8 +14,8 @@ static inline void kt_trace_switch(kt_trace_t *trace, kt_time_t clock)
 	part = trace->position / KT_TRACE_PART_SIZE;
 	header = &trace->headers[part];
 
-	/* Remove ktsan_* and kt_* frames from stack. */
-	strip_addr = (uptr_t)__builtin_return_address(2);
+	/* Strip ktsan_* and kt_* frames. */
+	strip_addr = (uptr_t)__builtin_return_address(3);
 	kt_stack_save_current(&header->stack, strip_addr);
 	header->clock = clock;
 
@@ -53,17 +53,15 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, uptr_t addr)
 }
 
 /* Saves restored stack to *stack. */
-void kt_trace_restore_stack(kt_thr_t *thr, kt_stack_t *stack)
+void kt_trace_restore_stack(kt_thr_t *thr, kt_time_t clock, kt_stack_t *stack)
 {
 	kt_trace_t *trace;
-	kt_time_t clock;
 	unsigned part;
 	kt_part_header_t *header;
 	unsigned long beg, end, i;
 	kt_event_t *event;
 
 	trace = &thr->trace;
-	clock = kt_clk_get(&thr->clk, thr->id);
 	part = (clock % KT_TRACE_SIZE) / KT_TRACE_PART_SIZE;
 	header = &trace->headers[part];
 
@@ -90,6 +88,13 @@ void kt_trace_restore_stack(kt_thr_t *thr, kt_stack_t *stack)
 			BUG_ON(stack->size <= 0);
 			stack->size--;
 		}
+	}
+
+	event = &trace->events[end];
+	if (event->type == kt_event_type_mop) {
+		BUG_ON(stack->size + 1 == KT_MAX_STACK_FRAMES);
+		stack->pc[stack->size] = event->pc;
+		stack->size++;
 	}
 
 	spin_unlock(&trace->lock);
@@ -124,5 +129,4 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 				i, kt_pc_decompress(event->pc));
 		}*/
 	}
-	pr_err("\n");
 }

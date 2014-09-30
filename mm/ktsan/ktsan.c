@@ -345,7 +345,8 @@ EXPORT_SYMBOL(ktsan_func_entry);
 void ktsan_func_exit(void)
 {
 	ENTER();
-	kt_func_exit(thr);
+	pc = (uptr_t)__builtin_return_address(1);
+	kt_func_exit(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_func_exit);
