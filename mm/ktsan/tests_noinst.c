@@ -124,25 +124,27 @@ void kt_test_hash_table(void)
 void kt_test_trace(void)
 {
 	kt_thr_t *thr;
+	kt_time_t clock;
 	kt_stack_t stack;
+	int *fake;
 
 	pr_err("TSan: starting trace test.\n");
 
 	thr = current->ktsan.thr;
+	clock = kt_clk_get(&thr->clk, thr->id);
 
 	/* Fake mop event. */
-	kt_trace_add_event(thr, kt_event_type_mop, 0xffffffffdeadbeef);
-	kt_clk_tick(&thr->clk, thr->id);
+	fake = kmalloc(sizeof(*fake), GFP_KERNEL);
+	kt_access(thr, (uptr_t)_RET_IP_, (uptr_t)fake, 1, false);
+	kfree(fake);
 
-	kt_trace_restore_stack(thr, &stack);
+	kt_trace_restore_stack(thr, clock, &stack);
 
 	pr_err("Restored stack trace:\n");
 	kt_stack_print(&stack);
-	pr_err("\n");
 
 	pr_err("Current stack trace:\n");
 	kt_stack_print_current((uptr_t)_RET_IP_);
-	pr_err("\n");
 
 	pr_err("TSan: end of test.\n");
 }

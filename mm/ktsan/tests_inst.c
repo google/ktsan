@@ -44,12 +44,14 @@ void kt_tests_run_inst(void)
 
 DECLARE_COMPLETION(race_thr_fst_compl);
 DECLARE_COMPLETION(race_thr_snd_compl);
+DECLARE_COMPLETION(race_thr_main_compl);
 
 static int race_thr_fst_func(void *arg)
 {
 	int value = *((char *)arg);
 
 	complete(&race_thr_fst_compl);
+	wait_for_completion(&race_thr_main_compl);
 
 	return value;
 }
@@ -59,6 +61,7 @@ static int race_thr_snd_func(void *arg)
 	*((int *)arg) = 1;
 
 	complete(&race_thr_snd_compl);
+	wait_for_completion(&race_thr_main_compl);
 
 	return 0;
 }
@@ -87,6 +90,7 @@ void kt_test_race(void)
 
 	wait_for_completion(&race_thr_fst_compl);
 	wait_for_completion(&race_thr_snd_compl);
+	complete_all(&race_thr_main_compl);
 
 	kfree(value);
 
