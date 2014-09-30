@@ -336,15 +336,16 @@ EXPORT_SYMBOL(ktsan_write16);
 void ktsan_func_entry(void *call_pc)
 {
 	ENTER();
+	pc = (uptr_t)__builtin_return_address(1); 
 	kt_func_entry(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_func_entry);
 
-void ktsan_func_exit(void *call_pc)
+void ktsan_func_exit(void)
 {
 	ENTER();
-	kt_func_exit(thr, pc);
+	kt_func_exit(thr);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_func_exit);
