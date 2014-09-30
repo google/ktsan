@@ -13,7 +13,7 @@ void kt_id_init(kt_id_manager_t *mgr)
 	spin_lock_init(&mgr->lock);
 }
 
-int kt_id_new(kt_id_manager_t *mgr)
+int kt_id_new(kt_id_manager_t *mgr, void* data)
 {
 	int id;
 
@@ -22,6 +22,7 @@ int kt_id_new(kt_id_manager_t *mgr)
 		return -1;
 	id = mgr->head;
 	mgr->head = mgr->ids[mgr->head];
+	mgr->data[id] = data;
 	spin_unlock(&mgr->lock);
 
 	return id;
@@ -33,4 +34,15 @@ void kt_id_free(kt_id_manager_t *mgr, int id)
 	mgr->ids[id] = mgr->head;
 	mgr->head = id;
 	spin_unlock(&mgr->lock);
+}
+
+void* kt_id_get_data(kt_id_manager_t *mgr, int id)
+{
+	void *data;
+
+	spin_lock(&mgr->lock);
+	data = mgr->data[id];
+	spin_unlock(&mgr->lock);
+
+	return data;
 }

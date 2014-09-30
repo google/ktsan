@@ -11,7 +11,7 @@ void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 	memset(new, 0, sizeof(*new));
 
 	new->kid = tid;
-	new->id = kt_id_new(&kt_ctx.thr_id_manager);
+	new->id = kt_id_new(&kt_ctx.thr_id_manager, new);
 	BUG_ON(new->id == -1); /* Out of ids. */
 	kt_clk_init(thr, &new->clk);
 	kt_trace_init(&new->trace);
