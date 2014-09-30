@@ -12,8 +12,6 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 	kt_thr_t *old_thr;
 	kt_stack_t stack;
 
-	return;
-
 	sprintf(function, "%pS", (void *)info->strip_addr);
 	for (i = 0; i < MAX_FUNCTION_NAME_SIZE; i++) {
 		if (function[i] == '+') {
@@ -25,22 +23,31 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 	/* TODO(xairy): print kernel thread id in a report. */
 	pr_err("==================================================================\n");
 	pr_err("ThreadSanitizer: data-race in %s\n", function);
-	pr_err("%s of size %d by thread T%d:\n",
-		info->new.read ? "Read" : "Write",
-		(1 << info->new.size), info->new.tid);
-	kt_stack_print_current(info->strip_addr);
+	pr_err("\n");
 
-	pr_err("Previous %s of size %d by thread T%d:\n",
-		info->old.read ? "read" : "write",
-		(1 << info->old.size), info->old.tid);
+	pr_err("%s of size %d by thread T%d (K%d):\n",
+		info->new.read ? "Read" : "Write",
+		(1 << info->new.size), info->new.tid, new_thr->kid);
+	pr_err("DBG: cpu = %lx\n", (uptr_t)new_thr->cpu);
+	kt_stack_print_current(info->strip_addr);
+	pr_err("\n");
 
 	old_thr = kt_id_get_data(&kt_ctx.thr_id_manager, info->old.tid);
+
 	if (old_thr == NULL) {
+		pr_err("Previous %s of size %d by thread T%d:\n",
+			info->old.read ? "read" : "write",
+			(1 << info->old.size), info->old.tid);
 		pr_err("No stack available. %p\n", old_thr);
 	} else {
+		pr_err("Previous %s of size %d by thread T%d (K%d):\n",
+			info->old.read ? "read" : "write",
+			(1 << info->old.size), info->old.tid, old_thr->kid);
+		pr_err("DBG: cpu = %lx\n", (uptr_t)old_thr->cpu);
 		kt_trace_restore_stack(old_thr, info->old.clock, &stack);
 		kt_stack_print(&stack);
 	}
+	pr_err("\n");
 
 	pr_err("DBG: addr: %lx\n", info->addr);
 	pr_err("DBG: first offset: %d, second offset: %d\n",

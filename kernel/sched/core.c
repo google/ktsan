@@ -1499,6 +1499,7 @@ ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags)
 	trace_sched_wakeup(p, true);
 
 	p->state = TASK_RUNNING;
+	ktsan_thr_wakeup(&p->ktsan);
 #ifdef CONFIG_SMP
 	if (p->sched_class->task_woken)
 		p->sched_class->task_woken(rq, p);
@@ -2309,9 +2310,6 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 {
 	struct rq *rq;
 
-	/* Has to be before finish_task_switch. */
-	ktsan_thr_start();
-
 	/* finish_task_switch() drops rq->lock and enables preemtion */
 	preempt_disable();
 	rq = finish_task_switch(prev);
@@ -2320,6 +2318,8 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 
 	if (current->set_child_tid)
 		put_user(task_pid_vnr(current), current->set_child_tid);
+
+	ktsan_thr_start();
 }
 
 /*
@@ -2330,8 +2330,6 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	       struct task_struct *next)
 {
 	struct mm_struct *mm, *oldmm;
-
-	ktsan_thr_stop();
 
 	prepare_task_switch(rq, prev, next);
 
@@ -2367,9 +2365,6 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	/* Here we just switch the register state and the stack. */
 	switch_to(prev, next, prev);
 	barrier();
-
-	/* Has to be before finish_task_switch. */
-	ktsan_thr_start();
 
 	return finish_task_switch(prev);
 }
@@ -2769,6 +2764,7 @@ static void __sched __schedule(void)
 
 need_resched:
 	preempt_disable();
+	ktsan_thr_stop();
 	cpu = smp_processor_id();
 	rq = cpu_rq(cpu);
 	rcu_note_context_switch();
@@ -2832,6 +2828,7 @@ need_resched:
 	post_schedule(rq);
 
 	sched_preempt_enable_no_resched();
+	ktsan_thr_start();
 	if (need_resched())
 		goto need_resched;
 }
