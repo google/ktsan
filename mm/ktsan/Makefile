@@ -12,7 +12,6 @@ obj-y := ktsan.o	\
 	 atomic.o	\
 	 stack.o	\
 	 trace.o	\
-	 id.o		\
 	 func.o		\
 	 tests_noinst.o	\
 	 tests_inst.o	\
