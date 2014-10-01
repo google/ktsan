@@ -109,7 +109,7 @@ void ktsan_init(void)
 
 	thr = kt_cache_alloc(&ctx->thr_cache);
 	BUG_ON(thr == NULL); /* Out of memory. */
-	kt_thr_create(NULL, (uptr_t)_RET_IP_, thr, current->pid);
+	kt_thr_init(NULL, (uptr_t)_RET_IP_, thr, current->pid);
 	kt_thr_start(thr, (uptr_t)_RET_IP_);
 	current->ktsan.thr = thr;
 
@@ -121,7 +121,7 @@ void ktsan_init(void)
 	kt_stat_init();
 	kt_tests_init();
 
-	/* These stats were not recorded in kt_thr_create. */
+	/* These stats were not recorded in kt_thr_init. */
 	kt_stat_inc(thr, kt_stat_thread_create);
 	kt_stat_inc(thr, kt_stat_threads);
 
@@ -144,16 +144,16 @@ void kt_tests_run(void)
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
 {
-	ENTER(false);
+	ENTER(true);
 	new->thr = kt_cache_alloc(&kt_ctx.thr_cache);
 	BUG_ON(new->thr == NULL); /* Out of memory. */
-	kt_thr_create(thr, pc, new->thr, tid);
+	kt_thr_init(thr, pc, new->thr, tid);
 	LEAVE();
 }
 
 void ktsan_thr_destroy(struct ktsan_thr_s *old)
 {
-	ENTER(false);
+	ENTER(true);
 	kt_thr_destroy(thr, pc, old->thr);
 	kt_cache_free(&kt_ctx.thr_cache, old->thr);
 	BUG_ON(old->thr == current->ktsan.thr && old != &current->ktsan);
