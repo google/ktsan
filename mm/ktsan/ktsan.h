@@ -61,6 +61,7 @@ typedef struct kt_event_s		kt_event_t;
 typedef struct kt_part_header_s		kt_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
 typedef struct kt_id_manager_s		kt_id_manager_t;
+typedef struct kt_thr_pool_s		kt_thr_pool_t;
 
 /* Stack. */
 
@@ -169,24 +170,24 @@ struct kt_tab_test_s {
 	unsigned long data[4];
 };
 
-/* Ids. */
-
-struct kt_id_manager_s {
-	int			ids[KT_MAX_THREAD_ID];
-	void*			data[KT_MAX_THREAD_ID];
-	int			head;
-	spinlock_t		lock;
-};
 
 /* Threads. */
 
 struct kt_thr_s {
-	int			kid; /* kernel thread id */
 	int			id;
-	atomic_t		inside;	/* Already inside of ktsan runtime */
+	int			kid; /* kernel thread id */
+	atomic_t		inside;	/* already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
 	kt_trace_t		trace;
+};
+
+struct kt_thr_pool_s {
+	kt_cache_t		cache;
+	kt_thr_t		*thrs[KT_MAX_THREAD_ID];
+	int			ids[KT_MAX_THREAD_ID];
+	int			head;
+	spinlock_t		lock;
 };
 
 /* Statistics. */
@@ -226,8 +227,7 @@ struct kt_ctx_s {
 	kt_tab_t		sync_tab; /* sync addr -> sync object */
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
-	kt_cache_t		thr_cache;
-	kt_id_manager_t		thr_id_manager;
+	kt_thr_pool_t		thr_pool;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -258,7 +258,6 @@ void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 /* Clocks. */
 
 void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk);
-void kt_clk_destroy(kt_thr_t *thr, kt_clk_t *clk);
 void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
 
 static inline
@@ -279,19 +278,16 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 	clk->time[tid]++;
 }
 
-/* Ids. */
-
-void kt_id_init(kt_id_manager_t *mgr);
-int kt_id_new(kt_id_manager_t *mgr, void* data);
-void kt_id_free(kt_id_manager_t *mgr, int id);
-void* kt_id_get_data(kt_id_manager_t *mgr, int id);
-
 /* Threads. */
 
-void kt_thr_init(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
-void kt_thr_destroy(kt_thr_t *thr, uptr_t pc, kt_thr_t *old);
-void kt_thr_start(kt_thr_t *thr, uptr_t pc);
-void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
+void kt_thr_pool_init(void);
+
+kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid);
+void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old);
+kt_thr_t *kt_thr_get(int id);
+
+void kt_thr_start(kt_thr_t *thr);
+void kt_thr_stop(kt_thr_t *thr);
 void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other);
 
 /* Synchronization. */
