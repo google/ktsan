@@ -32,7 +32,8 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 	kt_stack_print_current(info->strip_addr);
 	pr_err("\n");
 
-	old_thr = kt_id_get_data(&kt_ctx.thr_id_manager, info->old.tid);
+	/* FIXME(xairy): stack might be wrong if id was reassigned. */
+	old_thr = kt_thr_get(info->old.tid);
 
 	if (old_thr == NULL) {
 		pr_err("Previous %s of size %d by thread T%d:\n",
