@@ -288,7 +288,7 @@ void* kt_id_get_data(kt_id_manager_t *mgr, int id);
 
 /* Threads. */
 
-void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
+void kt_thr_init(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
 void kt_thr_destroy(kt_thr_t *thr, uptr_t pc, kt_thr_t *old);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
