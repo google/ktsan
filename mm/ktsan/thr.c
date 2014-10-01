@@ -6,7 +6,7 @@
 #include <linux/spinlock.h>
 
 /* thr == NULL when thread #0 is being created. */
-void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
+void kt_thr_init(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid)
 {
 	memset(new, 0, sizeof(*new));
 
