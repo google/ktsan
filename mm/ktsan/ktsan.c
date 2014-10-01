@@ -94,7 +94,6 @@ void __init ktsan_init_early(void)
 	kt_tab_init(&ctx->memblock_tab, 10007,
 		    sizeof(kt_tab_memblock_t), 60000);
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
-	kt_cache_init(&ctx->thr_cache, sizeof(kt_thr_t), KT_MAX_THREAD_ID);
 }
 
 void ktsan_init(void)
@@ -105,12 +104,10 @@ void ktsan_init(void)
 
 	ctx = &kt_ctx;
 
-	kt_id_init(&ctx->thr_id_manager);
+	kt_thr_pool_init();
 
-	thr = kt_cache_alloc(&ctx->thr_cache);
-	BUG_ON(thr == NULL); /* Out of memory. */
-	kt_thr_init(NULL, (uptr_t)_RET_IP_, thr, current->pid);
-	kt_thr_start(thr, (uptr_t)_RET_IP_);
+	thr = kt_thr_create(NULL, current->pid);
+	kt_thr_start(thr);
 	current->ktsan.thr = thr;
 
 	BUG_ON(ctx->enabled);
@@ -129,7 +126,7 @@ void ktsan_init(void)
 	BUG_ON(inside != 1);
 	ctx->enabled = 1;
 
-	pr_err("TSan: enabled.\n");
+	pr_err("ktsan: enabled.\n");
 }
 
 /* FIXME(xairy): not sure if this is the best place for this
@@ -142,21 +139,17 @@ void kt_tests_run(void)
 	kt_tests_run_inst();
 }
 
-void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
+void ktsan_thr_create(struct ktsan_thr_s *new, int kid)
 {
 	ENTER(true);
-	new->thr = kt_cache_alloc(&kt_ctx.thr_cache);
-	BUG_ON(new->thr == NULL); /* Out of memory. */
-	kt_thr_init(thr, pc, new->thr, tid);
+	new->thr = kt_thr_create(thr, kid);
 	LEAVE();
 }
 
 void ktsan_thr_destroy(struct ktsan_thr_s *old)
 {
 	ENTER(true);
-	kt_thr_destroy(thr, pc, old->thr);
-	kt_cache_free(&kt_ctx.thr_cache, old->thr);
-	BUG_ON(old->thr == current->ktsan.thr && old != &current->ktsan);
+	kt_thr_destroy(thr, old->thr);
 	old->thr = NULL;
 	LEAVE();
 }
@@ -164,14 +157,14 @@ void ktsan_thr_destroy(struct ktsan_thr_s *old)
 void ktsan_thr_start(void)
 {
 	ENTER(true);
-	kt_thr_start(thr, pc);
+	kt_thr_start(thr);
 	LEAVE();
 }
 
 void ktsan_thr_stop(void)
 {
 	ENTER(true);
-	kt_thr_stop(thr, pc);
+	kt_thr_stop(thr);
 	LEAVE();
 }
 
@@ -346,7 +339,7 @@ EXPORT_SYMBOL(ktsan_write16);
 void ktsan_func_entry(void *call_pc)
 {
 	ENTER(false);
-	pc = (uptr_t)__builtin_return_address(1); 
+	pc = (uptr_t)__builtin_return_address(1);
 	kt_func_entry(thr, pc);
 	LEAVE();
 }
