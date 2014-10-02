@@ -20,7 +20,7 @@
 #define KT_THREAD_ID_BITS     13
 #define KT_CLOCK_BITS         42
 
-#define KT_MAX_THREAD_ID 1024
+#define KT_MAX_THREAD_ID 512
 #define KT_MAX_STACK_FRAMES 64
 
 #define KT_COLLECT_STATS 1

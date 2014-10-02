@@ -31,7 +31,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 
 	BUG_ON(pool->head == -1); /* Out of ids. */
 	new->id = pool->head;
-	pool->thrs[pool->head] = thr;
+	pool->thrs[pool->head] = new;
 	pool->head = pool->ids[pool->head];
 
 	spin_unlock(&pool->lock);

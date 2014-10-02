@@ -94,6 +94,7 @@ void __init ktsan_init_early(void)
 	kt_tab_init(&ctx->memblock_tab, 10007,
 		    sizeof(kt_tab_memblock_t), 60000);
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
+	kt_thr_pool_init();
 }
 
 void ktsan_init(void)
@@ -103,8 +104,6 @@ void ktsan_init(void)
 	int inside;
 
 	ctx = &kt_ctx;
-
-	kt_thr_pool_init();
 
 	thr = kt_thr_create(NULL, current->pid);
 	kt_thr_start(thr);
