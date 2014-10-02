@@ -28,8 +28,8 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 	pr_err("%s of size %d by thread T%d (K%d):\n",
 		info->new.read ? "Read" : "Write",
 		(1 << info->new.size), info->new.tid, new_thr->kid);
-	pr_err("DBG: cpu = %lx\n", (uptr_t)new_thr->cpu);
 	kt_stack_print_current(info->strip_addr);
+	pr_err("DBG: cpu = %lx\n", (uptr_t)new_thr->cpu);
 	pr_err("\n");
 
 	/* FIXME(xairy): stack might be wrong if id was reassigned. */
@@ -39,14 +39,14 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 		pr_err("Previous %s of size %d by thread T%d:\n",
 			info->old.read ? "read" : "write",
 			(1 << info->old.size), info->old.tid);
-		pr_err("No stack available. %p\n", old_thr);
+		pr_err("No stack available.\n");
 	} else {
 		pr_err("Previous %s of size %d by thread T%d (K%d):\n",
 			info->old.read ? "read" : "write",
 			(1 << info->old.size), info->old.tid, old_thr->kid);
-		pr_err("DBG: cpu = %lx\n", (uptr_t)old_thr->cpu);
 		kt_trace_restore_stack(old_thr, info->old.clock, &stack);
 		kt_stack_print(&stack);
+		pr_err("DBG: cpu = %lx\n", (uptr_t)old_thr->cpu);
 	}
 	pr_err("\n");
 
