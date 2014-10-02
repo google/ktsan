@@ -30,6 +30,8 @@ kt_ctx_t kt_ctx;
 	 in_nmi())			\
 /**/
 
+/* If scheduler is false the events generated from
+   the scheduler internals will be ignored. */
 #define ENTER(scheduler)					\
 	kt_thr_t *thr;						\
 	uptr_t pc;						\
@@ -117,7 +119,7 @@ void ktsan_init(void)
 	kt_stat_init();
 	kt_tests_init();
 
-	/* These stats were not recorded in kt_thr_init. */
+	/* These stats were not recorded in kt_thr_create. */
 	kt_stat_inc(thr, kt_stat_thread_create);
 	kt_stat_inc(thr, kt_stat_threads);
 

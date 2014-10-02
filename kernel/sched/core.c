@@ -2236,8 +2236,8 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
 		if (prev->sched_class->task_dead)
 			prev->sched_class->task_dead(prev);
 
-		/* XXX(xairy): fix thr->cpu == NULL in ktsan_thr_destroy by
-		   calling ktsan_thr_start and revert with ktsan_thr_stop. */
+		/* To store stats in a per cpu struct set thr->cpu
+		   with ktsan_thr_start and revert with ktsan_thr_stop. */
 		ktsan_thr_start();
 		ktsan_thr_destroy(&prev->ktsan);
 		ktsan_thr_stop();

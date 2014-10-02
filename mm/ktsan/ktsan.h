@@ -20,7 +20,7 @@
 #define KT_THREAD_ID_BITS     13
 #define KT_CLOCK_BITS         42
 
-#define KT_MAX_THREAD_ID 512
+#define KT_MAX_THREAD_ID 1024
 #define KT_MAX_STACK_FRAMES 64
 
 #define KT_COLLECT_STATS 1
@@ -186,7 +186,8 @@ struct kt_thr_pool_s {
 	kt_cache_t		cache;
 	kt_thr_t		*thrs[KT_MAX_THREAD_ID];
 	int			ids[KT_MAX_THREAD_ID];
-	int			head;
+	int			free_head;
+	int			quarantine_head;
 	spinlock_t		lock;
 };
 
