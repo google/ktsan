@@ -73,8 +73,6 @@ typedef struct spinlock {
 		};
 #endif
 	};
-
-	unsigned long *clock;
 } spinlock_t;
 
 #define __SPIN_LOCK_INITIALIZER(lockname) \
