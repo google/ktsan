@@ -169,16 +169,9 @@ void ktsan_thr_stop(void)
 	LEAVE();
 }
 
-void ktsan_thr_wakeup(struct ktsan_thr_s *other)
-{
-	ENTER(false);
-	kt_thr_wakeup(thr, other->thr);
-	LEAVE();
-}
-
 void ktsan_sync_acquire(void *addr)
 {
-	ENTER(false);
+	ENTER(true);
 	kt_sync_acquire(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
@@ -186,7 +179,7 @@ EXPORT_SYMBOL(ktsan_sync_acquire);
 
 void ktsan_sync_release(void *addr)
 {
-	ENTER(false);
+	ENTER(true);
 	kt_sync_release(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
@@ -208,7 +201,7 @@ void ktsan_memblock_free(void *addr, size_t size)
 
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
 {
-	ENTER(false);
+	ENTER(true);
 	kt_mtx_pre_lock(thr, pc, (uptr_t)addr, write, try);
 	LEAVE();
 }
@@ -216,7 +209,7 @@ EXPORT_SYMBOL(ktsan_mtx_pre_lock);
 
 void ktsan_mtx_post_lock(void *addr, bool write, bool try)
 {
-	ENTER(false);
+	ENTER(true);
 	kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try);
 	LEAVE();
 }
@@ -224,7 +217,7 @@ EXPORT_SYMBOL(ktsan_mtx_post_lock);
 
 void ktsan_mtx_pre_unlock(void *addr, bool write)
 {
-	ENTER(false);
+	ENTER(true);
 	kt_mtx_pre_unlock(thr, pc, (uptr_t)addr, write);
 	LEAVE();
 }
@@ -234,7 +227,7 @@ int ktsan_atomic32_read(const void *addr)
 {
 	int rv;
 
-	ENTER(false);
+	ENTER(true);
 	rv = kt_atomic32_read(thr, pc, (uptr_t)addr);
 	LEAVE();
 
@@ -246,7 +239,7 @@ EXPORT_SYMBOL(ktsan_atomic32_read);
 
 void ktsan_atomic32_set(void *addr, int value)
 {
-	ENTER(false);
+	ENTER(true);
 	kt_atomic32_set(thr, pc, (uptr_t)addr, value);
 	LEAVE();
 
