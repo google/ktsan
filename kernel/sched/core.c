@@ -1496,7 +1496,6 @@ ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags)
 	trace_sched_wakeup(p, true);
 
 	p->state = TASK_RUNNING;
-	ktsan_thr_wakeup(&p->ktsan);
 #ifdef CONFIG_SMP
 	if (p->sched_class->task_woken)
 		p->sched_class->task_woken(rq, p);
