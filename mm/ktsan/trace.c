@@ -3,20 +3,43 @@
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
 
+static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
+				   unsigned long end, kt_stack_t *stack)
+{
+	unsigned long i;
+	kt_event_t *event;
+
+	for (i = beg; i <= end; i++) {
+		event = &trace->events[i];
+		if (event->type == kt_event_type_func_enter) {
+			BUG_ON(stack->size + 1 == KT_MAX_STACK_FRAMES);
+			stack->pc[stack->size] = event->pc;
+			stack->size++;
+		} else if (event->type == kt_event_type_func_exit) {
+			BUG_ON(stack->size <= 0);
+			stack->size--;
+		}
+	}
+}
+
 static inline void kt_trace_switch(kt_trace_t *trace, kt_time_t clock)
 {
-	unsigned part;
-	kt_part_header_t *header;
-	unsigned long strip_addr;
+	unsigned part, prev_part;
+	kt_part_header_t *header, *prev_header;
+	unsigned long beg, end;
 
 	spin_lock(&trace->lock);
 
 	part = trace->position / KT_TRACE_PART_SIZE;
 	header = &trace->headers[part];
+	prev_part = (part == 0) ? (KT_TRACE_PARTS - 1) : (part - 1);
+	prev_header = &trace->headers[prev_part];
 
-	/* Strip ktsan_* and kt_* frames. */
-	strip_addr = (uptr_t)__builtin_return_address(3);
-	kt_stack_save_current(&header->stack, strip_addr);
+	memcpy(&header->stack, &prev_header->stack, sizeof(header->stack));
+	beg = prev_part * KT_TRACE_PART_SIZE;
+	end = (prev_part + 1) * KT_TRACE_PART_SIZE - 1;
+	kt_trace_follow(trace, beg, end, &header->stack);
+
 	header->clock = clock;
 
 	spin_unlock(&trace->lock);
@@ -39,11 +62,6 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, uptr_t addr)
 
 	trace->position = clock % KT_TRACE_SIZE;
 
-	if (!trace->setup) {
-		kt_trace_switch(trace, clock);
-		trace->setup = true;
-	}
-
 	if ((trace->position % KT_TRACE_PART_SIZE) == 0)
 		kt_trace_switch(trace, clock);
 
@@ -58,7 +76,7 @@ void kt_trace_restore_stack(kt_thr_t *thr, kt_time_t clock, kt_stack_t *stack)
 	kt_trace_t *trace;
 	unsigned part;
 	kt_part_header_t *header;
-	unsigned long beg, end, i;
+	unsigned long beg, end;
 	kt_event_t *event;
 
 	trace = &thr->trace;
@@ -73,22 +91,10 @@ void kt_trace_restore_stack(kt_thr_t *thr, kt_time_t clock, kt_stack_t *stack)
 		return;
 	}
 
+	memcpy(stack, &header->stack, sizeof(*stack));
 	end = clock % KT_TRACE_SIZE;
 	beg = round_down(end, KT_TRACE_PART_SIZE);
-
-	memcpy(stack, &header->stack, sizeof(*stack));
-
-	for (i = beg; i <= end; i++) {
-		event = &trace->events[i];
-		if (event->type == kt_event_type_func_enter) {
-			BUG_ON(stack->size + 1 == KT_MAX_STACK_FRAMES);
-			stack->pc[stack->size] = event->pc;
-			stack->size++;
-		} else if (event->type == kt_event_type_func_exit) {
-			BUG_ON(stack->size <= 0);
-			stack->size--;
-		}
-	}
+	kt_trace_follow(trace, beg, end, stack);
 
 	event = &trace->events[end];
 	if (event->type == kt_event_type_mop) {
