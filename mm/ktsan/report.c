@@ -2,8 +2,11 @@
 
 #include <linux/printk.h>
 #include <linux/thread_info.h>
+#include <linux/spinlock.h>
 
 #define MAX_FUNCTION_NAME_SIZE (128)
+
+DEFINE_SPINLOCK(kt_report_lock);
 
 void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 {
@@ -19,6 +22,8 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 			break;
 		}
 	}
+
+	spin_lock(&kt_report_lock);
 
 	/* TODO(xairy): print kernel thread id in a report. */
 	pr_err("==================================================================\n");
@@ -57,4 +62,6 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 		(unsigned long)info->old.clock, (unsigned long)info->new.clock);
 
 	pr_err("==================================================================\n");
+
+	spin_unlock(&kt_report_lock);
 }
