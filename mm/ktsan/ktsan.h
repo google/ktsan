@@ -96,7 +96,6 @@ struct kt_trace_s {
 	kt_event_t		events[KT_TRACE_SIZE];
 	unsigned long		position;
 	spinlock_t		lock;
-	bool			setup;
 };
 
 /* Clocks. */
