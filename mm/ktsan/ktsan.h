@@ -179,6 +179,7 @@ struct kt_thr_s {
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
 	kt_trace_t		trace;
+	int			call_depth;
 };
 
 struct kt_thr_pool_s {

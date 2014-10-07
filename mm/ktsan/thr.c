@@ -70,6 +70,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	new->cpu = NULL;
 	kt_clk_init(thr, &new->clk);
 	kt_trace_init(&new->trace);
+	new->call_depth = 0;
 
 	/* thr == NULL when thread #0 is being initialized. */
 	if (thr == NULL)
