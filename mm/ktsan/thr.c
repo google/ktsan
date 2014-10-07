@@ -2,42 +2,20 @@
 
 #include <linux/atomic.h>
 #include <linux/kernel.h>
+#include <linux/list.h>
 #include <linux/sched.h>
 #include <linux/spinlock.h>
 
 void kt_thr_pool_init(void)
 {
 	kt_thr_pool_t *pool = &kt_ctx.thr_pool;
-	int i;
 
 	kt_cache_init(&pool->cache, sizeof(kt_thr_t), KT_MAX_THREAD_ID);
 	memset(pool->thrs, 0, sizeof(pool->thrs));
-	for (i = 0; i < KT_MAX_THREAD_ID - 1; i++)
-		pool->ids[i] = i + 1;
-	pool->ids[KT_MAX_THREAD_ID - 1] = -1;
-	pool->free_head = 0;
-	pool->quarantine_head = -1;
+	pool->new_id = 0;
+	INIT_LIST_HEAD(&pool->quarantine);
+	pool->quarantine_size = 0;
 	spin_lock_init(&pool->lock);
-}
-
-static void kt_thr_drain_quarantine(void)
-{
-	kt_thr_pool_t *pool = &kt_ctx.thr_pool;
-	int prev_quarantine_head;
-
-	BUG_ON(pool->quarantine_head == -1); /* Out of memory. */
-
-	while (pool->quarantine_head != -1) {
-		prev_quarantine_head = pool->quarantine_head;
-
-		BUG_ON(pool->thrs[pool->quarantine_head] == NULL);
-		kt_cache_free(&pool->cache, pool->thrs[pool->quarantine_head]);
-		pool->thrs[pool->quarantine_head] = NULL;
-		pool->quarantine_head = pool->ids[pool->quarantine_head];
-
-		pool->ids[prev_quarantine_head] = pool->free_head;
-		pool->free_head = prev_quarantine_head;
-	}
 }
 
 kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
@@ -47,21 +25,16 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 
 	spin_lock(&pool->lock);
 
-	BUG_ON(pool->free_head < -1);
-	BUG_ON(pool->free_head >= KT_MAX_THREAD_ID);
-
-	/* If the list of free thr objects is empty, free all from quarantine. */
-	if (pool->free_head == -1) {
-		kt_thr_drain_quarantine();
+	if (pool->quarantine_size > KT_QUARANTINE_SIZE) {
+		new = list_first_entry(&pool->quarantine, kt_thr_t, list);
+		pool->quarantine_size--;
+	} else {
+		new = kt_cache_alloc(&pool->cache);
+		BUG_ON(new == NULL);
+		new->id = pool->new_id;
+		pool->new_id++;
+		pool->thrs[new->id] = new;
 	}
-
-	new = kt_cache_alloc(&pool->cache);
-	BUG_ON(new == NULL);
-
-	BUG_ON(pool->free_head == -1);
-	new->id = pool->free_head;
-	pool->thrs[pool->free_head] = new;
-	pool->free_head = pool->ids[pool->free_head];
 
 	spin_unlock(&pool->lock);
 
@@ -71,6 +44,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_clk_init(thr, &new->clk);
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
+	INIT_LIST_HEAD(&new->list);
 
 	/* thr == NULL when thread #0 is being initialized. */
 	if (thr == NULL)
@@ -89,8 +63,8 @@ void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old)
 	kt_thr_pool_t *pool = &kt_ctx.thr_pool;
 
 	spin_lock(&pool->lock);
-	pool->ids[old->id] = pool->quarantine_head;
-	pool->quarantine_head = old->id;
+	list_add_tail(&old->list, &pool->quarantine);
+	pool->quarantine_size++;
 	spin_unlock(&pool->lock);
 
 	kt_stat_inc(thr, kt_stat_thread_destroy);

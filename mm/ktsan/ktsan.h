@@ -2,25 +2,22 @@
 #define __X86_MM_KTSAN_KTSAN_H
 
 #include <linux/ktsan.h>
+#include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/percpu.h>
 #include <linux/types.h>
-
-/* XXX: for debugging. */
-#define KT_MGK(x, y) x ## y
-#define KT_MGK2(x, y) KT_MGK(x, y)
-#define REPEAT_N_AND_STOP(n) \
-	static int KT_MGK2(scary_, __LINE__); if (++KT_MGK2(scary_, __LINE__) < (n))
 
 #define KT_SHADOW_SLOTS_LOG 2
 #define KT_SHADOW_SLOTS (1 << KT_SHADOW_SLOTS_LOG)
 
 #define KT_GRAIN 8
 
-#define KT_THREAD_ID_BITS     13
-#define KT_CLOCK_BITS         42
+#define KT_THREAD_ID_BITS 13
+#define KT_CLOCK_BITS 42
 
 #define KT_MAX_THREAD_ID 1024
+#define KT_QUARANTINE_SIZE 512
+
 #define KT_MAX_STACK_FRAMES 64
 
 #define KT_COLLECT_STATS 1
@@ -180,14 +177,15 @@ struct kt_thr_s {
 	kt_clk_t		clk;
 	kt_trace_t		trace;
 	int			call_depth;
+	struct list_head	list; /* quarantine list */
 };
 
 struct kt_thr_pool_s {
 	kt_cache_t		cache;
 	kt_thr_t		*thrs[KT_MAX_THREAD_ID];
-	int			ids[KT_MAX_THREAD_ID];
-	int			free_head;
-	int			quarantine_head;
+	int			new_id;
+	struct list_head	quarantine;
+	int			quarantine_size;
 	spinlock_t		lock;
 };
 
