@@ -80,7 +80,7 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 		info.addr = addr;
 		info.old = old;
 		info.new = value;
-		/* Strip ktsan_* and kt_access fames. */
+		/* Strip ktsan_* and kt_access frames. */
 		info.strip_addr = (uptr_t)__builtin_return_address(1);
 		kt_report_race(thr, &info);
 
@@ -100,7 +100,7 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 		info.addr = addr;
 		info.old = old;
 		info.new = value;
-		/* Strip ktsan_* and kt_access fames. */
+		/* Strip ktsan_* and kt_access frames. */
 		info.strip_addr = (uptr_t)__builtin_return_address(1);
 		kt_report_race(thr, &info);
 

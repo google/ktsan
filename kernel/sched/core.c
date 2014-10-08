@@ -2319,7 +2319,7 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 	preempt_disable();
 	rq = finish_task_switch(prev);
 
-	/* Restore thr->cpu in case it was zeroed in finish_tabk_switch. */
+	/* Restore thr->cpu in case it was zeroed in finish_task_switch. */
 	ktsan_thr_start();
 
 	post_schedule(rq);
