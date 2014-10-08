@@ -27,6 +27,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 
 	if (pool->quarantine_size > KT_QUARANTINE_SIZE) {
 		new = list_first_entry(&pool->quarantine, kt_thr_t, list);
+		list_del(&new->list);
 		pool->quarantine_size--;
 	} else {
 		new = kt_cache_alloc(&pool->cache);
