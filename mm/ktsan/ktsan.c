@@ -24,8 +24,6 @@ kt_ctx_t kt_ctx;
 
 #define IN_INTERRUPT()			\
 	(in_irq() ||			\
-	 in_softirq() ||		\
-	 in_interrupt() ||		\
 	 in_serving_softirq() ||	\
 	 in_nmi())			\
 /**/
