@@ -24,13 +24,13 @@ kt_ctx_t kt_ctx;
 
 #define IN_INTERRUPT()			\
 	(in_irq() ||			\
-	 in_softirq() ||		\
-	 in_interrupt() ||		\
 	 in_serving_softirq() ||	\
 	 in_nmi())			\
 /**/
 
-#define ENTER()							\
+/* If scheduler is false the events generated from
+   the scheduler internals will be ignored. */
+#define ENTER(scheduler)					\
 	kt_thr_t *thr;						\
 	uptr_t pc;						\
 	unsigned long kt_flags;					\
@@ -39,17 +39,21 @@ kt_ctx_t kt_ctx;
 								\
 	event_handled = false;					\
 								\
+	if (!kt_ctx.enabled)					\
+		goto exit;					\
+								\
 	/* Sometimes thread #1 is scheduled without calling	\
 	   ktsan_thr_start(). Some of such cases are caused	\
 	   by interrupts. Ignoring them for now. */		\
 	if (IN_INTERRUPT())					\
 		goto exit;					\
 								\
-	if (!kt_ctx.enabled)					\
-		goto exit;					\
 	if (!current)						\
 		goto exit;					\
 	if (!current->ktsan.thr)				\
+		goto exit;					\
+								\
+	if (!(scheduler) && current->ktsan.thr->cpu == NULL)	\
 		goto exit;					\
 								\
 	DISABLE_INTERRUPTS(kt_flags);				\
@@ -90,7 +94,7 @@ void __init ktsan_init_early(void)
 	kt_tab_init(&ctx->memblock_tab, 10007,
 		    sizeof(kt_tab_memblock_t), 60000);
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
-	kt_cache_init(&ctx->thr_cache, sizeof(kt_thr_t), KT_MAX_THREAD_ID);
+	kt_thr_pool_init();
 }
 
 void ktsan_init(void)
@@ -101,12 +105,8 @@ void ktsan_init(void)
 
 	ctx = &kt_ctx;
 
-	kt_id_init(&ctx->thr_id_manager);
-
-	thr = kt_cache_alloc(&ctx->thr_cache);
-	BUG_ON(thr == NULL); /* Out of memory. */
-	kt_thr_create(NULL, (uptr_t)_RET_IP_, thr, current->pid);
-	kt_thr_start(thr, (uptr_t)_RET_IP_);
+	thr = kt_thr_create(NULL, current->pid);
+	kt_thr_start(thr);
 	current->ktsan.thr = thr;
 
 	BUG_ON(ctx->enabled);
@@ -125,45 +125,51 @@ void ktsan_init(void)
 	BUG_ON(inside != 1);
 	ctx->enabled = 1;
 
-	pr_err("TSan: enabled.\n");
+	pr_err("ktsan: enabled.\n");
 }
 
-void ktsan_thr_create(struct ktsan_thr_s *new, int tid)
+/* FIXME(xairy): not sure if this is the best place for this
+   function, but it requires access to ENTER and LEAVE. */
+void kt_tests_run(void)
 {
-	ENTER();
-	new->thr = kt_cache_alloc(&kt_ctx.thr_cache);
-	BUG_ON(new->thr == NULL); /* Out of memory. */
-	kt_thr_create(thr, pc, new->thr, tid);
+	ENTER(false);
+	kt_tests_run_noinst();
+	LEAVE();
+	kt_tests_run_inst();
+}
+
+void ktsan_thr_create(struct ktsan_thr_s *new, int kid)
+{
+	ENTER(true);
+	new->thr = kt_thr_create(thr, kid);
 	LEAVE();
 }
 
 void ktsan_thr_destroy(struct ktsan_thr_s *old)
 {
-	ENTER();
-	kt_thr_destroy(thr, pc, old->thr);
-	kt_cache_free(&kt_ctx.thr_cache, old->thr);
-	BUG_ON(old->thr == current->ktsan.thr && old != &current->ktsan);
+	ENTER(true);
+	kt_thr_destroy(thr, old->thr);
 	old->thr = NULL;
 	LEAVE();
 }
 
 void ktsan_thr_start(void)
 {
-	ENTER();
-	kt_thr_start(thr, pc);
+	ENTER(true);
+	kt_thr_start(thr);
 	LEAVE();
 }
 
 void ktsan_thr_stop(void)
 {
-	ENTER();
-	kt_thr_stop(thr, pc);
+	ENTER(true);
+	kt_thr_stop(thr);
 	LEAVE();
 }
 
 void ktsan_sync_acquire(void *addr)
 {
-	ENTER();
+	ENTER(true);
 	kt_sync_acquire(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
@@ -171,7 +177,7 @@ EXPORT_SYMBOL(ktsan_sync_acquire);
 
 void ktsan_sync_release(void *addr)
 {
-	ENTER();
+	ENTER(true);
 	kt_sync_release(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
@@ -179,21 +185,21 @@ EXPORT_SYMBOL(kt_sync_release);
 
 void ktsan_memblock_alloc(void *addr, size_t size)
 {
-	ENTER();
+	ENTER(false);
 	kt_memblock_alloc(thr, pc, (uptr_t)addr, size);
 	LEAVE();
 }
 
 void ktsan_memblock_free(void *addr, size_t size)
 {
-	ENTER();
+	ENTER(false);
 	kt_memblock_free(thr, pc, (uptr_t)addr, size);
 	LEAVE();
 }
 
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
 {
-	ENTER();
+	ENTER(true);
 	kt_mtx_pre_lock(thr, pc, (uptr_t)addr, write, try);
 	LEAVE();
 }
@@ -201,7 +207,7 @@ EXPORT_SYMBOL(ktsan_mtx_pre_lock);
 
 void ktsan_mtx_post_lock(void *addr, bool write, bool try)
 {
-	ENTER();
+	ENTER(true);
 	kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try);
 	LEAVE();
 }
@@ -209,7 +215,7 @@ EXPORT_SYMBOL(ktsan_mtx_post_lock);
 
 void ktsan_mtx_pre_unlock(void *addr, bool write)
 {
-	ENTER();
+	ENTER(true);
 	kt_mtx_pre_unlock(thr, pc, (uptr_t)addr, write);
 	LEAVE();
 }
@@ -219,7 +225,7 @@ int ktsan_atomic32_read(const void *addr)
 {
 	int rv;
 
-	ENTER();
+	ENTER(true);
 	rv = kt_atomic32_read(thr, pc, (uptr_t)addr);
 	LEAVE();
 
@@ -231,7 +237,7 @@ EXPORT_SYMBOL(ktsan_atomic32_read);
 
 void ktsan_atomic32_set(void *addr, int value)
 {
-	ENTER();
+	ENTER(true);
 	kt_atomic32_set(thr, pc, (uptr_t)addr, value);
 	LEAVE();
 
@@ -242,7 +248,7 @@ EXPORT_SYMBOL(ktsan_atomic32_set);
 
 void ktsan_read1(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 0, true);
 	LEAVE();
 }
@@ -250,7 +256,7 @@ EXPORT_SYMBOL(ktsan_read1);
 
 void ktsan_read2(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 1, true);
 	LEAVE();
 }
@@ -258,7 +264,7 @@ EXPORT_SYMBOL(ktsan_read2);
 
 void ktsan_read4(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 2, true);
 	LEAVE();
 }
@@ -266,7 +272,7 @@ EXPORT_SYMBOL(ktsan_read4);
 
 void ktsan_read8(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 3, true);
 	LEAVE();
 }
@@ -274,7 +280,7 @@ EXPORT_SYMBOL(ktsan_read8);
 
 void ktsan_read16(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 3, true);
 	kt_access(thr, pc, (uptr_t)addr + 8, 3, true);
 	LEAVE();
@@ -283,7 +289,7 @@ EXPORT_SYMBOL(ktsan_read16);
 
 void ktsan_write1(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 0, false);
 	LEAVE();
 }
@@ -291,7 +297,7 @@ EXPORT_SYMBOL(ktsan_write1);
 
 void ktsan_write2(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 1, false);
 	LEAVE();
 }
@@ -299,7 +305,7 @@ EXPORT_SYMBOL(ktsan_write2);
 
 void ktsan_write4(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 2, false);
 	LEAVE();
 }
@@ -307,7 +313,7 @@ EXPORT_SYMBOL(ktsan_write4);
 
 void ktsan_write8(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 3, false);
 	LEAVE();
 }
@@ -315,7 +321,7 @@ EXPORT_SYMBOL(ktsan_write8);
 
 void ktsan_write16(void *addr)
 {
-	ENTER();
+	ENTER(false);
 	kt_access(thr, pc, (uptr_t)addr, 3, false);
 	kt_access(thr, pc, (uptr_t)addr + 8, 3, false);
 	LEAVE();
@@ -324,16 +330,17 @@ EXPORT_SYMBOL(ktsan_write16);
 
 void ktsan_func_entry(void *call_pc)
 {
-	ENTER();
-	/* TODO. */
+	ENTER(false);
+	pc = (uptr_t)__builtin_return_address(1);
+	kt_func_entry(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_func_entry);
 
-void ktsan_func_exit(void *call_pc)
+void ktsan_func_exit(void)
 {
-	ENTER();
-	/* TODO. */
+	ENTER(false);
+	kt_func_exit(thr);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_func_exit);

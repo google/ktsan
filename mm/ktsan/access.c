@@ -80,8 +80,9 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 		info.addr = addr;
 		info.old = old;
 		info.new = value;
-		info.strip_addr = _RET_IP_;
-		kt_report_race(&info);
+		/* Strip ktsan_* and kt_access frames. */
+		info.strip_addr = (uptr_t)__builtin_return_address(1);
+		kt_report_race(thr, &info);
 
 		return false;
 	}
@@ -99,8 +100,9 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 		info.addr = addr;
 		info.old = old;
 		info.new = value;
-		info.strip_addr = _RET_IP_;
-		kt_report_race(&info);
+		/* Strip ktsan_* and kt_access frames. */
+		info.strip_addr = (uptr_t)__builtin_return_address(1);
+		kt_report_race(thr, &info);
 
 		return false;
 	}
@@ -129,10 +131,9 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	if (!slots)
 		return; /* FIXME? */
 
-	kt_clk_tick(&thr->clk, thr->id);
 	current_clock = kt_clk_get(&thr->clk, thr->id);
-
-	/* TODO(xairy): log memory access. */
+	kt_trace_add_event(thr, kt_event_type_mop, pc);
+	kt_clk_tick(&thr->clk, thr->id);
 
 	value.tid = thr->id;
 	value.clock = current_clock;
@@ -155,7 +156,7 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	}
 }
 
-/* XXX: Relies the fact that log(KT_GRAIN) == 3. */
+/* XXX: Relies on the fact that log(KT_GRAIN) == 3. */
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 			size_t size, bool read)
 {

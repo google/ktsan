@@ -2235,7 +2235,11 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
 		if (prev->sched_class->task_dead)
 			prev->sched_class->task_dead(prev);
 
+		/* To store stats in a per cpu struct set thr->cpu
+		   with ktsan_thr_start and revert with ktsan_thr_stop. */
+		ktsan_thr_start();
 		ktsan_thr_destroy(&prev->ktsan);
+		ktsan_thr_stop();
 
 		/*
 		 * Remove function-return probe instances associated with this
@@ -2280,12 +2284,16 @@ static inline void post_schedule(struct rq *rq)
 asmlinkage __visible void schedule_tail(struct task_struct *prev)
 	__releases(rq->lock)
 {
-	struct rq *rq = this_rq();
+	struct rq *rq;
 
-	/* Has to be before finish_task_switch. */
 	ktsan_thr_start();
 
+	rq = this_rq();
+
 	finish_task_switch(rq, prev);
+
+	/* Restore thr->cpu in case it was zeroed in finish_task_switch. */
+	ktsan_thr_start();
 
 	/*
 	 * FIXME: do we need to worry about rq being invalidated by the
@@ -2310,8 +2318,6 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	       struct task_struct *next)
 {
 	struct mm_struct *mm, *oldmm;
-
-	ktsan_thr_stop();
 
 	prepare_task_switch(rq, prev, next);
 
@@ -2350,9 +2356,6 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	switch_to(prev, next, prev);
 
 	barrier();
-
-	/* Has to be before finish_task_switch. */
-	ktsan_thr_start();
 
 	/*
 	 * this_rq must be evaluated again because prev may have moved
@@ -2764,6 +2767,7 @@ static void __sched __schedule(void)
 
 need_resched:
 	preempt_disable();
+	ktsan_thr_stop();
 	cpu = smp_processor_id();
 	rq = cpu_rq(cpu);
 	rcu_note_context_switch(cpu);
@@ -2834,6 +2838,7 @@ need_resched:
 	post_schedule(rq);
 
 	sched_preempt_enable_no_resched();
+	ktsan_thr_start();
 	if (need_resched())
 		goto need_resched;
 }

@@ -2,31 +2,28 @@
 #define __X86_MM_KTSAN_KTSAN_H
 
 #include <linux/ktsan.h>
+#include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/percpu.h>
 #include <linux/types.h>
-
-/* XXX: for debugging. */
-#define KT_MGK(x, y) x ## y
-#define KT_MGK2(x, y) KT_MGK(x, y)
-#define REPEAT_N_AND_STOP(n) \
-	static int KT_MGK2(scary_, __LINE__); if (++KT_MGK2(scary_, __LINE__) < (n))
 
 #define KT_SHADOW_SLOTS_LOG 2
 #define KT_SHADOW_SLOTS (1 << KT_SHADOW_SLOTS_LOG)
 
 #define KT_GRAIN 8
 
-#define KT_THREAD_ID_BITS     13
-#define KT_CLOCK_BITS         42
+#define KT_THREAD_ID_BITS 13
+#define KT_CLOCK_BITS 42
 
 #define KT_MAX_THREAD_ID 1024
+#define KT_QUARANTINE_SIZE 512
+
 #define KT_MAX_STACK_FRAMES 64
 
 #define KT_COLLECT_STATS 1
 
-#define KT_TRACE_PARTS 64
-#define KT_TRACE_PART_SIZE (2 * 1024)
+#define KT_TRACE_PARTS 16
+#define KT_TRACE_PART_SIZE (64 * 1024)
 #define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
 
 /* Both arguments must be pointers. */
@@ -61,6 +58,7 @@ typedef struct kt_event_s		kt_event_t;
 typedef struct kt_part_header_s		kt_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
 typedef struct kt_id_manager_s		kt_id_manager_t;
+typedef struct kt_thr_pool_s		kt_thr_pool_t;
 
 /* Stack. */
 
@@ -72,10 +70,12 @@ struct kt_stack_s {
 /* Trace. */
 
 enum kt_event_type_e {
+	kt_event_type_invalid,
 	kt_event_type_func_enter,
 	kt_event_type_func_exit,
 	kt_event_type_lock,
 	kt_event_type_unlock,
+	kt_event_type_mop, /* memory operation */
 };
 
 struct kt_event_s {
@@ -85,6 +85,7 @@ struct kt_event_s {
 
 struct kt_part_header_s {
 	kt_stack_t		stack;
+	kt_time_t		clock;
 };
 
 struct kt_trace_s {
@@ -165,23 +166,27 @@ struct kt_tab_test_s {
 	unsigned long data[4];
 };
 
-/* Ids. */
-
-struct kt_id_manager_s {
-	int			ids[KT_MAX_THREAD_ID];
-	int			head;
-	spinlock_t		lock;
-};
 
 /* Threads. */
 
 struct kt_thr_s {
-	int			kid; /* kernel thread id */
 	int			id;
-	atomic_t		inside;	/* Already inside of ktsan runtime */
+	int			kid; /* kernel thread id */
+	atomic_t		inside;	/* already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
 	kt_trace_t		trace;
+	int			call_depth;
+	struct list_head	list; /* quarantine list */
+};
+
+struct kt_thr_pool_s {
+	kt_cache_t		cache;
+	kt_thr_t		*thrs[KT_MAX_THREAD_ID];
+	int			new_id;
+	struct list_head	quarantine;
+	int			quarantine_size;
+	spinlock_t		lock;
 };
 
 /* Statistics. */
@@ -221,8 +226,7 @@ struct kt_ctx_s {
 	kt_tab_t		sync_tab; /* sync addr -> sync object */
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
-	kt_cache_t		thr_cache;
-	kt_id_manager_t		thr_id_manager;
+	kt_thr_pool_t		thr_pool;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -239,12 +243,20 @@ static inline unsigned long kt_pc_decompress(unsigned int pc)
 	return ((ULONG_MAX - UINT_MAX) | pc);
 }
 
+void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
+void kt_stack_print(kt_stack_t *stack);
 void kt_stack_print_current(unsigned long strip_addr);
+
+/* Trace. */
+
+void kt_trace_init(kt_trace_t *trace);
+void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, uptr_t addr);
+void kt_trace_restore_stack(kt_thr_t *thr, kt_time_t clock, kt_stack_t *stack);
+void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 
 /* Clocks. */
 
 void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk);
-void kt_clk_destroy(kt_thr_t *thr, kt_clk_t *clk);
 void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
 
 static inline
@@ -265,18 +277,17 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 	clk->time[tid]++;
 }
 
-/* Ids. */
-
-void kt_id_init(kt_id_manager_t *mgr);
-int kt_id_new(kt_id_manager_t *mgr);
-void kt_id_free(kt_id_manager_t *mgr, int id);
-
 /* Threads. */
 
-void kt_thr_create(kt_thr_t *thr, uptr_t pc, kt_thr_t *new, int tid);
-void kt_thr_destroy(kt_thr_t *thr, uptr_t pc, kt_thr_t *old);
-void kt_thr_start(kt_thr_t *thr, uptr_t pc);
-void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
+void kt_thr_pool_init(void);
+
+kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid);
+void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old);
+kt_thr_t *kt_thr_get(int id);
+
+void kt_thr_start(kt_thr_t *thr);
+void kt_thr_stop(kt_thr_t *thr);
+void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other);
 
 /* Synchronization. */
 
@@ -303,9 +314,14 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 
+/* Function tracing. */
+
+void kt_func_entry(kt_thr_t *thr, uptr_t pc);
+void kt_func_exit(kt_thr_t *thr);
+
 /* Reports. */
 
-void kt_report_race(kt_race_info_t *info);
+void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
 
 /* Internal allocator. */
 
@@ -331,7 +347,7 @@ void kt_stat_init(void);
 static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
 #if KT_COLLECT_STATS
-	WARN_ON(thr->cpu == NULL);
+	WARN_ON_ONCE(thr->cpu == NULL);
 	if (thr->cpu == NULL)
 		return;
 	thr->cpu->stat.stat[what] += x;
@@ -351,5 +367,8 @@ static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
 /* Tests. */
 
 void kt_tests_init(void);
+void kt_tests_run_noinst(void);
+void kt_tests_run_inst(void);
+void kt_tests_run(void);
 
 #endif /* __X86_MM_KTSAN_KTSAN_H */
