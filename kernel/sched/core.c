@@ -2284,9 +2284,16 @@ static inline void post_schedule(struct rq *rq)
 asmlinkage __visible void schedule_tail(struct task_struct *prev)
 	__releases(rq->lock)
 {
-	struct rq *rq = this_rq();
+	struct rq *rq;
+
+	ktsan_thr_start();
+
+	rq = this_rq();
 
 	finish_task_switch(rq, prev);
+
+	/* Restore thr->cpu in case it was zeroed in finish_tabk_switch. */
+	ktsan_thr_start();
 
 	/*
 	 * FIXME: do we need to worry about rq being invalidated by the
@@ -2300,8 +2307,6 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 #endif
 	if (current->set_child_tid)
 		put_user(task_pid_vnr(current), current->set_child_tid);
-
-	ktsan_thr_start();
 }
 
 /*
