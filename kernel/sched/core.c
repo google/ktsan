@@ -2546,16 +2546,20 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 {
 	struct rq *rq;
 
+	ktsan_thr_start();
+
 	/* finish_task_switch() drops rq->lock and enables preemtion */
 	preempt_disable();
 	rq = finish_task_switch(prev);
+
+	/* Restore thr->cpu in case it was zeroed in finish_tabk_switch. */
+	ktsan_thr_start();
+
 	balance_callback(rq);
 	preempt_enable();
 
 	if (current->set_child_tid)
 		put_user(task_pid_vnr(current), current->set_child_tid);
-
-	ktsan_thr_start();
 }
 
 /*
