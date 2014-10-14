@@ -8,11 +8,11 @@
 
 DEFINE_SPINLOCK(kt_report_lock);
 
-void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
+void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 {
 	int i;
 	char function[MAX_FUNCTION_NAME_SIZE];
-	kt_thr_t *old_thr;
+	kt_thr_t *old;
 	kt_stack_t stack;
 
 	sprintf(function, "%pS", (void *)info->strip_addr);
@@ -32,15 +32,15 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 
 	pr_err("%s of size %d by thread T%d (K%d):\n",
 		info->new.read ? "Read" : "Write",
-		(1 << info->new.size), info->new.tid, new_thr->kid);
+		(1 << info->new.size), info->new.tid, new->kid);
 	kt_stack_print_current(info->strip_addr);
-	pr_err("DBG: cpu = %lx\n", (uptr_t)new_thr->cpu);
+	pr_err("DBG: cpu = %lx\n", (uptr_t)new->cpu);
 	pr_err("\n");
 
 	/* FIXME(xairy): stack might be wrong if id was reassigned. */
-	old_thr = kt_thr_get(info->old.tid);
+	old = kt_thr_get(info->old.tid);
 
-	if (old_thr == NULL) {
+	if (old == NULL) {
 		pr_err("Previous %s of size %d by thread T%d:\n",
 			info->old.read ? "read" : "write",
 			(1 << info->old.size), info->old.tid);
@@ -48,18 +48,21 @@ void kt_report_race(kt_thr_t *new_thr, kt_race_info_t *info)
 	} else {
 		pr_err("Previous %s of size %d by thread T%d (K%d):\n",
 			info->old.read ? "read" : "write",
-			(1 << info->old.size), info->old.tid, old_thr->kid);
-		kt_trace_restore_stack(old_thr, info->old.clock, &stack);
+			(1 << info->old.size), info->old.tid, old->kid);
+		kt_trace_restore_stack(old, info->old.clock, &stack);
 		kt_stack_print(&stack);
-		pr_err("DBG: cpu = %lx\n", (uptr_t)old_thr->cpu);
+		pr_err("DBG: cpu = %lx\n", (uptr_t)old->cpu);
 	}
 	pr_err("\n");
 
 	pr_err("DBG: addr: %lx\n", info->addr);
 	pr_err("DBG: first offset: %d, second offset: %d\n",
 		(int)info->old.offset, (int)info->new.offset);
-	pr_err("DBG: first clock: %lu, second clock: %lu\n",
-		(unsigned long)info->old.clock, (unsigned long)info->new.clock);
+	pr_err("DBG: T%d clock: {T%d: %lu, T%d: %lu}\n", new->id,
+			new->id, kt_clk_get(&new->clk, new->id),
+			old->id, kt_clk_get(&new->clk, old->id));
+	pr_err("DBG: T%d clock: {T%d: %lu}\n", old->id,
+			old->id, (unsigned long)info->old.clock);
 
 	pr_err("==================================================================\n");
 
