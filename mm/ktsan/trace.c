@@ -117,22 +117,32 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 		event = &trace->events[i];
 		if (event->type == kt_event_type_func_enter) {
 			pc = kt_pc_decompress(event->pc);
-			pr_err("  i: %lu, enter, pc: [<%p>] %pS\n",
+			pr_err("  i: %lu, enter , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
 		} else if (event->type == kt_event_type_func_exit) {
 			pc = kt_pc_decompress(event->pc);
-			pr_err("  i: %lu, exit, pc: [<%p>] %pS\n",
+			pr_err("  i: %lu, exit  , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_lock) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, lock  , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_unlock) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, unlock, pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_thr_stop) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, stop  , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_thr_start) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, start , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
 		} /*else if (event->type == kt_event_type_mop) {
 			pc = kt_pc_decompress(event->pc);
 			pr_err("  i: %lu, mop, pc: %p\n",
 				i, (void *)pc);
-		} else if (event->type == kt_event_type_lock) {
-			pr_err("  i: %lu, lock, pc: %lx\n",
-				i, kt_pc_decompress(event->pc));
-		} else if (event->type == kt_event_type_unlock) {
-			pr_err("  i: %lu, unlock, pc: %lx\n",
-				i, kt_pc_decompress(event->pc));
-		}*/
+		} */
 	}
 }
