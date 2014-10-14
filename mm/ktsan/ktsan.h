@@ -76,6 +76,8 @@ enum kt_event_type_e {
 	kt_event_type_lock,
 	kt_event_type_unlock,
 	kt_event_type_mop, /* memory operation */
+	kt_event_type_thr_start,
+	kt_event_type_thr_stop,
 };
 
 struct kt_event_s {
