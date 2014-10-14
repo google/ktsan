@@ -12,7 +12,7 @@ void kt_test_trace(void);
 
 void kt_tests_run_noinst(void)
 {
-	pr_err("TSan: running not instrumented tests, thread #%d.\n",
+	pr_err("ktsan: running not instrumented tests, thread #%d.\n",
 		current->pid);
 	pr_err("\n");
 
@@ -30,7 +30,7 @@ void kt_test_hash_table(void)
 	kt_tab_test_t *obj, *obj1, *obj2, *obj3;
 	bool created;
 
-	pr_err("TSan: starting hash table test.\n");
+	pr_err("ktsan: starting hash table test.\n");
 
 	/* The test table is initialized in ktsan_init_early. */
 
@@ -116,7 +116,7 @@ void kt_test_hash_table(void)
 	spin_unlock(&obj1->tab.lock);
 	kt_cache_free(&ctx->test_tab.obj_cache, obj1);
 
-	pr_err("TSan: end of test.\n");
+	pr_err("ktsan: end of test.\n");
 }
 
 /* Trace test. */
@@ -128,7 +128,7 @@ void kt_test_trace(void)
 	kt_stack_t stack;
 	int *fake;
 
-	pr_err("TSan: starting trace test.\n");
+	pr_err("ktsan: starting trace test.\n");
 
 	thr = current->ktsan.thr;
 	clock = kt_clk_get(&thr->clk, thr->id);
@@ -146,5 +146,5 @@ void kt_test_trace(void)
 	pr_err("Current stack trace:\n");
 	kt_stack_print_current((uptr_t)_RET_IP_);
 
-	pr_err("TSan: end of test.\n");
+	pr_err("ktsan: end of test.\n");
 }
