@@ -59,6 +59,7 @@ typedef struct kt_part_header_s		kt_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
 typedef struct kt_id_manager_s		kt_id_manager_t;
 typedef struct kt_thr_pool_s		kt_thr_pool_t;
+typedef struct kt_shadow_s		kt_shadow_t;
 
 /* Stack. */
 
@@ -105,8 +106,7 @@ struct kt_clk_s {
 
 /* Shadow. */
 
-/* TODO(xairy): rename to kt_shadow_t. */
-struct shadow {
+struct kt_shadow_s {
 	unsigned long tid	: KT_THREAD_ID_BITS;
 	unsigned long clock	: KT_CLOCK_BITS;
 	unsigned long offset	: 3;
@@ -118,8 +118,8 @@ struct shadow {
 
 struct kt_race_info_s {
 	unsigned long		addr;
-	struct shadow		old;
-	struct shadow		new;
+	kt_shadow_t		old;
+	kt_shadow_t		new;
 	unsigned long		strip_addr;
 };
 
