@@ -105,6 +105,7 @@ struct kt_clk_s {
 
 /* Shadow. */
 
+/* TODO(xairy): rename to kt_shadow_t. */
 struct shadow {
 	unsigned long tid	: KT_THREAD_ID_BITS;
 	unsigned long clock	: KT_CLOCK_BITS;
@@ -278,6 +279,11 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 		return;
 	clk->time[tid]++;
 }
+
+/* Shadow. */
+
+void *kt_shadow_get(uptr_t addr);
+void kt_shadow_clear(uptr_t addr, size_t size);
 
 /* Threads. */
 
