@@ -5,6 +5,8 @@
 #include <linux/kthread.h>
 #include <linux/mutex.h>
 #include <linux/printk.h>
+#include <linux/rwlock.h>
+#include <linux/rwsem.h>
 #include <linux/sched.h>
 #include <linux/semaphore.h>
 #include <linux/slab.h>
@@ -212,6 +214,26 @@ static void rwlock_second(void *arg)
 
 DECLARE_TEST(rwlock, kt_nop, rwlock_first, rwlock_second, "no race expected");
 
+/* ktsan test: rwsem. */
+
+DECLARE_RWSEM(rwsem_sync);
+
+static void rwsem_first(void *arg)
+{
+	down_write(&rwsem_sync);
+	*((int *)arg) = 1;
+	up_write(&rwsem_sync);
+}
+
+static void rwsem_second(void *arg)
+{
+	down_write(&rwsem_sync);
+	*((int *)arg) = 1;
+	up_write(&rwsem_sync);
+}
+
+DECLARE_TEST(rwsem, kt_nop, rwsem_first, rwsem_second, "no race expected");
+
 /* ktsan test: thread create. */
 
 static void thr_crt_main(void *arg)
@@ -246,6 +268,8 @@ void kt_tests_run_inst(void)
 	kt_test_semaphore();
 	pr_err("\n");
 	kt_test_rwlock();
+	pr_err("\n");
+	kt_test_rwsem();
 	pr_err("\n");
 	kt_test_thread_create();
 	pr_err("\n");
