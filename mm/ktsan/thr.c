@@ -46,6 +46,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
 	INIT_LIST_HEAD(&new->list);
+	new->report_depth = 0;
 
 	/* thr == NULL when thread #0 is being initialized. */
 	if (thr == NULL)

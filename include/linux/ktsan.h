@@ -18,6 +18,9 @@ struct ktsan_thr_s {
 void ktsan_init_early(void);
 void ktsan_init(void);
 
+void ktsan_report_disable(void);
+void ktsan_report_enable(void);
+
 void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
 void ktsan_thr_destroy(struct ktsan_thr_s *old);
 void ktsan_thr_start(void);
@@ -50,6 +53,9 @@ struct ktsan_thr_s {
 
 static inline void ktsan_init_early(void) {}
 static inline void ktsan_init(void) {}
+
+static inline void ktsan_report_disable(void) {}
+static inline void ktsan_report_enable(void) {}
 
 static inline void ktsan_thr_create(struct ktsan_thr_s *new, int tid) {}
 static inline void ktsan_thr_destroy(struct ktsan_thr_s *old) {}
