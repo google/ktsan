@@ -192,6 +192,26 @@ static void sema_second(void *arg)
 
 DECLARE_TEST(semaphore, kt_nop, sema_first, sema_second, "no race expected");
 
+/* ktsan test: rwlock. */
+
+DEFINE_RWLOCK(rwlock_sync);
+
+static void rwlock_first(void *arg)
+{
+	write_lock(&rwlock_sync);
+	*((int *)arg) = 1;
+	write_unlock(&rwlock_sync);
+}
+
+static void rwlock_second(void *arg)
+{
+	write_lock(&rwlock_sync);
+	*((int *)arg) = 1;
+	write_unlock(&rwlock_sync);
+}
+
+DECLARE_TEST(rwlock, kt_nop, rwlock_first, rwlock_second, "no race expected");
+
 /* ktsan test: thread create. */
 
 static void thr_crt_main(void *arg)
@@ -224,6 +244,8 @@ void kt_tests_run_inst(void)
 	kt_test_mutex();
 	pr_err("\n");
 	kt_test_semaphore();
+	pr_err("\n");
+	kt_test_rwlock();
 	pr_err("\n");
 	kt_test_thread_create();
 	pr_err("\n");
