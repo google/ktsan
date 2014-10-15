@@ -46,7 +46,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
 	INIT_LIST_HEAD(&new->list);
-	new->report_depth = 0;
+	new->report_depth = 1;
 
 	/* thr == NULL when thread #0 is being initialized. */
 	if (thr == NULL)
@@ -94,6 +94,8 @@ void kt_thr_start(kt_thr_t *thr)
 	kt_trace_add_event(thr, kt_event_type_thr_start, 0);
 	kt_clk_tick(&thr->clk, thr->id);
 
+	kt_report_enable(thr);
+
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
 
@@ -103,6 +105,8 @@ void kt_thr_stop(kt_thr_t *thr)
 
 	kt_trace_add_event(thr, kt_event_type_thr_stop, 0);
 	kt_clk_tick(&thr->clk, thr->id);
+
+	kt_report_disable(thr);
 
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
