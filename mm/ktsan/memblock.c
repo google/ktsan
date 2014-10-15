@@ -2,7 +2,7 @@
 
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 {
-
+	kt_shadow_clear(addr, size);
 }
 
 void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
@@ -38,4 +38,6 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 
 		sync = next;
 	}
+
+	kt_shadow_clear(addr, size);
 }
