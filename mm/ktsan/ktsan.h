@@ -296,7 +296,6 @@ kt_thr_t *kt_thr_get(int id);
 
 void kt_thr_start(kt_thr_t *thr);
 void kt_thr_stop(kt_thr_t *thr);
-void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other);
 
 /* Synchronization. */
 

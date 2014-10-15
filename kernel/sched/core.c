@@ -2316,22 +2316,20 @@ static inline void post_schedule(struct rq *rq)
 asmlinkage __visible void schedule_tail(struct task_struct *prev)
 	__releases(rq->lock)
 {
-	struct rq *rq;
-
-	ktsan_thr_start();
-
-	rq = this_rq();
+	struct rq *rq = this_rq();
 
 	finish_task_switch(rq, prev);
-
-	/* Restore thr->cpu in case it was zeroed in finish_task_switch. */
-	ktsan_thr_start();
 
 	/*
 	 * FIXME: do we need to worry about rq being invalidated by the
 	 * task_switch?
 	 */
 	post_schedule(rq);
+
+	/* Must be before put_user call because the latter can cause
+	   page fault, which might enter scheduler, which results in
+	   two consequent ktsan_thr_start calls. */
+	ktsan_thr_start();
 
 	if (current->set_child_tid)
 		put_user(task_pid_vnr(current), current->set_child_tid);
