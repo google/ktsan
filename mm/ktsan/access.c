@@ -6,32 +6,6 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 
-static bool physical_memory_addr(unsigned long addr)
-{
-	return (addr >= (unsigned long)(__va(0)) &&
-		addr < (unsigned long)(__va(max_pfn << PAGE_SHIFT)));
-}
-
-static void *map_memory_to_shadow(unsigned long addr)
-{
-	struct page *page;
-	unsigned long aligned_addr;
-	unsigned long shadow_offset;
-
-	if (!physical_memory_addr(addr))
-		return NULL;
-
-	/* XXX: kmemcheck checks something about pte here. */
-
-	page = virt_to_page(addr);
-	if (!page->shadow)
-		return NULL;
-
-	aligned_addr = round_down(addr, KT_GRAIN);
-	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KT_SHADOW_SLOTS;
-	return page->shadow + shadow_offset;
-}
-
 static bool ranges_intersect(int first_offset, int first_size,
 			     int second_offset, int second_size)
 {
@@ -126,7 +100,7 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	kt_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
 	kt_stat_inc(thr, kt_stat_access_size1 + size);
 
-	slots = map_memory_to_shadow(addr);
+	slots = kt_shadow_get(addr);
 
 	if (!slots)
 		return; /* FIXME? */
