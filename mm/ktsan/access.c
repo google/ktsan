@@ -19,10 +19,10 @@ static bool ranges_intersect(int first_offset, int first_size,
 }
 
 static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
-			struct shadow *slot, struct shadow value, bool stored)
+			kt_shadow_t *slot, kt_shadow_t value, bool stored)
 {
 	kt_race_info_t info;
-	struct shadow old;
+	kt_shadow_t old;
 
 	KT_ATOMIC_64_SET(&old, slot);
 
@@ -91,9 +91,9 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 */
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 {
-	struct shadow value;
+	kt_shadow_t value;
 	unsigned long current_clock;
-	struct shadow *slots;
+	kt_shadow_t *slots;
 	int i;
 	bool stored;
 
