@@ -181,6 +181,7 @@ struct kt_thr_s {
 	kt_trace_t		trace;
 	int			call_depth;
 	struct list_head	list; /* quarantine list */
+	int			report_depth;
 };
 
 struct kt_thr_pool_s {
@@ -329,6 +330,8 @@ void kt_func_exit(kt_thr_t *thr);
 
 /* Reports. */
 
+void kt_report_disable(kt_thr_t *thr);
+void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
 
 /* Internal allocator. */
