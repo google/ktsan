@@ -90,12 +90,18 @@ void kt_thr_start(kt_thr_t *thr)
 {
 	void *cpu = this_cpu_ptr(kt_ctx.cpus);
 
+	kt_trace_add_event(thr, kt_event_type_thr_start, 0);
+	kt_clk_tick(&thr->clk, thr->id);
+
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
 
 void kt_thr_stop(kt_thr_t *thr)
 {
 	void *cpu = NULL;
+
+	kt_trace_add_event(thr, kt_event_type_thr_stop, 0);
+	kt_clk_tick(&thr->clk, thr->id);
 
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
