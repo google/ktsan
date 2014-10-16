@@ -85,9 +85,8 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 }
 
 /*
-   Size might be 0, 1, 2 or 3 and refers to the binary logarithm
+   Size might be 0, 1, 2 or 3 and equals to the binary logarithm
    of the actual access size.
-   Accessed region should fall into one 8-byte aligned region.
 */
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 {
@@ -130,7 +129,6 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	}
 }
 
-/* XXX: Relies on the fact that log(KT_GRAIN) == 3. */
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 			size_t size, bool read)
 {
@@ -145,4 +143,48 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	/* Handle ending, if any. */
 	for (; size; addr++, size--)
 		kt_access(thr, pc, addr, 0, read);
+}
+
+/*
+   Size might be 0, 1, 2 or 3 and equals to the binary logarithm
+   of the actual access size.
+*/
+void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+				size_t size, bool read)
+{
+	kt_shadow_t value;
+	kt_shadow_t *slots;
+	int i;
+
+	slots = kt_shadow_get(addr);
+	if (!slots)
+		return; /* FIXME? */
+
+	kt_trace_add_event(thr, kt_event_type_mop, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+
+	value.tid = thr->id;
+	value.clock = kt_clk_get(&thr->clk, thr->id);
+	value.offset = addr & ~KT_GRAIN;
+	value.size = size;
+	value.read = read;
+
+	for (i = 0; i < KT_SHADOW_SLOTS; i++)
+		KT_ATOMIC_64_SET(&slots[i], &value);
+}
+
+void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+				size_t size, bool read)
+{
+	/* Handle unaligned beginning, if any. */
+	for (; (addr & ~KT_GRAIN) && size; addr++, size--)
+		kt_access_imitate(thr, pc, addr, 0, read);
+
+	/* Handle middle part, if any. */
+	for (; size >= KT_GRAIN; addr += KT_GRAIN, size -= KT_GRAIN)
+		kt_access_imitate(thr, pc, addr, 3, read);
+
+	/* Handle ending, if any. */
+	for (; size; addr++, size--)
+		kt_access_imitate(thr, pc, addr, 0, read);
 }

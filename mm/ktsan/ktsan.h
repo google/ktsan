@@ -324,6 +324,11 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 
+void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+				size_t size, bool read);
+void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+				size_t size, bool read);
+
 /* Function tracing. */
 
 void kt_func_entry(kt_thr_t *thr, uptr_t pc);
