@@ -790,13 +790,18 @@ int __sched mutex_lock_interruptible(struct mutex *lock)
 {
 	int ret;
 
+	ktsan_mtx_pre_lock(lock, true, false);
 	might_sleep();
 	ret =  __mutex_fastpath_lock_retval(&lock->count);
 	if (likely(!ret)) {
 		mutex_set_owner(lock);
+		ktsan_mtx_post_lock(lock, true, false);
 		return 0;
-	} else
-		return __mutex_lock_interruptible_slowpath(lock);
+	} else {
+		ret = __mutex_lock_interruptible_slowpath(lock);
+		ktsan_mtx_post_lock(lock, true, false);
+		return ret;
+	}
 }
 
 EXPORT_SYMBOL(mutex_lock_interruptible);
@@ -805,13 +810,18 @@ int __sched mutex_lock_killable(struct mutex *lock)
 {
 	int ret;
 
+	ktsan_mtx_pre_lock(lock, true, false);
 	might_sleep();
 	ret = __mutex_fastpath_lock_retval(&lock->count);
 	if (likely(!ret)) {
 		mutex_set_owner(lock);
+		ktsan_mtx_post_lock(lock, true, false);
 		return 0;
-	} else
-		return __mutex_lock_killable_slowpath(lock);
+	} else {
+		ret = __mutex_lock_killable_slowpath(lock);
+		ktsan_mtx_post_lock(lock, true, false);
+		return ret;
+	}
 }
 EXPORT_SYMBOL(mutex_lock_killable);
 
