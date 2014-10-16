@@ -11,7 +11,7 @@
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 
-typedef int (*thr_func_t)(void *); 
+typedef int (*thr_func_t)(void *);
 
 struct thr_arg_s {
 	void *value;
@@ -80,7 +80,7 @@ void kt_test(thr_func_t main, thr_func_t first, thr_func_t second,
 	pr_err("ktsan: end of test.\n");
 }
 
-static int kt_nop(void* arg) { return 0; }
+static int kt_nop(void *arg) { return 0; }
 
 /* ktsan test: race. */
 
@@ -325,7 +325,7 @@ static void kt_test_thread_create(void)
 
 void kt_tests_run_inst(void)
 {
-	pr_err("ktsan: running instrumented tests, thread #%d.\n", current->pid);
+	pr_err("ktsan: running instrumented tests, T%d.\n", current->pid);
 	pr_err("\n");
 
 	kt_test_race();

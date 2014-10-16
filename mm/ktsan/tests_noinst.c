@@ -5,23 +5,6 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 
-/* Not instrumented tests, should be called inside ENTER/LEAVE section. */
-
-void kt_test_hash_table(void);
-void kt_test_trace(void);
-
-void kt_tests_run_noinst(void)
-{
-	pr_err("ktsan: running not instrumented tests, thread #%d.\n",
-		current->pid);
-	pr_err("\n");
-
-	kt_test_hash_table();
-	pr_err("\n");
-	kt_test_trace();
-	pr_err("\n");
-}
-
 /* Hash table test. */
 
 void kt_test_hash_table(void)
@@ -147,4 +130,17 @@ void kt_test_trace(void)
 	kt_stack_print_current((uptr_t)_RET_IP_);
 
 	pr_err("ktsan: end of test.\n");
+}
+
+/* Not instrumented tests, should be called inside ENTER/LEAVE section. */
+
+void kt_tests_run_noinst(void)
+{
+	pr_err("ktsan: running not instrumented tests, T%d.\n", current->pid);
+	pr_err("\n");
+
+	kt_test_hash_table();
+	pr_err("\n");
+	kt_test_trace();
+	pr_err("\n");
 }
