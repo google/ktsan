@@ -157,6 +157,7 @@ struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
 	kt_clk_t		clk;
 	kt_tab_sync_t		*next; /* next sync object in memblock */
+	int			lock_tid; /* id of thread that locked mutex */
 };
 
 struct kt_tab_memblock_s {
