@@ -27,6 +27,7 @@ uptr_t kt_memblock_addr(uptr_t addr)
 
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 {
+	/* FIXME(xairy): imitate access instead. */
 	kt_shadow_clear(addr, size);
 }
 
@@ -64,5 +65,6 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 		sync = next;
 	}
 
+	/* FIXME(xairy): imitate access instead. */
 	kt_shadow_clear(addr, size);
 }
