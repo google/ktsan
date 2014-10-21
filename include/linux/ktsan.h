@@ -39,6 +39,12 @@ void ktsan_mtx_pre_unlock(void *addr, bool write);
 int ktsan_atomic32_read(const void *addr);
 void ktsan_atomic32_set(void *addr, int value);
 
+void ktsan_preempt_disable(void);
+void ktsan_preempt_enable(void);
+
+void ktsan_irq_disable(void);
+void ktsan_irq_enable(void);
+
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node);
 void ktsan_free_page(struct page *page, unsigned int order);
@@ -56,6 +62,12 @@ static inline void ktsan_init(void) {}
 
 static inline void ktsan_report_disable(void) {}
 static inline void ktsan_report_enable(void) {}
+
+static inline void ktsan_preempt_disable(void) {}
+static inline void ktsan_preempt_enable(void) {}
+
+static inline void ktsan_irq_disable(void) {}
+static inline void ktsan_irq_enable(void) {}
 
 static inline void ktsan_thr_create(struct ktsan_thr_s *new, int tid) {}
 static inline void ktsan_thr_destroy(struct ktsan_thr_s *old) {}

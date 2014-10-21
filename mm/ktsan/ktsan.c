@@ -53,19 +53,21 @@ kt_ctx_t kt_ctx;
 	if (!current->ktsan.thr)				\
 		goto exit;					\
 								\
-	if (!(scheduler) && current->ktsan.thr->cpu == NULL)	\
-		goto exit;					\
-								\
-	DISABLE_INTERRUPTS(kt_flags);				\
-								\
 	thr = current->ktsan.thr;				\
 	pc = (uptr_t)_RET_IP_;					\
 								\
+	if (!(scheduler) && thr->cpu == NULL)			\
+		goto exit;					\
+								\
 	kt_inside_was = atomic_cmpxchg(&thr->inside, 0, 1);	\
 	if (kt_inside_was != 0) {				\
-		ENABLE_INTERRUPTS(kt_flags);			\
 		goto exit;					\
 	}							\
+								\
+	/* Interrupts should be disabled after setting		\
+	   thr->inside, since local_irq_save and		\
+	   preempt_disable are called. */			\
+	DISABLE_INTERRUPTS(kt_flags);				\
 								\
 	event_handled = true;					\
 /**/
@@ -74,13 +76,16 @@ kt_ctx_t kt_ctx;
 	/* thr might become NULL in ktsan_thread_destroy. */	\
 	thr = current->ktsan.thr;				\
 								\
+	/* Interrupts should be enabled before setting		\
+	   thr->inside, since local_irq_restore and		\
+	   preempt_enable are called. */			\
+	ENABLE_INTERRUPTS(kt_flags);				\
+								\
 	if (thr) {						\
 		kt_inside_was =					\
 			atomic_cmpxchg(&thr->inside, 1, 0);	\
 		BUG_ON(kt_inside_was != 1);			\
 	}							\
-								\
-	ENABLE_INTERRUPTS(kt_flags);				\
 								\
 exit:								\
 /**/
@@ -245,6 +250,38 @@ void ktsan_atomic32_set(void *addr, int value)
 		kt_atomic32_pure_set(addr, value);
 }
 EXPORT_SYMBOL(ktsan_atomic32_set);
+
+void ktsan_preempt_disable(void)
+{
+	ENTER(false);
+	kt_preempt_disable(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_preempt_disable);
+
+void ktsan_preempt_enable(void)
+{
+	ENTER(false);
+	kt_preempt_enable(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_preempt_enable);
+
+void ktsan_irq_disable(void)
+{
+	ENTER(false);
+	kt_irq_disable(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_irq_disable);
+
+void ktsan_irq_enable(void)
+{
+	ENTER(false);
+	kt_irq_enable(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_irq_enable);
 
 void ktsan_read1(void *addr)
 {

@@ -47,6 +47,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	new->call_depth = 0;
 	INIT_LIST_HEAD(&new->list);
 	new->report_depth = 0;
+	new->track_percpu = false;
 
 	/* thr == NULL when thread #0 is being initialized. */
 	if (thr == NULL)
