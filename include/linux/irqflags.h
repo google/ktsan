@@ -12,6 +12,7 @@
 #define _LINUX_TRACE_IRQFLAGS_H
 
 #include <linux/typecheck.h>
+#include <linux/ktsan.h>
 #include <asm/irqflags.h>
 
 #ifdef CONFIG_TRACE_IRQFLAGS
@@ -56,15 +57,25 @@
 /*
  * Wrap the arch provided IRQ routines to provide appropriate checks.
  */
-#define raw_local_irq_disable()		arch_local_irq_disable()
-#define raw_local_irq_enable()		arch_local_irq_enable()
+#define raw_local_irq_disable()				\
+	do {						\
+		arch_local_irq_disable();		\
+		ktsan_irq_disable();			\
+	} while (0)
+#define raw_local_irq_enable()				\
+	do {						\
+		ktsan_irq_enable();			\
+		arch_local_irq_enable();		\
+	} while (0)
 #define raw_local_irq_save(flags)			\
 	do {						\
 		typecheck(unsigned long, flags);	\
 		flags = arch_local_irq_save();		\
+		ktsan_irq_disable();			\
 	} while (0)
 #define raw_local_irq_restore(flags)			\
 	do {						\
+		ktsan_irq_enable();			\
 		typecheck(unsigned long, flags);	\
 		arch_local_irq_restore(flags);		\
 	} while (0)

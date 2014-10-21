@@ -183,6 +183,8 @@ struct kt_thr_s {
 	int			call_depth;
 	struct list_head	list; /* quarantine list */
 	int			report_depth;
+	bool			track_percpu;
+	struct list_head	percpu_list;
 };
 
 struct kt_thr_pool_s {
@@ -312,6 +314,13 @@ void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
 
 int kt_atomic32_pure_read(const void *addr);
 void kt_atomic32_pure_set(void *addr, int value);
+
+/* Per-cpu synchronization. */
+
+void kt_preempt_disable(kt_thr_t *thr);
+void kt_preempt_enable(kt_thr_t *thr);
+void kt_irq_disable(kt_thr_t *thr);
+void kt_irq_enable(kt_thr_t *thr);
 
 /* Memory block allocation. */
 
