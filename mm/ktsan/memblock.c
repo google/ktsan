@@ -64,5 +64,5 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 		sync = next;
 	}
 
-	kt_access_range_imitate(thr, pc, addr, size, false);
+	kt_access_range(thr, pc, addr, size, false);
 }
