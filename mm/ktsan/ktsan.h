@@ -321,6 +321,7 @@ void kt_preempt_disable(kt_thr_t *thr);
 void kt_preempt_enable(kt_thr_t *thr);
 void kt_irq_disable(kt_thr_t *thr);
 void kt_irq_enable(kt_thr_t *thr);
+void kt_percpu_acquire(kt_thr_t *thr, uptr_t addr);
 
 /* Memory block allocation. */
 

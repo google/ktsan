@@ -283,6 +283,14 @@ void ktsan_irq_enable(void)
 }
 EXPORT_SYMBOL(ktsan_irq_enable);
 
+void ktsan_percpu_acquire(void *addr)
+{
+	ENTER(false);
+	kt_percpu_acquire(thr, (uptr_t)addr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_percpu_acquire);
+
 void ktsan_read1(void *addr)
 {
 	ENTER(false);
