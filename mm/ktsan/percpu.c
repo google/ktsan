@@ -22,6 +22,11 @@ static void kt_percpu_track_try_disable(kt_thr_t *thr)
 	/* TODO(xairy): release all percpu syncs. */
 }
 
+void kt_percpu_acquire(kt_thr_t *thr, uptr_t addr)
+{
+
+}
+
 void kt_preempt_disable(kt_thr_t *thr)
 {
 	kt_percpu_track_enable(thr);
