@@ -59,6 +59,7 @@ typedef struct kt_part_header_s		kt_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
 typedef struct kt_id_manager_s		kt_id_manager_t;
 typedef struct kt_thr_pool_s		kt_thr_pool_t;
+typedef struct kt_shadow_s		kt_shadow_t;
 
 /* Stack. */
 
@@ -105,7 +106,7 @@ struct kt_clk_s {
 
 /* Shadow. */
 
-struct shadow {
+struct kt_shadow_s {
 	unsigned long tid	: KT_THREAD_ID_BITS;
 	unsigned long clock	: KT_CLOCK_BITS;
 	unsigned long offset	: 3;
@@ -117,8 +118,8 @@ struct shadow {
 
 struct kt_race_info_s {
 	unsigned long		addr;
-	struct shadow		old;
-	struct shadow		new;
+	kt_shadow_t		old;
+	kt_shadow_t		new;
 	unsigned long		strip_addr;
 };
 
@@ -156,6 +157,7 @@ struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
 	kt_clk_t		clk;
 	kt_tab_sync_t		*next; /* next sync object in memblock */
+	int			lock_tid; /* id of thread that locked mutex */
 };
 
 struct kt_tab_memblock_s {
@@ -180,6 +182,7 @@ struct kt_thr_s {
 	kt_trace_t		trace;
 	int			call_depth;
 	struct list_head	list; /* quarantine list */
+	int			report_depth;
 };
 
 struct kt_thr_pool_s {
@@ -279,6 +282,11 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 	clk->time[tid]++;
 }
 
+/* Shadow. */
+
+void *kt_shadow_get(uptr_t addr);
+void kt_shadow_clear(uptr_t addr, size_t size);
+
 /* Threads. */
 
 void kt_thr_pool_init(void);
@@ -289,7 +297,6 @@ kt_thr_t *kt_thr_get(int id);
 
 void kt_thr_start(kt_thr_t *thr);
 void kt_thr_stop(kt_thr_t *thr);
-void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other);
 
 /* Synchronization. */
 
@@ -308,6 +315,7 @@ void kt_atomic32_pure_set(void *addr, int value);
 
 /* Memory block allocation. */
 
+uptr_t kt_memblock_addr(uptr_t addr);
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 
@@ -316,6 +324,11 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 
+void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+				size_t size, bool read);
+void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+				size_t size, bool read);
+
 /* Function tracing. */
 
 void kt_func_entry(kt_thr_t *thr, uptr_t pc);
@@ -323,6 +336,8 @@ void kt_func_exit(kt_thr_t *thr);
 
 /* Reports. */
 
+void kt_report_disable(kt_thr_t *thr);
+void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
 
 /* Internal allocator. */

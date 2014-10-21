@@ -8,12 +8,28 @@
 
 DEFINE_SPINLOCK(kt_report_lock);
 
+unsigned long last;
+
+void kt_report_disable(kt_thr_t *thr)
+{
+	thr->report_depth++;
+}
+
+void kt_report_enable(kt_thr_t *thr)
+{
+	thr->report_depth--;
+	BUG_ON(thr->report_depth < 0);
+}
+
 void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 {
 	int i;
 	char function[MAX_FUNCTION_NAME_SIZE];
 	kt_thr_t *old;
 	kt_stack_t stack;
+
+	if (new->report_depth != 0)
+		return;
 
 	sprintf(function, "%pS", (void *)info->strip_addr);
 	for (i = 0; i < MAX_FUNCTION_NAME_SIZE; i++) {
@@ -24,6 +40,12 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	}
 
 	spin_lock(&kt_report_lock);
+
+	if (info->addr == last) {
+		spin_unlock(&kt_report_lock);
+		return;
+	}
+	last = info->addr;
 
 	/* TODO(xairy): print kernel thread id in a report. */
 	pr_err("==================================================================\n");

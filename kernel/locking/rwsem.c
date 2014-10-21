@@ -55,7 +55,7 @@ EXPORT_SYMBOL(down_read);
 int down_read_trylock(struct rw_semaphore *sem)
 {
 	int ret;
-	
+
 	ktsan_mtx_pre_lock(sem, false, true);
 	ret = __down_read_trylock(sem);
 
@@ -90,7 +90,7 @@ EXPORT_SYMBOL(down_write);
 int down_write_trylock(struct rw_semaphore *sem)
 {
 	int ret;
-	
+
 	ktsan_mtx_pre_lock(sem, true, true);
 	ret = __down_write_trylock(sem);
 
