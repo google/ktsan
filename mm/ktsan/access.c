@@ -110,7 +110,7 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 
 	value.tid = thr->id;
 	value.clock = current_clock;
-	value.offset = addr & ~KT_GRAIN;
+	value.offset = addr & ~(KT_GRAIN - 1);
 	value.size = size;
 	value.read = read;
 
@@ -165,7 +165,7 @@ void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 
 	value.tid = thr->id;
 	value.clock = kt_clk_get(&thr->clk, thr->id);
-	value.offset = addr & ~KT_GRAIN;
+	value.offset = addr & ~(KT_GRAIN - 1);
 	value.size = size;
 	value.read = read;
 
