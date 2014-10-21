@@ -133,7 +133,7 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 			size_t size, bool read)
 {
 	/* Handle unaligned beginning, if any. */
-	for (; (addr & ~KT_GRAIN) && size; addr++, size--)
+	for (; (addr & ~(KT_GRAIN - 1)) && size; addr++, size--)
 		kt_access(thr, pc, addr, 0, read);
 
 	/* Handle middle part, if any. */
@@ -177,7 +177,7 @@ void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 				size_t size, bool read)
 {
 	/* Handle unaligned beginning, if any. */
-	for (; (addr & ~KT_GRAIN) && size; addr++, size--)
+	for (; (addr & ~(KT_GRAIN - 1)) && size; addr++, size--)
 		kt_access_imitate(thr, pc, addr, 0, read);
 
 	/* Handle middle part, if any. */
