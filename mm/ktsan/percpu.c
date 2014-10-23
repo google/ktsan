@@ -4,45 +4,96 @@
 #include <linux/list.h>
 #include <linux/preempt.h>
 
-struct kt_percpu_sync_s {
-	uptr_t addr;
-	struct list_head list;
-};
-
-static void kt_percpu_track_enable(kt_thr_t *thr)
+void kt_percpu_release(kt_thr_t *thr, uptr_t pc)
 {
-	thr->track_percpu = true;
+	struct list_head *entry, *tmp;
+	kt_percpu_sync_t *sync;
+
+	list_for_each_safe(entry, tmp, &thr->percpu_list) {
+		sync = list_entry(entry, kt_percpu_sync_t, list);
+		list_del_init(entry);
+
+		kt_trace_add_event(thr, kt_event_type_release, pc);
+		kt_clk_tick(&thr->clk, thr->id);
+		kt_sync_release(thr, pc, sync->addr);
+
+		kt_cache_free(&kt_ctx.percpu_sync_cache, sync);
+	}
 }
 
-static void kt_percpu_track_try_disable(kt_thr_t *thr)
-{
-	if (!irqs_disabled() && !preempt_count())
-		thr->track_percpu = false;
 
-	/* TODO(xairy): release all percpu syncs. */
+void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
+{
+	kt_percpu_sync_t *percpu_sync;
+
+	addr += 1;
+
+	/* BUG_ON(thr->preempt_depth == 0 && !thr->irqs_disabled); */
+
+	kt_trace_add_event(thr, kt_event_type_acquire, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+	kt_sync_acquire(thr, pc, addr);
+
+	/* FIXME(xairy): do not add twice the same percpu var. */
+	percpu_sync = kt_cache_alloc(&kt_ctx.percpu_sync_cache);
+	BUG_ON(percpu_sync == NULL);
+	percpu_sync->addr = addr;
+	INIT_LIST_HEAD(&percpu_sync->list);
+	list_add(&percpu_sync->list, &thr->percpu_list);
 }
 
-void kt_percpu_acquire(kt_thr_t *thr, uptr_t addr)
+/*
+static void kt_percpu_try_release(kt_thr_t *thr, uptr_t pc)
 {
+	if (thr->preempt_depth > 0 || thr->irqs_disabled)
+		return;
 
+	kt_percpu_release(thr, pc);
+}
+*/
+
+void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value)
+{
+	/*kt_trace_add_event(thr, kt_event_type_preempt_disable, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+
+	thr->preempt_depth += value;*/
 }
 
-void kt_preempt_disable(kt_thr_t *thr)
+void kt_preempt_sub(kt_thr_t *thr, uptr_t pc, int value)
 {
-	kt_percpu_track_enable(thr);
+	/*kt_trace_add_event(thr, kt_event_type_preempt_enable, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+
+	thr->preempt_depth -= value;
+	BUG_ON(thr->preempt_depth < 0);
+	kt_percpu_try_release(thr, pc);*/
 }
 
-void kt_preempt_enable(kt_thr_t *thr)
+void kt_irq_disable(kt_thr_t *thr, uptr_t pc)
 {
-	kt_percpu_track_try_disable(thr);
+	/*kt_trace_add_event(thr, kt_event_type_irq_disable, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+
+	thr->irqs_disabled = true;*/
 }
 
-void kt_irq_disable(kt_thr_t *thr)
+void kt_irq_enable(kt_thr_t *thr, uptr_t pc)
 {
-	kt_percpu_track_enable(thr);
+	/*kt_trace_add_event(thr, kt_event_type_irq_enable, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+
+	thr->irqs_disabled = false;
+	kt_percpu_try_release(thr, pc);*/
 }
 
-void kt_irq_enable(kt_thr_t *thr)
+void kt_irq_save(kt_thr_t *thr, uptr_t pc)
 {
-	kt_percpu_track_try_disable(thr);
+	/*kt_irq_disable(thr, pc);*/
+}
+
+void kt_irq_restore(kt_thr_t *thr, uptr_t pc, unsigned long flags)
+{
+	/*if (!irqs_disabled_flags(flags))
+		kt_irq_enable(thr, pc);*/
 }

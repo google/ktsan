@@ -71,11 +71,11 @@
 	do {						\
 		typecheck(unsigned long, flags);	\
 		flags = arch_local_irq_save();		\
-		ktsan_irq_disable();			\
+		ktsan_irq_save();			\
 	} while (0)
 #define raw_local_irq_restore(flags)			\
 	do {						\
-		ktsan_irq_enable();			\
+		ktsan_irq_restore(flags);		\
 		typecheck(unsigned long, flags);	\
 		arch_local_irq_restore(flags);		\
 	} while (0)

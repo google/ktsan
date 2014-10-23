@@ -139,6 +139,30 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 			pc = kt_pc_decompress(event->pc);
 			pr_err("  i: %lu, start , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_preempt_enable) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, prm +  , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_preempt_disable) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, prm - , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_irq_enable) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, irq +  , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_irq_disable) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, irq - , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_acquire) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, acquir, pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_release) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err("  i: %lu, releas, pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
 		} /*else if (event->type == kt_event_type_mop) {
 			pc = kt_pc_decompress(event->pc);
 			pr_err("  i: %lu, mop, pc: %p\n",

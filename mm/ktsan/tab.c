@@ -87,7 +87,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 		return obj;
 	}
 
-	BUG_ON(true); /* Unreachable. */
+	BUG();
 	return NULL;
 }
 
@@ -98,7 +98,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
  *      removes the object from the table if it exists and returns it,
  *      returns NULL otherwise.
  *      The object must be freed by the caller via kt_cache_free.
- * When (created != NULL) and (destory == false)
+ * When (created != NULL) and (destroy == false)
  *      creates an object if it doesn't exist and returns it.
  *      Sets *created = false if the object existed, *c = true otherwise.
  * Parameters (created != NULL) and (destroy == true) are incorrect.

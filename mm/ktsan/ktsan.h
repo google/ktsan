@@ -60,6 +60,7 @@ typedef struct kt_trace_s		kt_trace_t;
 typedef struct kt_id_manager_s		kt_id_manager_t;
 typedef struct kt_thr_pool_s		kt_thr_pool_t;
 typedef struct kt_shadow_s		kt_shadow_t;
+typedef struct kt_percpu_sync_s		kt_percpu_sync_t;
 
 /* Stack. */
 
@@ -76,9 +77,15 @@ enum kt_event_type_e {
 	kt_event_type_func_exit,
 	kt_event_type_lock,
 	kt_event_type_unlock,
+	kt_event_type_acquire,
+	kt_event_type_release,
 	kt_event_type_mop, /* memory operation */
 	kt_event_type_thr_start,
 	kt_event_type_thr_stop,
+	kt_event_type_preempt_enable,
+	kt_event_type_preempt_disable,
+	kt_event_type_irq_enable,
+	kt_event_type_irq_disable,
 };
 
 struct kt_event_s {
@@ -170,7 +177,6 @@ struct kt_tab_test_s {
 	unsigned long data[4];
 };
 
-
 /* Threads. */
 
 struct kt_thr_s {
@@ -181,9 +187,10 @@ struct kt_thr_s {
 	kt_clk_t		clk;
 	kt_trace_t		trace;
 	int			call_depth;
-	struct list_head	list; /* quarantine list */
+	struct list_head	quarantine_list;
 	int			report_depth;
-	bool			track_percpu;
+	int			preempt_depth;
+	bool			irqs_disabled;
 	struct list_head	percpu_list;
 };
 
@@ -194,6 +201,13 @@ struct kt_thr_pool_s {
 	struct list_head	quarantine;
 	int			quarantine_size;
 	spinlock_t		lock;
+};
+
+/* Per-cpu synchronization. */
+
+struct kt_percpu_sync_s {
+	uptr_t addr;
+	struct list_head list;
 };
 
 /* Statistics. */
@@ -234,6 +248,7 @@ struct kt_ctx_s {
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
 	kt_thr_pool_t		thr_pool;
+	kt_cache_t		percpu_sync_cache;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -297,8 +312,8 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid);
 void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old);
 kt_thr_t *kt_thr_get(int id);
 
-void kt_thr_start(kt_thr_t *thr);
-void kt_thr_stop(kt_thr_t *thr);
+void kt_thr_start(kt_thr_t *thr, uptr_t pc);
+void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
 /* Synchronization. */
 
@@ -317,11 +332,16 @@ void kt_atomic32_pure_set(void *addr, int value);
 
 /* Per-cpu synchronization. */
 
-void kt_preempt_disable(kt_thr_t *thr);
-void kt_preempt_enable(kt_thr_t *thr);
-void kt_irq_disable(kt_thr_t *thr);
-void kt_irq_enable(kt_thr_t *thr);
-void kt_percpu_acquire(kt_thr_t *thr, uptr_t addr);
+void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value);
+void kt_preempt_sub(kt_thr_t *thr, uptr_t pc, int value);
+
+void kt_irq_disable(kt_thr_t *thr, uptr_t pc);
+void kt_irq_enable(kt_thr_t *thr, uptr_t pc);
+void kt_irq_save(kt_thr_t *thr, uptr_t pc);
+void kt_irq_restore(kt_thr_t *thr, uptr_t pc, unsigned long flags);
+
+void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_percpu_release(kt_thr_t *thr, uptr_t pc);
 
 /* Memory block allocation. */
 
