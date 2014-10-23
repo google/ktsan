@@ -607,6 +607,7 @@ static DEFINE_PER_CPU(struct delayed_work, slab_reap_work);
 
 static inline struct array_cache *cpu_cache_get(struct kmem_cache *cachep)
 {
+	ktsan_percpu_acquire(cachep->array[smp_processor_id()]);
 	return cachep->array[smp_processor_id()];
 }
 
