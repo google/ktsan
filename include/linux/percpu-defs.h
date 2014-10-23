@@ -227,7 +227,7 @@ do {									\
 
 #define raw_cpu_ptr(ptr)						\
 ({									\
-	ktsan_percpu_acquire(ptr);					\
+	ktsan_percpu_acquire(arch_raw_cpu_ptr(ptr));			\
 	__verify_pcpu_ptr(ptr);						\
 	arch_raw_cpu_ptr(ptr);						\
 })
@@ -235,7 +235,7 @@ do {									\
 #ifdef CONFIG_DEBUG_PREEMPT
 #define this_cpu_ptr(ptr)						\
 ({									\
-	ktsan_percpu_acquire(ptr);					\
+	ktsan_percpu_acquire(SHIFT_PERCPU_PTR(ptr, my_cpu_offset));	\
 	__verify_pcpu_ptr(ptr);						\
 	SHIFT_PERCPU_PTR(ptr, my_cpu_offset);				\
 })

@@ -26,8 +26,9 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	spin_lock(&pool->lock);
 
 	if (pool->quarantine_size > KT_QUARANTINE_SIZE) {
-		new = list_first_entry(&pool->quarantine, kt_thr_t, list);
-		list_del(&new->list);
+		new = list_first_entry(&pool->quarantine,
+				kt_thr_t, quarantine_list);
+		list_del(&new->quarantine_list);
 		pool->quarantine_size--;
 	} else {
 		new = kt_cache_alloc(&pool->cache);
@@ -45,9 +46,11 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_clk_init(thr, &new->clk);
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
-	INIT_LIST_HEAD(&new->list);
+	INIT_LIST_HEAD(&new->quarantine_list);
 	new->report_depth = 0;
-	new->track_percpu = false;
+	new->preempt_depth = 0;
+	new->irqs_disabled = false;
+	INIT_LIST_HEAD(&new->percpu_list);
 
 	/* thr == NULL when thread #0 is being initialized. */
 	if (thr == NULL)
@@ -66,7 +69,7 @@ void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old)
 	kt_thr_pool_t *pool = &kt_ctx.thr_pool;
 
 	spin_lock(&pool->lock);
-	list_add_tail(&old->list, &pool->quarantine);
+	list_add_tail(&old->quarantine_list, &pool->quarantine);
 	pool->quarantine_size++;
 	spin_unlock(&pool->lock);
 
@@ -88,21 +91,23 @@ kt_thr_t *kt_thr_get(int id)
 	return thr;
 }
 
-void kt_thr_start(kt_thr_t *thr)
+void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
 	void *cpu = this_cpu_ptr(kt_ctx.cpus);
 
-	kt_trace_add_event(thr, kt_event_type_thr_start, 0);
+	kt_trace_add_event(thr, kt_event_type_thr_start, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
 }
 
-void kt_thr_stop(kt_thr_t *thr)
+void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
 	void *cpu = NULL;
 
-	kt_trace_add_event(thr, kt_event_type_thr_stop, 0);
+	kt_percpu_release(thr, pc);
+
+	kt_trace_add_event(thr, kt_event_type_thr_stop, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 
 	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
