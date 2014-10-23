@@ -47,7 +47,6 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	}
 	last = info->addr;
 
-	/* TODO(xairy): print kernel thread id in a report. */
 	pr_err("==================================================================\n");
 	pr_err("ThreadSanitizer: data-race in %s\n", function);
 	pr_err("\n");
@@ -85,6 +84,16 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 			old->id, kt_clk_get(&new->clk, old->id));
 	pr_err("DBG: T%d clock: {T%d: %lu}\n", old->id,
 			old->id, (unsigned long)info->old.clock);
+
+	/*pr_err("\n");
+	pr_err("T%d trace:\n", old->id);
+	kt_trace_dump(&old->trace, kt_clk_get(&new->clk, old->id) - 20,
+			(uptr_t)info->old.clock + 30);
+
+	pr_err("\n");
+	pr_err("T%d trace:\n", new->id);
+	kt_trace_dump(&new->trace, kt_clk_get(&new->clk, new->id) - 30,
+				kt_clk_get(&new->clk, new->id) + 30);*/
 
 	pr_err("==================================================================\n");
 

@@ -39,11 +39,13 @@ void ktsan_mtx_pre_unlock(void *addr, bool write);
 int ktsan_atomic32_read(const void *addr);
 void ktsan_atomic32_set(void *addr, int value);
 
-void ktsan_preempt_disable(void);
-void ktsan_preempt_enable(void);
+void ktsan_preempt_add(int value);
+void ktsan_preempt_sub(int value);
 
 void ktsan_irq_disable(void);
 void ktsan_irq_enable(void);
+void ktsan_irq_save(void);
+void ktsan_irq_restore(unsigned long flags);
 
 void ktsan_percpu_acquire(void *addr);
 
