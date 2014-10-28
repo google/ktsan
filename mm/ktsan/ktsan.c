@@ -99,7 +99,7 @@ void __init ktsan_init_early(void)
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
 	kt_thr_pool_init();
 	kt_cache_init(&ctx->percpu_sync_cache,
-		      sizeof(kt_percpu_sync_t), 1000 * 1000);
+		      sizeof(kt_percpu_sync_t), 1000);
 }
 
 void ktsan_init(void)
