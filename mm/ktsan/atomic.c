@@ -2,12 +2,12 @@
 
 #include <linux/atomic.h>
 
-int kt_atomic32_pure_read(const void *addr)
+int kt_atomic32_read_no_ktsan(const void *addr)
 {
 	return atomic_read((const atomic_t *)addr);
 }
 
-void kt_atomic32_pure_set(void *addr, int value)
+void kt_atomic32_set_no_ktsan(void *addr, int value)
 {
 	atomic_set((atomic_t *)addr, value);
 }
