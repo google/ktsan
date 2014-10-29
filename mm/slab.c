@@ -264,7 +264,7 @@ static void kmem_cache_node_init(struct kmem_cache_node *parent)
 	parent->colour_next = 0;
 	spin_lock_init(&parent->list_lock);
 	parent->free_objects = 0;
-	parent->free_touched = 0;
+	atomic_set(&parent->free_touched, 0);
 }
 
 #define MAKE_LIST(cachep, listp, slab, nodeid)				\
@@ -2799,7 +2799,7 @@ retry:
 		/* Get slab alloc is to come from. */
 		entry = n->slabs_partial.next;
 		if (entry == &n->slabs_partial) {
-			n->free_touched = 1;
+			atomic_set(&n->free_touched, 1);
 			entry = n->slabs_free.next;
 			if (entry == &n->slabs_free)
 				goto must_grow;
@@ -3103,7 +3103,7 @@ retry:
 	spin_lock(&n->list_lock);
 	entry = n->slabs_partial.next;
 	if (entry == &n->slabs_partial) {
-		n->free_touched = 1;
+		atomic_set(&n->free_touched, 1);
 		entry = n->slabs_free.next;
 		if (entry == &n->slabs_free)
 			goto must_grow;
@@ -3888,9 +3888,7 @@ static void cache_reap(struct work_struct *w)
 
 		drain_array(searchp, n, n->shared, 0, node);
 
-		if (n->free_touched)
-			n->free_touched = 0;
-		else {
+		if (!atomic_cmpxchg(&n->free_touched, 1, 0)) {
 			int freed;
 
 			freed = drain_freelist(searchp, n, (n->free_limit +
