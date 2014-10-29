@@ -33,7 +33,7 @@
 	(atomic64_set((atomic64_t *)(ptr), *(u64 *)(val)))
 #define KT_ATOMIC_64_ADD(ptr, val) \
 	(atomic64_add(*(u64 *)(val), (atomic64_t *)(ptr)))
-/* TODO(xairy): use kt_atomic_pure_* when implemented. */
+/* TODO(xairy): use kt_atomic_*_no_ktsan when implemented. */
 
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
@@ -327,8 +327,8 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
 
-int kt_atomic32_pure_read(const void *addr);
-void kt_atomic32_pure_set(void *addr, int value);
+int kt_atomic32_read_no_ktsan(const void *addr);
+void kt_atomic32_set_no_ktsan(void *addr, int value);
 
 /* Per-cpu synchronization. */
 
