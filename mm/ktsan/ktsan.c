@@ -237,7 +237,7 @@ int ktsan_atomic32_read(const void *addr)
 	LEAVE();
 
 	if (!event_handled)
-		return kt_atomic32_pure_read(addr);
+		return kt_atomic32_read_no_ktsan(addr);
 	return rv;
 }
 EXPORT_SYMBOL(ktsan_atomic32_read);
@@ -249,7 +249,7 @@ void ktsan_atomic32_set(void *addr, int value)
 	LEAVE();
 
 	if (!event_handled)
-		kt_atomic32_pure_set(addr, value);
+		kt_atomic32_set_no_ktsan(addr, value);
 }
 EXPORT_SYMBOL(ktsan_atomic32_set);
 
