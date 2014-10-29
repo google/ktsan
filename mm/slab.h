@@ -343,7 +343,7 @@ struct kmem_cache_node {
 	struct array_cache *shared;	/* shared per node */
 	struct alien_cache **alien;	/* on other nodes */
 	unsigned long next_reap;	/* updated without locking */
-	int free_touched;		/* updated without locking */
+	atomic_t free_touched;		/* updated without locking */
 #endif
 
 #ifdef CONFIG_SLUB
