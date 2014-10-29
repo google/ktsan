@@ -4,6 +4,8 @@
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/mutex.h>
+#include <linux/percpu.h>
+#include <linux/preempt.h>
 #include <linux/printk.h>
 #include <linux/rwlock.h>
 #include <linux/rwsem.h>
@@ -25,7 +27,9 @@ int thr_func(void *arg)
 {
 	thr_arg_t *thr_arg = (thr_arg_t *)arg;
 
+	kt_report_enable(current->ktsan.thr);
 	thr_arg->func(thr_arg->value);
+	kt_report_disable(current->ktsan.thr);
 	complete(thr_arg->completion);
 
 	return 0;
@@ -45,7 +49,7 @@ void kt_test(thr_func_t main, thr_func_t first, thr_func_t second,
 
 	pr_err("ktsan: starting %s test, %s.\n", name, result);
 
-	value = kmalloc(32, GFP_KERNEL);
+	value = kmalloc(1024, GFP_KERNEL);
 	BUG_ON(!value);
 
 	main(value);
@@ -321,6 +325,77 @@ static void kt_test_thread_create(void)
 		"thread creation", "no race expected");
 }
 
+/* ktsan tests: percpu. */
+
+DEFINE_PER_CPU(int, percpu_var);
+DEFINE_PER_CPU(int, percpu_array[128]);
+
+static int percpu_get_put(void *arg)
+{
+	get_cpu_var(percpu_var) = 0;
+	put_cpu_var(percpu_var);
+
+	return 0;
+}
+
+static int percpu_irq(void *arg)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+	*this_cpu_ptr(&percpu_var) = 0;
+	local_irq_restore(flags);
+
+	return 0;
+}
+
+static int percpu_preempt_array(void *arg)
+{
+	int i;
+
+	preempt_disable();
+	for (i = 0; i < 128; i++)
+		*this_cpu_ptr(&percpu_array[i]) = i;
+	preempt_enable();
+
+	return 0;
+}
+
+static int percpu_access_one(void *arg)
+{
+	preempt_disable();
+	per_cpu(percpu_var, 0) = 0;
+	preempt_enable();
+
+	return 0;
+}
+
+/* FIXME(xairy): this test doesn't produce a race sometimes. */
+static int percpu_race(void *arg)
+{
+	*((int *)arg) = 1;
+
+	preempt_disable();
+	*this_cpu_ptr(&percpu_var) = 0;
+	preempt_enable();
+
+	return 0;
+}
+
+static void kt_test_percpu(void)
+{
+	kt_test(kt_nop, percpu_get_put, percpu_get_put,
+		"percpu preempt", "no race expected");
+	kt_test(kt_nop, percpu_irq, percpu_irq,
+		"percpu irq", "no race expected");
+	kt_test(kt_nop, percpu_preempt_array, percpu_preempt_array,
+		"percpu array", "no race expected");
+	kt_test(kt_nop, percpu_access_one, percpu_access_one,
+		"percpu access one", "race expected");
+	kt_test(kt_nop, percpu_race, percpu_race,
+		"percpu race", "race expected");
+}
+
 /* Instrumented tests. */
 
 void kt_tests_run_inst(void)
@@ -345,5 +420,7 @@ void kt_tests_run_inst(void)
 	kt_test_rwsem();
 	pr_err("\n");
 	kt_test_thread_create();
+	pr_err("\n");
+	kt_test_percpu();
 	pr_err("\n");
 }
