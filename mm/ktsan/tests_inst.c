@@ -361,6 +361,7 @@ static int percpu_preempt_array(void *arg)
 	return 0;
 }
 
+/* FIXME(xairy): this test doesn't produce report at all. */
 static int percpu_access_one(void *arg)
 {
 	preempt_disable();
@@ -370,7 +371,7 @@ static int percpu_access_one(void *arg)
 	return 0;
 }
 
-/* FIXME(xairy): this test doesn't produce a race sometimes. */
+/* FIXME(xairy): this test doesn't produce report sometimes. */
 static int percpu_race(void *arg)
 {
 	*((int *)arg) = 1;
