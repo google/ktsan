@@ -255,7 +255,7 @@ EXPORT_SYMBOL(ktsan_atomic32_set);
 
 void ktsan_preempt_add(int value)
 {
-	ENTER(true);
+	ENTER(false);
 	kt_preempt_add(thr, pc, value);
 	LEAVE();
 }
@@ -263,7 +263,7 @@ EXPORT_SYMBOL(ktsan_preempt_add);
 
 void ktsan_preempt_sub(int value)
 {
-	ENTER(true);
+	ENTER(false);
 	kt_preempt_sub(thr, pc, value);
 	LEAVE();
 }
@@ -271,7 +271,7 @@ EXPORT_SYMBOL(ktsan_preempt_sub);
 
 void ktsan_irq_disable(void)
 {
-	ENTER(true);
+	ENTER(false);
 	kt_irq_disable(thr, pc);
 	LEAVE();
 }
@@ -279,7 +279,7 @@ EXPORT_SYMBOL(ktsan_irq_disable);
 
 void ktsan_irq_enable(void)
 {
-	ENTER(true);
+	ENTER(false);
 	kt_irq_enable(thr, pc);
 	LEAVE();
 }
@@ -287,7 +287,7 @@ EXPORT_SYMBOL(ktsan_irq_enable);
 
 void ktsan_irq_save(void)
 {
-	ENTER(true);
+	ENTER(false);
 	kt_irq_save(thr, pc);
 	LEAVE();
 }
@@ -295,7 +295,7 @@ EXPORT_SYMBOL(ktsan_irq_save);
 
 void ktsan_irq_restore(unsigned long flags)
 {
-	ENTER(true);
+	ENTER(false);
 	kt_irq_restore(thr, pc, flags);
 	LEAVE();
 }
