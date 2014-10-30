@@ -96,15 +96,3 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 	sync->lock_tid = -1;
 	spin_unlock(&sync->tab.lock);
 }
-
-int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr)
-{
-	/* TODO(xairy). */
-	return kt_atomic32_read_no_ktsan((const void *)addr);
-}
-
-void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
-{
-	/* TODO(xairy). */
-	kt_atomic32_set_no_ktsan((void *)addr, value);
-}
