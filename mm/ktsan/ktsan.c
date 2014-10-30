@@ -99,7 +99,7 @@ void __init ktsan_init_early(void)
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
 	kt_thr_pool_init();
 	kt_cache_init(&ctx->percpu_sync_cache,
-		      sizeof(kt_percpu_sync_t), 1000);
+		      sizeof(kt_percpu_sync_t), 2000);
 }
 
 void ktsan_init(void)
@@ -252,6 +252,106 @@ void ktsan_atomic32_set(void *addr, int value)
 		kt_atomic32_set_no_ktsan(addr, value);
 }
 EXPORT_SYMBOL(ktsan_atomic32_set);
+
+void ktsan_atomic32_add(void *addr, int value)
+{
+	ENTER(false);
+	kt_atomic32_add(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic32_add_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic32_add);
+
+void ktsan_atomic32_sub(void *addr, int value)
+{
+	ENTER(false);
+	kt_atomic32_sub(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic32_sub_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic32_sub);
+
+int ktsan_atomic32_sub_and_test(void *addr, int value)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_atomic32_sub_and_test(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_sub_and_test_no_ktsan(addr, value);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic32_sub_and_test);
+
+int ktsan_atomic32_add_negative(void *addr, int value)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_atomic32_add_negative(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_add_negative_no_ktsan(addr, value);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic32_add_negative);
+
+void ktsan_atomic32_inc(void *addr)
+{
+	ENTER(false);
+	kt_atomic32_inc(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic32_inc_no_ktsan(addr);
+}
+EXPORT_SYMBOL(ktsan_atomic32_inc);
+
+void ktsan_atomic32_dec(void *addr)
+{
+	ENTER(false);
+	kt_atomic32_dec(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic32_dec_no_ktsan(addr);
+}
+EXPORT_SYMBOL(ktsan_atomic32_dec);
+
+int ktsan_atomic32_inc_and_test(void *addr)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_atomic32_inc_and_test(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_inc_and_test_no_ktsan(addr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic32_inc_and_test);
+
+int ktsan_atomic32_dec_and_test(void *addr)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_atomic32_dec_and_test(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_dec_and_test_no_ktsan(addr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic32_dec_and_test);
 
 void ktsan_preempt_add(int value)
 {
