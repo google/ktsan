@@ -39,6 +39,16 @@ void ktsan_mtx_pre_unlock(void *addr, bool write);
 int ktsan_atomic32_read(const void *addr);
 void ktsan_atomic32_set(void *addr, int value);
 
+void ktsan_atomic32_add(void *addr, int value);
+void ktsan_atomic32_sub(void *addr, int value);
+int ktsan_atomic32_sub_and_test(void *addr, int value);
+int ktsan_atomic32_add_negative(void *addr, int value);
+
+void ktsan_atomic32_inc(void *addr);
+void ktsan_atomic32_dec(void *addr);
+int ktsan_atomic32_inc_and_test(void *addr);
+int ktsan_atomic32_dec_and_test(void *addr);
+
 void ktsan_preempt_add(int value);
 void ktsan_preempt_sub(int value);
 
