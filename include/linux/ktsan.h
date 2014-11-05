@@ -49,6 +49,19 @@ void ktsan_atomic32_dec(void *addr);
 int ktsan_atomic32_inc_and_test(void *addr);
 int ktsan_atomic32_dec_and_test(void *addr);
 
+long ktsan_atomic64_read(const void *addr);
+void ktsan_atomic64_set(void *addr, long value);
+
+void ktsan_atomic64_add(void *addr, long value);
+void ktsan_atomic64_sub(void *addr, long value);
+int ktsan_atomic64_sub_and_test(void *addr, long value);
+int ktsan_atomic64_add_negative(void *addr, long value);
+
+void ktsan_atomic64_inc(void *addr);
+void ktsan_atomic64_dec(void *addr);
+int ktsan_atomic64_inc_and_test(void *addr);
+int ktsan_atomic64_dec_and_test(void *addr);
+
 s64 ktsan_atomic64_xchg(void *addr, s64 value);
 s32 ktsan_atomic32_xchg(void *addr, s32 value);
 s16 ktsan_atomic16_xchg(void *addr, s16 value);

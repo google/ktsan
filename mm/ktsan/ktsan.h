@@ -337,6 +337,19 @@ void kt_atomic32_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 int kt_atomic32_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 int kt_atomic32_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
+long kt_atomic64_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_atomic64_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+
+void kt_atomic64_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+void kt_atomic64_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+int kt_atomic64_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+int kt_atomic64_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+
+void kt_atomic64_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_atomic64_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+int kt_atomic64_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+int kt_atomic64_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+
 s64 kt_atomic64_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value);
 s32 kt_atomic32_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value);
 s16 kt_atomic16_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value);
@@ -362,6 +375,19 @@ void kt_atomic32_inc_no_ktsan(void *addr);
 void kt_atomic32_dec_no_ktsan(void *addr);
 int kt_atomic32_inc_and_test_no_ktsan(void *addr);
 int kt_atomic32_dec_and_test_no_ktsan(void *addr);
+
+long kt_atomic64_read_no_ktsan(const void *addr);
+void kt_atomic64_set_no_ktsan(void *addr, long value);
+
+void kt_atomic64_add_no_ktsan(void *addr, long value);
+void kt_atomic64_sub_no_ktsan(void *addr, long value);
+int kt_atomic64_sub_and_test_no_ktsan(void *addr, long value);
+int kt_atomic64_add_negative_no_ktsan(void *addr, long value);
+
+void kt_atomic64_inc_no_ktsan(void *addr);
+void kt_atomic64_dec_no_ktsan(void *addr);
+int kt_atomic64_inc_and_test_no_ktsan(void *addr);
+int kt_atomic64_dec_and_test_no_ktsan(void *addr);
 
 s64 kt_atomic64_xchg_no_ktsan(void *addr, s64 value);
 s32 kt_atomic32_xchg_no_ktsan(void *addr, s32 value);
