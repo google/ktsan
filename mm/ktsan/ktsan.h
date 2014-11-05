@@ -30,9 +30,9 @@
 #define KT_ATOMIC_64_READ(ptr) \
 	(atomic64_read((atomic64_t *)(ptr)))
 #define KT_ATOMIC_64_SET(ptr, val) \
-	(atomic64_set((atomic64_t *)(ptr), *(u64 *)(val)))
+	(atomic64_set((atomic64_t *)(ptr), *(s64 *)(val)))
 #define KT_ATOMIC_64_ADD(ptr, val) \
-	(atomic64_add(*(u64 *)(val), (atomic64_t *)(ptr)))
+	(atomic64_add(*(s64 *)(val), (atomic64_t *)(ptr)))
 /* TODO(xairy): use kt_atomic_*_no_ktsan when implemented. */
 
 typedef unsigned long	uptr_t;
@@ -337,6 +337,19 @@ void kt_atomic32_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 int kt_atomic32_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 int kt_atomic32_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
+s64 kt_atomic64_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value);
+s32 kt_atomic32_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value);
+s16 kt_atomic16_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value);
+
+s64 kt_atomic64_cmpxchg(kt_thr_t *t, uptr_t pc, uptr_t a, s64 old, s64 new);
+s32 kt_atomic32_cmpxchg(kt_thr_t *t, uptr_t pc, uptr_t a, s32 old, s32 new);
+s16 kt_atomic16_cmpxchg(kt_thr_t *t, uptr_t pc, uptr_t a, s16 old, s16 new);
+s8 kt_atomic8_cmpxchg(kt_thr_t *t, uptr_t pc, uptr_t a, s8 old, s8 new);
+
+s64 kt_atomic64_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value);
+s32 kt_atomic32_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value);
+s16 kt_atomic16_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value);
+
 int kt_atomic32_read_no_ktsan(const void *addr);
 void kt_atomic32_set_no_ktsan(void *addr, int value);
 
@@ -349,6 +362,19 @@ void kt_atomic32_inc_no_ktsan(void *addr);
 void kt_atomic32_dec_no_ktsan(void *addr);
 int kt_atomic32_inc_and_test_no_ktsan(void *addr);
 int kt_atomic32_dec_and_test_no_ktsan(void *addr);
+
+s64 kt_atomic64_xchg_no_ktsan(void *addr, s64 value);
+s32 kt_atomic32_xchg_no_ktsan(void *addr, s32 value);
+s16 kt_atomic16_xchg_no_ktsan(void *addr, s16 value);
+
+s64 kt_atomic64_cmpxchg_no_ktsan(void *addr, s64 old, s64 new);
+s32 kt_atomic32_cmpxchg_no_ktsan(void *addr, s32 old, s32 new);
+s16 kt_atomic16_cmpxchg_no_ktsan(void *addr, s16 old, s16 new);
+s8 kt_atomic8_cmpxchg_no_ktsan(void *addr, s8 old, s8 new);
+
+s64 kt_atomic64_xadd_no_ktsan(void *addr, s64 value);
+s32 kt_atomic32_xadd_no_ktsan(void *addr, s32 value);
+s16 kt_atomic16_xadd_no_ktsan(void *addr, s16 value);
 
 /* Per-cpu synchronization. */
 
