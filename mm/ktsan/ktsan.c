@@ -354,6 +354,131 @@ int ktsan_atomic32_dec_and_test(void *addr)
 }
 EXPORT_SYMBOL(ktsan_atomic32_dec_and_test);
 
+long ktsan_atomic64_read(const void *addr)
+{
+	long rv;
+
+	ENTER(false);
+	rv = kt_atomic64_read(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_read_no_ktsan(addr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic64_read);
+
+void ktsan_atomic64_set(void *addr, long value)
+{
+	ENTER(false);
+	kt_atomic64_set(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic64_set_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic64_set);
+
+void ktsan_atomic64_add(void *addr, long value)
+{
+	ENTER(false);
+	kt_atomic64_add(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic64_add_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic64_add);
+
+void ktsan_atomic64_sub(void *addr, long value)
+{
+	ENTER(false);
+	kt_atomic64_sub(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic64_sub_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic64_sub);
+
+int ktsan_atomic64_sub_and_test(void *addr, long value)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_atomic64_sub_and_test(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_sub_and_test_no_ktsan(addr, value);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic64_sub_and_test);
+
+int ktsan_atomic64_add_negative(void *addr, long value)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_atomic64_add_negative(thr, pc, (uptr_t)addr, value);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_add_negative_no_ktsan(addr, value);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic64_add_negative);
+
+void ktsan_atomic64_inc(void *addr)
+{
+	ENTER(false);
+	kt_atomic64_inc(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic64_inc_no_ktsan(addr);
+}
+EXPORT_SYMBOL(ktsan_atomic64_inc);
+
+void ktsan_atomic64_dec(void *addr)
+{
+	ENTER(false);
+	kt_atomic64_dec(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		kt_atomic64_dec_no_ktsan(addr);
+}
+EXPORT_SYMBOL(ktsan_atomic64_dec);
+
+int ktsan_atomic64_inc_and_test(void *addr)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_atomic64_inc_and_test(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_inc_and_test_no_ktsan(addr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic64_inc_and_test);
+
+int ktsan_atomic64_dec_and_test(void *addr)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_atomic64_dec_and_test(thr, pc, (uptr_t)addr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_dec_and_test_no_ktsan(addr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic64_dec_and_test);
+
 s64 ktsan_atomic64_xchg(void *addr, s64 value)
 {
 	s64 rv;
