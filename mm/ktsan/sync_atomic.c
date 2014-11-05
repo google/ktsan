@@ -61,3 +61,63 @@ int kt_atomic32_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	/* TODO(xairy). */
 	return kt_atomic32_dec_and_test_no_ktsan((void *)addr);
 }
+
+s64 kt_atomic64_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value)
+{
+	/* TODO(xairy). */
+	return kt_atomic64_xchg_no_ktsan((void *)addr, value);
+}
+
+s32 kt_atomic32_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value)
+{
+	/* TODO(xairy). */
+	return kt_atomic32_xchg_no_ktsan((void *)addr, value);
+}
+
+s16 kt_atomic16_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value)
+{
+	/* TODO(xairy). */
+	return kt_atomic16_xchg_no_ktsan((void *)addr, value);
+}
+
+s64 kt_atomic64_cmpxchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 old, s64 new)
+{
+	/* TODO(xairy). */
+	return kt_atomic64_cmpxchg_no_ktsan((void *)addr, old, new);
+}
+
+s32 kt_atomic32_cmpxchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 old, s32 new)
+{
+	/* TODO(xairy). */
+	return kt_atomic32_cmpxchg_no_ktsan((void *)addr, old, new);
+}
+
+s16 kt_atomic16_cmpxchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 old, s16 new)
+{
+	/* TODO(xairy). */
+	return kt_atomic16_cmpxchg_no_ktsan((void *)addr, old, new);
+}
+
+s8 kt_atomic8_cmpxchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s8 old, s8 new)
+{
+	/* TODO(xairy). */
+	return kt_atomic8_cmpxchg_no_ktsan((void *)addr, old, new);
+}
+
+s64 kt_atomic64_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value)
+{
+	/* TODO(xairy). */
+	return kt_atomic64_xadd_no_ktsan((void *)addr, value);
+}
+
+s32 kt_atomic32_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value)
+{
+	/* TODO(xairy). */
+	return kt_atomic32_xadd_no_ktsan((void *)addr, value);
+}
+
+s16 kt_atomic16_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value)
+{
+	/* TODO(xairy). */
+	return kt_atomic16_xadd_no_ktsan((void *)addr, value);
+}
