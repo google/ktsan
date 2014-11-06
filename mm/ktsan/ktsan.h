@@ -26,14 +26,7 @@
 #define KT_TRACE_PART_SIZE (64 * 1024)
 #define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
 
-/* Both arguments must be pointers. */
-#define KT_ATOMIC_64_READ(ptr) \
-	(atomic64_read((atomic64_t *)(ptr)))
-#define KT_ATOMIC_64_SET(ptr, val) \
-	(atomic64_set((atomic64_t *)(ptr), *(s64 *)(val)))
-#define KT_ATOMIC_64_ADD(ptr, val) \
-	(atomic64_add(*(s64 *)(val), (atomic64_t *)(ptr)))
-/* TODO(xairy): use kt_atomic_*_no_ktsan when implemented. */
+#define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
