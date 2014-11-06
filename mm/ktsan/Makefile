@@ -15,6 +15,7 @@ obj-y := ktsan.o		\
 	 stack.o		\
 	 trace.o		\
 	 func.o			\
+	 lock.o			\
 	 tests_noinst.o		\
 	 tests_inst.o		\
 	 tests.o

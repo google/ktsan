@@ -51,6 +51,7 @@ static void kt_memblock_destroy(kt_thr_t *thr, uptr_t addr)
 	kt_tab_memblock_t *memblock;
 	struct list_head *entry, *tmp;
 	kt_tab_sync_t *sync;
+	kt_tab_lock_t *lock;
 
 	memblock = kt_tab_access(&kt_ctx.memblock_tab, addr, NULL, true);
 
@@ -61,6 +62,12 @@ static void kt_memblock_destroy(kt_thr_t *thr, uptr_t addr)
 		sync = list_entry(entry, kt_tab_sync_t, list);
 		list_del_init(entry);
 		kt_sync_destroy(thr, sync->tab.key);
+	}
+
+	list_for_each_safe(entry, tmp, &memblock->lock_list) {
+		lock = list_entry(entry, kt_tab_lock_t, list);
+		list_del_init(entry);
+		kt_lock_destroy(thr, lock->tab.key);
 	}
 
 	spin_unlock(&memblock->tab.lock);
@@ -76,6 +83,15 @@ void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync)
 
 	memblock = kt_memblock_ensure_created(thr, addr);
 	list_add(&sync->list, &memblock->sync_list);
+	spin_unlock(&memblock->tab.lock);
+}
+
+void kt_memblock_add_lock(kt_thr_t *thr, uptr_t addr, kt_tab_lock_t *lock)
+{
+	kt_tab_memblock_t *memblock;
+
+	memblock = kt_memblock_ensure_created(thr, addr);
+	list_add(&lock->list, &memblock->lock_list);
 	spin_unlock(&memblock->tab.lock);
 }
 
