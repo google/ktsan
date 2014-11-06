@@ -24,11 +24,12 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 	kt_race_info_t info;
 	kt_shadow_t old;
 
-	KT_ATOMIC_64_SET(&old, slot);
+	kt_atomic64_set_no_ktsan(&old, KT_SHADOW_TO_LONG(*slot));
 
 	if (*(unsigned long *)(&old) == 0) {
 		if (!stored) {
-			KT_ATOMIC_64_SET(slot, &value);
+			kt_atomic64_set_no_ktsan(slot,
+				KT_SHADOW_TO_LONG(value));
 			return true;
 		}
 		return false;
@@ -44,7 +45,8 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 
 		/* Happens-before? */
 		if (kt_clk_get(&thr->clk, old.tid) >= old.clock) {
-			KT_ATOMIC_64_SET(slot, &value);
+			kt_atomic64_set_no_ktsan(slot,
+				KT_SHADOW_TO_LONG(value));
 			return true;
 		}
 
@@ -124,8 +126,9 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 
 	if (!stored) {
 		/* Evict random shadow slot. */
-		KT_ATOMIC_64_SET(&slots[current_clock % KT_SHADOW_SLOTS],
-				 &value);
+		kt_atomic64_set_no_ktsan(
+			&slots[current_clock % KT_SHADOW_SLOTS],
+			KT_SHADOW_TO_LONG(value));
 	}
 }
 
@@ -170,7 +173,7 @@ void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	value.read = read;
 
 	for (i = 0; i < KT_SHADOW_SLOTS; i++)
-		KT_ATOMIC_64_SET(&slots[i], &value);
+		kt_atomic64_set_no_ktsan(&slots[i], KT_SHADOW_TO_LONG(value));
 }
 
 void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,

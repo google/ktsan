@@ -93,22 +93,18 @@ kt_thr_t *kt_thr_get(int id)
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
-	void *cpu = this_cpu_ptr(kt_ctx.cpus);
-
 	kt_trace_add_event(thr, kt_event_type_thr_start, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 
-	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
+	thr->cpu = this_cpu_ptr(kt_ctx.cpus);
 }
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
-	void *cpu = NULL;
-
 	kt_trace_add_event(thr, kt_event_type_thr_stop, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 
-	KT_ATOMIC_64_SET(&thr->cpu, &cpu);
+	thr->cpu = NULL;
 }
 
 void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
