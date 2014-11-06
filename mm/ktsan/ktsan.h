@@ -223,6 +223,9 @@ enum kt_stat_e {
 	kt_stat_sync_objects,
 	kt_stat_sync_alloc,
 	kt_stat_sync_free,
+	kt_stat_lock_objects,
+	kt_stat_lock_alloc,
+	kt_stat_lock_free,
 	kt_stat_memblock_objects,
 	kt_stat_memblock_alloc,
 	kt_stat_memblock_free,
@@ -246,6 +249,7 @@ struct kt_ctx_s {
 	int			enabled;
 	kt_cpu_t __percpu	*cpus;
 	kt_tab_t		sync_tab; /* sync addr -> sync object */
+	kt_tab_t		lock_tab; /* lock addr -> lock object */
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
 	kt_thr_pool_t		thr_pool;
@@ -418,10 +422,16 @@ void kt_irq_restore(kt_thr_t *thr, uptr_t pc, unsigned long flags);
 void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_percpu_release(kt_thr_t *thr, uptr_t pc);
 
+/* Locks. */
+
+spinlock_t *kt_lock_get_and_lock(kt_thr_t *thr, uptr_t addr);
+void kt_lock_destroy(kt_thr_t *thr, uptr_t addr);
+
 /* Memory block allocation. */
 
 uptr_t kt_memblock_addr(uptr_t addr);
 void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync);
+void kt_memblock_add_lock(kt_thr_t *thr, uptr_t addr, kt_tab_lock_t *lock);
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 
