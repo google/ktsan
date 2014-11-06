@@ -9,10 +9,10 @@
 static bool ranges_intersect(int first_offset, int first_size,
 			     int second_offset, int second_size)
 {
-	if (first_offset + first_size < second_offset)
+	if (first_offset + first_size <= second_offset)
 		return false;
 
-	if (second_offset + second_size < first_offset)
+	if (second_offset + second_size <= first_offset)
 		return false;
 
 	return true;
@@ -112,7 +112,7 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 
 	value.tid = thr->id;
 	value.clock = current_clock;
-	value.offset = addr & ~(KT_GRAIN - 1);
+	value.offset = addr & (KT_GRAIN - 1);
 	value.size = size;
 	value.read = read;
 
@@ -136,7 +136,7 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 			size_t size, bool read)
 {
 	/* Handle unaligned beginning, if any. */
-	for (; (addr & ~(KT_GRAIN - 1)) && size; addr++, size--)
+	for (; (addr & (KT_GRAIN - 1)) && size; addr++, size--)
 		kt_access(thr, pc, addr, 0, read);
 
 	/* Handle middle part, if any. */
@@ -168,7 +168,7 @@ void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 
 	value.tid = thr->id;
 	value.clock = kt_clk_get(&thr->clk, thr->id);
-	value.offset = addr & ~(KT_GRAIN - 1);
+	value.offset = addr & (KT_GRAIN - 1);
 	value.size = size;
 	value.read = read;
 
@@ -180,7 +180,7 @@ void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 				size_t size, bool read)
 {
 	/* Handle unaligned beginning, if any. */
-	for (; (addr & ~(KT_GRAIN - 1)) && size; addr++, size--)
+	for (; (addr & (KT_GRAIN - 1)) && size; addr++, size--)
 		kt_access_imitate(thr, pc, addr, 0, read);
 
 	/* Handle middle part, if any. */

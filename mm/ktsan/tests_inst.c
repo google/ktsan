@@ -107,6 +107,28 @@ static void kt_test_race(void)
 	kt_test(kt_nop, race_first, race_second, "race", "race expected");
 }
 
+/* ktsan test: offset. */
+
+static int offset_first(void *arg)
+{
+	*((int *)arg) = 1;
+
+	return 0;
+}
+
+static int offset_second(void *arg)
+{
+	*((int *)arg + 1) = 1;
+
+	return 0;
+}
+
+static void kt_test_offset(void)
+{
+	kt_test(kt_nop, offset_first, offset_second,
+		"offset", "no race expected");
+}
+
 /* ktsan test: spinlock. */
 
 DEFINE_SPINLOCK(spinlock_sync);
@@ -433,6 +455,8 @@ void kt_tests_run_inst(void)
 	pr_err("\n");
 
 	kt_test_race();
+	pr_err("\n");
+	kt_test_offset();
 	pr_err("\n");
 	kt_test_spinlock();
 	pr_err("\n");
