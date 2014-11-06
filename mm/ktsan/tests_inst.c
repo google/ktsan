@@ -153,10 +153,38 @@ static int atomic_second(void *arg)
 	return 0;
 }
 
+static int atomic64_first(void *arg)
+{
+	int value = atomic64_read((atomic64_t *)arg);
+
+	return value;
+}
+
+static int atomic64_second(void *arg)
+{
+	atomic64_set((atomic64_t *)arg, 1);
+
+	return 0;
+}
+
+static int atomic_xchg_xadd_first(void *arg)
+{
+	return xchg((int *)arg, 42);
+}
+
+static int atomic_xchg_xadd_second(void *arg)
+{
+	return xadd((int *)arg, 42);
+}
+
 static void kt_test_atomic(void)
 {
 	kt_test(kt_nop, atomic_first, atomic_second,
 		"atomic", "no race expected");
+	kt_test(kt_nop, atomic64_first, atomic64_second,
+		"atomic64", "no race expected");
+	kt_test(kt_nop, atomic_xchg_xadd_first, atomic_xchg_xadd_second,
+		"xchg & xadd", "no race expected");
 }
 
 /* ktsan test: completion. */
