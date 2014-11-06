@@ -38,6 +38,7 @@ typedef struct kt_tab_obj_s		kt_tab_obj_t;
 typedef struct kt_tab_part_s		kt_tab_part_t;
 typedef struct kt_tab_sync_s		kt_tab_sync_t;
 typedef struct kt_tab_memblock_s	kt_tab_memblock_t;
+typedef struct kt_tab_lock_s		kt_tab_lock_t;
 typedef struct kt_tab_test_s		kt_tab_test_t;
 typedef struct kt_ctx_s			kt_ctx_t;
 typedef enum kt_stat_e			kt_stat_t;
@@ -156,13 +157,20 @@ struct kt_tab_s {
 struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
 	kt_clk_t		clk;
-	kt_tab_sync_t		*next; /* next sync object in memblock */
 	int			lock_tid; /* id of thread that locked mutex */
+	struct list_head	list;
+};
+
+struct kt_tab_lock_s {
+	kt_tab_obj_t		tab;
+	spinlock_t		lock;
+	struct list_head	list;
 };
 
 struct kt_tab_memblock_s {
 	kt_tab_obj_t		tab;
-	kt_tab_sync_t		*head;
+	struct list_head	sync_list;
+	struct list_head	lock_list;
 };
 
 struct kt_tab_test_s {
@@ -310,6 +318,8 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
 /* Synchronization. */
 
+void kt_sync_destroy(kt_thr_t *thr, uptr_t addr);
+
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
@@ -411,6 +421,7 @@ void kt_percpu_release(kt_thr_t *thr, uptr_t pc);
 /* Memory block allocation. */
 
 uptr_t kt_memblock_addr(uptr_t addr);
+void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync);
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 

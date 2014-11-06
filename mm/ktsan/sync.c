@@ -1,6 +1,5 @@
 #include "ktsan.h"
 
-#include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
 
@@ -9,38 +8,37 @@ static kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 	kt_tab_sync_t *sync;
 	bool created;
 	uptr_t memblock_addr;
-	kt_tab_memblock_t *memblock;
 
 	sync = kt_tab_access(&kt_ctx.sync_tab, addr, &created, false);
 	BUG_ON(sync == NULL); /* Ran out of memory. */
 
 	if (created) {
-		kt_stat_inc(thr, kt_stat_sync_objects);
-		kt_stat_inc(thr, kt_stat_sync_alloc);
-
 		kt_clk_init(thr, &sync->clk);
-		sync->next = NULL;
 		sync->lock_tid = -1;
+		INIT_LIST_HEAD(&sync->list);
 
 		memblock_addr = kt_memblock_addr(addr);
-		memblock = kt_tab_access(&kt_ctx.memblock_tab,
-				memblock_addr, &created, false);
-		BUG_ON(memblock == NULL); /* Ran out of memory. */
+		kt_memblock_add_sync(thr, memblock_addr, sync);
 
-		if (created) {
-			kt_stat_inc(thr, kt_stat_memblock_objects);
-			kt_stat_inc(thr, kt_stat_memblock_alloc);
-
-			memblock->head = NULL;
-		}
-
-		sync->next = memblock->head;
-		memblock->head = sync;
-
-		spin_unlock(&memblock->tab.lock);
+		kt_stat_inc(thr, kt_stat_sync_objects);
+		kt_stat_inc(thr, kt_stat_sync_alloc);
 	}
 
 	return sync;
+}
+
+void kt_sync_destroy(kt_thr_t *thr, uptr_t addr)
+{
+	kt_tab_sync_t *sync;
+
+	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, true);
+	BUG_ON(sync == NULL);
+
+	spin_unlock(&sync->tab.lock);
+	kt_cache_free(&kt_ctx.sync_tab.obj_cache, sync);
+
+	kt_stat_dec(thr, kt_stat_sync_objects);
+	kt_stat_inc(thr, kt_stat_sync_free);
 }
 
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
