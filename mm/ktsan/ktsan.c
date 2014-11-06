@@ -94,7 +94,7 @@ void __init ktsan_init_early(void)
 	kt_ctx_t *ctx = &kt_ctx;
 
 	kt_tab_init(&ctx->sync_tab, 10007,
-		    sizeof(kt_tab_sync_t), 400 * 1000);
+		    sizeof(kt_tab_sync_t), 500 * 1000);
 	kt_tab_init(&ctx->memblock_tab, 10007,
 		    sizeof(kt_tab_memblock_t), 60 * 1000);
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
