@@ -21,7 +21,6 @@ void kt_percpu_release(kt_thr_t *thr, uptr_t pc)
 	}
 }
 
-
 void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	kt_percpu_sync_t *percpu_sync;
