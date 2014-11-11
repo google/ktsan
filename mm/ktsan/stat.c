@@ -12,6 +12,7 @@ static struct {
 	kt_stat_t	i;
 	const char	*s;
 } desc[] = {
+	{kt_stat_reports,		"kt_stat_reports"},
 	{kt_stat_access_read,		"kt_stat_access_read"},
 	{kt_stat_access_write,		"kt_stat_access_write"},
 	{kt_stat_sync_objects,		"kt_stat_sync_objects"},
