@@ -214,6 +214,7 @@ struct kt_percpu_sync_s {
 /* Statistics. */
 
 enum kt_stat_e {
+	kt_stat_reports,
 	kt_stat_access_read,
 	kt_stat_access_write,
 	kt_stat_access_size1,

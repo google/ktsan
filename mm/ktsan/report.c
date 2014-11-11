@@ -97,5 +97,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 
 	pr_err("==================================================================\n");
 
+	kt_stat_inc(new, kt_stat_reports);
+
 	spin_unlock(&kt_report_lock);
 }
