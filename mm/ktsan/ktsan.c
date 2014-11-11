@@ -175,6 +175,20 @@ void ktsan_thr_stop(void)
 	LEAVE();
 }
 
+void ktsan_report_disable(void)
+{
+	ENTER(false);
+	kt_report_disable(thr);
+	LEAVE();
+}
+
+void ktsan_report_enable(void)
+{
+	ENTER(false);
+	kt_report_enable(thr);
+	LEAVE();
+}
+
 void ktsan_sync_acquire(void *addr)
 {
 	ENTER(true);
