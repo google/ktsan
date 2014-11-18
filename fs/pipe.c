@@ -55,8 +55,7 @@ unsigned int pipe_min_size = PAGE_SIZE;
 
 static void pipe_lock_nested(struct pipe_inode_info *pipe, int subclass)
 {
-	if (pipe->files)
-		mutex_lock_nested(&pipe->mutex, subclass);
+	mutex_lock_nested(&pipe->mutex, subclass);
 }
 
 void pipe_lock(struct pipe_inode_info *pipe)
@@ -70,8 +69,7 @@ EXPORT_SYMBOL(pipe_lock);
 
 void pipe_unlock(struct pipe_inode_info *pipe)
 {
-	if (pipe->files)
-		mutex_unlock(&pipe->mutex);
+	mutex_unlock(&pipe->mutex);
 }
 EXPORT_SYMBOL(pipe_unlock);
 
