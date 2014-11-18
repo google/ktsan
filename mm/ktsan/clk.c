@@ -2,7 +2,7 @@
 
 #include <linux/kernel.h>
 
-void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk)
+void kt_clk_init(kt_clk_t *clk)
 {
 	memset(clk, 0, sizeof(*clk));
 }

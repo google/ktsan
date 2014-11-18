@@ -23,6 +23,8 @@
 #ifndef __LINUX_RCU_H
 #define __LINUX_RCU_H
 
+#include <linux/ktsan.h>
+
 #include <trace/events/rcu.h>
 #ifdef CONFIG_RCU_TRACE
 #define RCU_TRACE(stmt) stmt
@@ -115,6 +117,7 @@ static inline bool __rcu_reclaim(const char *rn, struct rcu_head *head)
 		return true;
 	} else {
 		RCU_TRACE(trace_rcu_invoke_callback(rn, head));
+		ktsan_rcu_synchronize();
 		head->func(head);
 		rcu_lock_release(&rcu_callback_map);
 		return false;
