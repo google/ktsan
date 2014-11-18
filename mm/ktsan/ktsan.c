@@ -103,6 +103,8 @@ void __init ktsan_init_early(void)
 	kt_thr_pool_init();
 	kt_cache_init(&ctx->percpu_sync_cache,
 		      sizeof(kt_percpu_sync_t), 2000);
+	kt_clk_init(&ctx->rcu_clk);
+	spin_lock_init(&ctx->rcu_lock);
 }
 
 void ktsan_init(void)
@@ -244,6 +246,46 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
+
+void ktsan_rcu_read_lock()
+{
+	ENTER(false);
+	kt_rcu_read_lock(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_read_lock);
+
+void ktsan_rcu_read_unlock()
+{
+	ENTER(false);
+	kt_rcu_read_unlock(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_read_unlock);
+
+void ktsan_rcu_synchronize()
+{
+	ENTER(false);
+	kt_rcu_synchronize(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_synchronize);
+
+void ktsan_rcu_pre_callback()
+{
+	ENTER(false);
+	kt_rcu_pre_callback(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_pre_callback);
+
+void ktsan_rcu_post_callback()
+{
+	ENTER(false);
+	kt_rcu_post_callback(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_post_callback);
 
 int ktsan_atomic32_read(const void *addr)
 {

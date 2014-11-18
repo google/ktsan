@@ -13,7 +13,7 @@ static kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 	BUG_ON(sync == NULL); /* Ran out of memory. */
 
 	if (created) {
-		kt_clk_init(thr, &sync->clk);
+		kt_clk_init(&sync->clk);
 		sync->lock_tid = -1;
 		INIT_LIST_HEAD(&sync->list);
 
@@ -93,4 +93,49 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 	BUG_ON(wr && sync->lock_tid != thr->id);
 	sync->lock_tid = -1;
 	spin_unlock(&sync->tab.lock);
+}
+
+void kt_rcu_read_lock(kt_thr_t *thr, uptr_t pc)
+{
+	kt_trace_add_event(thr, kt_event_type_rcu_read_lock, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+	spin_lock(&kt_ctx.rcu_lock);
+	kt_clk_acquire(thr, &thr->clk, &kt_ctx.rcu_clk);
+	spin_unlock(&kt_ctx.rcu_lock);
+}
+
+void kt_rcu_read_unlock(kt_thr_t *thr, uptr_t pc)
+{
+	kt_trace_add_event(thr, kt_event_type_rcu_read_unlock, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+	spin_lock(&kt_ctx.rcu_lock);
+	kt_clk_acquire(thr, &kt_ctx.rcu_clk, &thr->clk);
+	spin_unlock(&kt_ctx.rcu_lock);
+}
+
+void kt_rcu_synchronize(kt_thr_t *thr, uptr_t pc)
+{
+	kt_trace_add_event(thr, kt_event_type_rcu_synchronize, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+	spin_lock(&kt_ctx.rcu_lock);
+	kt_clk_acquire(thr, &thr->clk, &kt_ctx.rcu_clk);
+	spin_unlock(&kt_ctx.rcu_lock);
+}
+
+void kt_rcu_pre_callback(kt_thr_t *thr, uptr_t pc)
+{
+	kt_trace_add_event(thr, kt_event_type_rcu_synchronize, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+	spin_lock(&kt_ctx.rcu_lock);
+	kt_clk_acquire(thr, &thr->clk, &kt_ctx.rcu_clk);
+	spin_unlock(&kt_ctx.rcu_lock);
+}
+
+void kt_rcu_post_callback(kt_thr_t *thr, uptr_t pc)
+{
+	kt_trace_add_event(thr, kt_event_type_rcu_read_unlock, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+	spin_lock(&kt_ctx.rcu_lock);
+	kt_clk_acquire(thr, &kt_ctx.rcu_clk, &thr->clk);
+	spin_unlock(&kt_ctx.rcu_lock);
 }

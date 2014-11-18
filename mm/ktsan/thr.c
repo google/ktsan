@@ -43,7 +43,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	new->kid = kid;
 	kt_atomic32_set_no_ktsan(&new->inside, 0);
 	new->cpu = NULL;
-	kt_clk_init(thr, &new->clk);
+	kt_clk_init(&new->clk);
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
 	INIT_LIST_HEAD(&new->quarantine_list);

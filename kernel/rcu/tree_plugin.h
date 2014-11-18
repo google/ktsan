@@ -28,6 +28,7 @@
 #include <linux/gfp.h>
 #include <linux/oom.h>
 #include <linux/smpboot.h>
+#include <linux/ktsan.h>
 #include "../time/tick-internal.h"
 
 #ifdef CONFIG_RCU_BOOST
@@ -548,6 +549,7 @@ void synchronize_rcu(void)
 		synchronize_rcu_expedited();
 	else
 		wait_rcu_gp(call_rcu);
+	ktsan_rcu_synchronize();
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu);
 

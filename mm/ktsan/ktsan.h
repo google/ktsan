@@ -80,6 +80,9 @@ enum kt_event_type_e {
 	kt_event_type_preempt_disable,
 	kt_event_type_irq_enable,
 	kt_event_type_irq_disable,
+	kt_event_type_rcu_read_lock,
+	kt_event_type_rcu_read_unlock,
+	kt_event_type_rcu_synchronize,
 };
 
 struct kt_event_s {
@@ -255,6 +258,8 @@ struct kt_ctx_s {
 	kt_tab_t		test_tab;
 	kt_thr_pool_t		thr_pool;
 	kt_cache_t		percpu_sync_cache;
+	kt_clk_t		rcu_clk;
+	spinlock_t		rcu_lock;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -284,7 +289,7 @@ void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 
 /* Clocks. */
 
-void kt_clk_init(kt_thr_t *thr, kt_clk_t *clk);
+void kt_clk_init(kt_clk_t *clk);
 void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
 
 static inline
@@ -331,6 +336,12 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
+
+void kt_rcu_read_lock(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_read_unlock(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_synchronize(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_pre_callback(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_post_callback(kt_thr_t *thr, uptr_t pc);
 
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
