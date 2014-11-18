@@ -44,6 +44,7 @@
 #include <linux/debugobjects.h>
 #include <linux/bug.h>
 #include <linux/compiler.h>
+#include <linux/ktsan.h>
 #include <asm/barrier.h>
 
 extern int rcu_expedited; /* for sysctl */
@@ -881,6 +882,7 @@ static inline void rcu_read_lock(void)
 	rcu_lock_acquire(&rcu_lock_map);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_lock() used illegally while idle");
+	ktsan_rcu_read_lock();
 }
 
 /*
@@ -928,6 +930,7 @@ static inline void rcu_read_lock(void)
  */
 static inline void rcu_read_unlock(void)
 {
+	ktsan_rcu_read_unlock();
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_unlock() used illegally while idle");
 	rcu_lock_release(&rcu_lock_map);
