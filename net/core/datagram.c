@@ -769,8 +769,10 @@ unsigned int datagram_poll(struct file *file, struct socket *sock,
 		mask |= POLLHUP;
 
 	/* readable? */
+	spin_lock(&sk->sk_receive_queue.lock);
 	if (!skb_queue_empty(&sk->sk_receive_queue))
 		mask |= POLLIN | POLLRDNORM;
+	spin_unlock(&sk->sk_receive_queue.lock);
 
 	/* Connection-based need to check for termination and startup */
 	if (connection_based(sk)) {
