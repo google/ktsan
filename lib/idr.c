@@ -72,7 +72,8 @@ static struct idr_layer *get_from_free_list(struct idr *idp)
 	spin_lock_irqsave(&idp->lock, flags);
 	if ((p = idp->id_free)) {
 		idp->id_free = p->ary[0];
-		atomic_dec(&idp->id_free_cnt);
+		atomic_set(&idp->id_free_cnt,
+			atomic_read(&idp->id_free_cnt) - 1);
 		p->ary[0] = NULL;
 	}
 	spin_unlock_irqrestore(&idp->lock, flags);
@@ -155,7 +156,7 @@ static void __move_to_free_list(struct idr *idp, struct idr_layer *p)
 {
 	p->ary[0] = idp->id_free;
 	idp->id_free = p;
-	atomic_inc(&idp->id_free_cnt);
+	atomic_set(&idp->id_free_cnt, atomic_read(&idp->id_free_cnt) + 1);
 }
 
 static void move_to_free_list(struct idr *idp, struct idr_layer *p)
