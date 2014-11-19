@@ -13,6 +13,7 @@ obj-y := ktsan.o	\
 	 stack.o	\
 	 trace.o	\
 	 func.o		\
+	 percpu.o		\
 	 tests_noinst.o	\
 	 tests_inst.o	\
 	 tests.o

@@ -42,9 +42,7 @@ kt_ctx_t kt_ctx;
 	if (!kt_ctx.enabled)					\
 		goto exit;					\
 								\
-	/* Sometimes thread #1 is scheduled without calling	\
-	   ktsan_thr_start(). Some of such cases are caused	\
-	   by interrupts. Ignoring them for now. */		\
+	/* Ignore reports from interrupts for now. */		\
 	if (IN_INTERRUPT())					\
 		goto exit;					\
 								\
@@ -53,19 +51,21 @@ kt_ctx_t kt_ctx;
 	if (!current->ktsan.thr)				\
 		goto exit;					\
 								\
-	if (!(scheduler) && current->ktsan.thr->cpu == NULL)	\
-		goto exit;					\
-								\
-	DISABLE_INTERRUPTS(kt_flags);				\
-								\
 	thr = current->ktsan.thr;				\
 	pc = (uptr_t)_RET_IP_;					\
 								\
+	if (!(scheduler) && thr->cpu == NULL)			\
+		goto exit;					\
+								\
 	kt_inside_was = atomic_cmpxchg(&thr->inside, 0, 1);	\
 	if (kt_inside_was != 0) {				\
-		ENABLE_INTERRUPTS(kt_flags);			\
 		goto exit;					\
 	}							\
+								\
+	/* Interrupts should be disabled after setting		\
+	   thr->inside, since local_irq_save and		\
+	   preempt_disable are called. */			\
+	DISABLE_INTERRUPTS(kt_flags);				\
 								\
 	event_handled = true;					\
 /**/
@@ -74,13 +74,16 @@ kt_ctx_t kt_ctx;
 	/* thr might become NULL in ktsan_thread_destroy. */	\
 	thr = current->ktsan.thr;				\
 								\
+	/* Interrupts should be enabled before setting		\
+	   thr->inside, since local_irq_restore and		\
+	   preempt_enable are called. */			\
+	ENABLE_INTERRUPTS(kt_flags);				\
+								\
 	if (thr) {						\
 		kt_inside_was =					\
 			atomic_cmpxchg(&thr->inside, 1, 0);	\
 		BUG_ON(kt_inside_was != 1);			\
 	}							\
-								\
-	ENABLE_INTERRUPTS(kt_flags);				\
 								\
 exit:								\
 /**/
@@ -95,6 +98,8 @@ void __init ktsan_init_early(void)
 		    sizeof(kt_tab_memblock_t), 60000);
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
 	kt_thr_pool_init();
+	kt_cache_init(&ctx->percpu_sync_cache,
+		      sizeof(kt_percpu_sync_t), 1000);
 }
 
 void ktsan_init(void)
@@ -106,7 +111,7 @@ void ktsan_init(void)
 	ctx = &kt_ctx;
 
 	thr = kt_thr_create(NULL, current->pid);
-	kt_thr_start(thr);
+	kt_thr_start(thr, (uptr_t)_RET_IP_);
 	current->ktsan.thr = thr;
 
 	BUG_ON(ctx->enabled);
@@ -156,20 +161,21 @@ void ktsan_thr_destroy(struct ktsan_thr_s *old)
 void ktsan_thr_start(void)
 {
 	ENTER(true);
-	kt_thr_start(thr);
+	kt_thr_start(thr, pc);
 	LEAVE();
 }
 
 void ktsan_thr_stop(void)
 {
 	ENTER(true);
-	kt_thr_stop(thr);
+	kt_thr_stop(thr, pc);
 	LEAVE();
 }
 
 void ktsan_sync_acquire(void *addr)
 {
 	ENTER(true);
+	/* TODO(xairy): add event to trace. */
 	kt_sync_acquire(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
@@ -178,6 +184,7 @@ EXPORT_SYMBOL(ktsan_sync_acquire);
 void ktsan_sync_release(void *addr)
 {
 	ENTER(true);
+	/* TODO(xairy): add event to trace. */
 	kt_sync_release(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
@@ -245,6 +252,62 @@ void ktsan_atomic32_set(void *addr, int value)
 		kt_atomic32_pure_set(addr, value);
 }
 EXPORT_SYMBOL(ktsan_atomic32_set);
+
+void ktsan_preempt_add(int value)
+{
+	ENTER(false);
+	kt_preempt_add(thr, pc, value);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_preempt_add);
+
+void ktsan_preempt_sub(int value)
+{
+	ENTER(false);
+	kt_preempt_sub(thr, pc, value);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_preempt_sub);
+
+void ktsan_irq_disable(void)
+{
+	ENTER(false);
+	kt_irq_disable(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_irq_disable);
+
+void ktsan_irq_enable(void)
+{
+	ENTER(false);
+	kt_irq_enable(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_irq_enable);
+
+void ktsan_irq_save(void)
+{
+	ENTER(false);
+	kt_irq_save(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_irq_save);
+
+void ktsan_irq_restore(unsigned long flags)
+{
+	ENTER(false);
+	kt_irq_restore(thr, pc, flags);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_irq_restore);
+
+void ktsan_percpu_acquire(void *addr)
+{
+	ENTER(false);
+	kt_percpu_acquire(thr, pc, (uptr_t)addr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_percpu_acquire);
 
 void ktsan_read1(void *addr)
 {
