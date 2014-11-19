@@ -271,21 +271,13 @@ void ktsan_rcu_synchronize()
 }
 EXPORT_SYMBOL(ktsan_rcu_synchronize);
 
-void ktsan_rcu_pre_callback()
+void ktsan_rcu_callback()
 {
 	ENTER(false);
-	kt_rcu_pre_callback(thr, pc);
+	kt_rcu_callback(thr, pc);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_rcu_pre_callback);
-
-void ktsan_rcu_post_callback()
-{
-	ENTER(false);
-	kt_rcu_post_callback(thr, pc);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_rcu_post_callback);
+EXPORT_SYMBOL(ktsan_rcu_callback);
 
 int ktsan_atomic32_read(const void *addr)
 {

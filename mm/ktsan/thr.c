@@ -48,6 +48,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	new->call_depth = 0;
 	INIT_LIST_HEAD(&new->quarantine_list);
 	new->report_depth = 0;
+	new->report_depth = 1;
 	new->preempt_depth = 0;
 	new->irqs_disabled = false;
 	INIT_LIST_HEAD(&new->percpu_list);

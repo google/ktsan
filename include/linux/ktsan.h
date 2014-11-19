@@ -40,8 +40,7 @@ void ktsan_mtx_pre_unlock(void *addr, bool write);
 void ktsan_rcu_read_lock(void);
 void ktsan_rcu_read_unlock(void);
 void ktsan_rcu_synchronize(void);
-void ktsan_rcu_pre_callback(void);
-void ktsan_rcu_post_callback(void);
+void ktsan_rcu_callback(void);
 
 int ktsan_atomic32_read(const void *addr);
 void ktsan_atomic32_set(void *addr, int value);

@@ -7,6 +7,7 @@
 #include <linux/percpu.h>
 #include <linux/preempt.h>
 #include <linux/printk.h>
+#include <linux/rcupdate.h>
 #include <linux/rwlock.h>
 #include <linux/rwsem.h>
 #include <linux/sched.h>
@@ -447,6 +448,53 @@ static void kt_test_percpu(void)
 		"percpu race", "race expected");
 }
 
+/* ktsan test: rcu */
+
+static int rcu_read_under_lock(void *arg)
+{
+	int value;
+
+	rcu_read_lock();
+	value = *((int *)arg);
+	rcu_read_unlock();
+
+	return value;
+}
+
+static int rcu_synchronize(void *arg)
+{
+	synchronize_rcu();
+	*((int *)arg) = 0;
+
+	return 0;
+}
+
+static int rcu_write_under_lock(void *arg)
+{
+	rcu_read_lock();
+	*((int *)arg) = 0;
+	rcu_read_unlock();
+
+	return 0;
+}
+
+static int rcu_assign_ptr(void *arg)
+{
+	rcu_assign_pointer(*(int **)arg, NULL);
+
+	return 0;
+}
+
+static void kt_test_rcu(void)
+{
+	kt_test(kt_nop, rcu_read_under_lock, rcu_synchronize,
+		"rcu-read-synchronize", "no race expected");
+	kt_test(kt_nop, rcu_read_under_lock, rcu_write_under_lock,
+		"rcu-read-write", "race expected");
+	kt_test(kt_nop, rcu_read_under_lock, rcu_assign_ptr,
+		"rcu-read-assign", "no race expected");
+}
+
 /* Instrumented tests. */
 
 void kt_tests_run_inst(void)
@@ -475,5 +523,7 @@ void kt_tests_run_inst(void)
 	kt_test_thread_create();
 	pr_err("\n");
 	kt_test_percpu();
+	pr_err("\n");
+	kt_test_rcu();
 	pr_err("\n");
 }

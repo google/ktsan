@@ -4,8 +4,10 @@ obj-y := ktsan.o		\
 	 access.o		\
 	 memblock.o		\
 	 sync.o			\
+	 sync_mtx.o		\
 	 sync_atomic.o		\
 	 sync_percpu.o		\
+	 sync_rcu.o		\
 	 clk.o			\
 	 tab.o			\
 	 report.o		\
@@ -22,9 +24,6 @@ obj-y := ktsan.o		\
 
 CFLAGS_REMOVE_ktsan.o = -pg -O0 -O1 -O2
 CFLAGS_ktsan.o = -O3
-
-CFLAGS_REMOVE_tests_inst.o = -pg -O1 -O2 -O3
-CFLAGS_tests_inst.o = -O0
 
 KTSAN_SANITIZE := n
 
