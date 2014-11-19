@@ -83,6 +83,7 @@ enum kt_event_type_e {
 	kt_event_type_rcu_read_lock,
 	kt_event_type_rcu_read_unlock,
 	kt_event_type_rcu_synchronize,
+	kt_event_type_rcu_callback,
 };
 
 struct kt_event_s {
@@ -340,8 +341,7 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 void kt_rcu_read_lock(kt_thr_t *thr, uptr_t pc);
 void kt_rcu_read_unlock(kt_thr_t *thr, uptr_t pc);
 void kt_rcu_synchronize(kt_thr_t *thr, uptr_t pc);
-void kt_rcu_pre_callback(kt_thr_t *thr, uptr_t pc);
-void kt_rcu_post_callback(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_callback(kt_thr_t *thr, uptr_t pc);
 
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
