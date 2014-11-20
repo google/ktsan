@@ -181,6 +181,7 @@ void ktsan_report_disable(void)
 	kt_report_disable(thr);
 	LEAVE();
 }
+EXPORT_SYMBOL(ktsan_report_disable);
 
 void ktsan_report_enable(void)
 {
@@ -188,6 +189,7 @@ void ktsan_report_enable(void)
 	kt_report_enable(thr);
 	LEAVE();
 }
+EXPORT_SYMBOL(ktsan_report_enable);
 
 void ktsan_sync_acquire(void *addr)
 {
@@ -300,6 +302,22 @@ void ktsan_rcu_read_unlock_sched()
 	/* TODO(xairy). */
 }
 EXPORT_SYMBOL(ktsan_rcu_read_unlock_sched);
+
+void ktsan_rcu_assign_pointer(void *new)
+{
+	ENTER(false);
+	kt_rcu_assign_pointer(thr, pc, (uptr_t)new);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_assign_pointer);
+
+void ktsan_rcu_dereference(void *addr)
+{
+	ENTER(false);
+	kt_rcu_dereference(thr, pc, (uptr_t)addr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_dereference);
 
 int ktsan_atomic32_read(const void *addr)
 {
