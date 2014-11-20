@@ -507,7 +507,7 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ull(m, ' ', wchan);
 	seq_put_decimal_ull(m, ' ', 0);
 	seq_put_decimal_ull(m, ' ', 0);
-	seq_put_decimal_ll(m, ' ', task->exit_signal);
+	seq_put_decimal_ll(m, ' ', atomic_read(&task->exit_signal));
 	seq_put_decimal_ll(m, ' ', task_cpu(task));
 	seq_put_decimal_ull(m, ' ', task->rt_priority);
 	seq_put_decimal_ull(m, ' ', task->policy);
