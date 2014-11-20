@@ -53,7 +53,7 @@ void ktsan_rcu_read_unlock_sched(void);
 
 /* TODO(xairy): _expedited. */
 
-void ktsan_rcu_assign_pointer(void *old, void *new);
+void ktsan_rcu_assign_pointer(void *new);
 void ktsan_rcu_dereference(void *addr);
 
 int ktsan_atomic32_read(const void *addr);

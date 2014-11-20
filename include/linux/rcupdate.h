@@ -664,7 +664,18 @@ static inline void rcu_preempt_sleep_check(void)
  * please be careful when making changes to rcu_assign_pointer() and the
  * other macros that it invokes.
  */
+#ifndef CONFIG_KTSAN
 #define rcu_assign_pointer(p, v) smp_store_release(&p, RCU_INITIALIZER(v))
+#else /* CONFIG_KTSAN */
+#define rcu_assign_pointer(p, v)				\
+	do {							\
+		/* FIXME: disable / enable. */			\
+		ktsan_report_disable();				\
+		smp_store_release(&p, RCU_INITIALIZER(v));	\
+		ktsan_report_enable();				\
+		ktsan_rcu_assign_pointer(v);			\
+	} while(0)
+#endif /* CONFIG_KTSAN */
 
 /**
  * rcu_access_pointer() - fetch RCU pointer with no dereferencing
@@ -720,8 +731,24 @@ static inline void rcu_preempt_sleep_check(void)
  * which pointers are protected by RCU and checks that the pointer is
  * annotated as __rcu.
  */
+#ifndef CONFIG_KTSAN
 #define rcu_dereference_check(p, c) \
 	__rcu_dereference_check((p), (c) || rcu_read_lock_held(), __rcu)
+#else /* CONFIG_KTSAN */
+#define rcu_dereference_check(p, c)			\
+({							\
+	__typeof__(*(p)) *rv;				\
+							\
+	/* FIXME: disable / enable. */			\
+	ktsan_report_disable();				\
+	rv = __rcu_dereference_check((p),		\
+		(c) || rcu_read_lock_held(), __rcu);	\
+	ktsan_report_enable();				\
+	ktsan_rcu_dereference((void *)p);		\
+							\
+	rv;						\
+})
+#endif /* CONFIG_KTSAN */
 
 /**
  * rcu_dereference_bh_check() - rcu_dereference_bh with debug checking
