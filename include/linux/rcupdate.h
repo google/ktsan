@@ -930,6 +930,7 @@ static inline void rcu_read_lock_bh(void)
 	rcu_lock_acquire(&rcu_bh_lock_map);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_lock_bh() used illegally while idle");
+	ktsan_rcu_read_lock_bh();
 }
 
 /*
@@ -939,6 +940,7 @@ static inline void rcu_read_lock_bh(void)
  */
 static inline void rcu_read_unlock_bh(void)
 {
+	ktsan_rcu_read_unlock_bh();
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_unlock_bh() used illegally while idle");
 	rcu_lock_release(&rcu_bh_lock_map);
@@ -966,6 +968,7 @@ static inline void rcu_read_lock_sched(void)
 	rcu_lock_acquire(&rcu_sched_lock_map);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_lock_sched() used illegally while idle");
+	ktsan_rcu_read_lock_sched();
 }
 
 /* Used by lockdep and tracing: cannot be traced, cannot call lockdep. */
@@ -973,6 +976,7 @@ static inline notrace void rcu_read_lock_sched_notrace(void)
 {
 	preempt_disable_notrace();
 	__acquire(RCU_SCHED);
+	ktsan_rcu_read_lock_sched();
 }
 
 /*
@@ -982,6 +986,7 @@ static inline notrace void rcu_read_lock_sched_notrace(void)
  */
 static inline void rcu_read_unlock_sched(void)
 {
+	ktsan_rcu_read_unlock_sched();
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_unlock_sched() used illegally while idle");
 	rcu_lock_release(&rcu_sched_lock_map);
@@ -992,6 +997,7 @@ static inline void rcu_read_unlock_sched(void)
 /* Used by lockdep and tracing: cannot be traced, cannot call lockdep. */
 static inline notrace void rcu_read_unlock_sched_notrace(void)
 {
+	ktsan_rcu_read_unlock_sched();
 	__release(RCU_SCHED);
 	preempt_enable_notrace();
 }
