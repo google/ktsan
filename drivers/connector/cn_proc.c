@@ -287,7 +287,7 @@ void proc_exit_connector(struct task_struct *task)
 	ev->event_data.exit.process_pid = task->pid;
 	ev->event_data.exit.process_tgid = task->tgid;
 	ev->event_data.exit.exit_code = task->exit_code;
-	ev->event_data.exit.exit_signal = task->exit_signal;
+	ev->event_data.exit.exit_signal = atomic_read(&task->exit_signal);
 
 	memcpy(&msg->id, &cn_proc_event_id, sizeof(msg->id));
 	msg->ack = 0; /* not used */
