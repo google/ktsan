@@ -26,14 +26,7 @@
 #define KT_TRACE_PART_SIZE (64 * 1024)
 #define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
 
-/* Both arguments must be pointers. */
-#define KT_ATOMIC_64_READ(ptr) \
-	(atomic64_read((atomic64_t *)(ptr)))
-#define KT_ATOMIC_64_SET(ptr, val) \
-	(atomic64_set((atomic64_t *)(ptr), *(u64 *)(val)))
-#define KT_ATOMIC_64_ADD(ptr, val) \
-	(atomic64_add(*(u64 *)(val), (atomic64_t *)(ptr)))
-/* TODO(xairy): use kt_atomic_pure_* when implemented. */
+#define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
@@ -45,6 +38,7 @@ typedef struct kt_tab_obj_s		kt_tab_obj_t;
 typedef struct kt_tab_part_s		kt_tab_part_t;
 typedef struct kt_tab_sync_s		kt_tab_sync_t;
 typedef struct kt_tab_memblock_s	kt_tab_memblock_t;
+typedef struct kt_tab_lock_s		kt_tab_lock_t;
 typedef struct kt_tab_test_s		kt_tab_test_t;
 typedef struct kt_ctx_s			kt_ctx_t;
 typedef enum kt_stat_e			kt_stat_t;
@@ -80,6 +74,7 @@ enum kt_event_type_e {
 	kt_event_type_acquire,
 	kt_event_type_release,
 	kt_event_type_mop, /* memory operation */
+	kt_event_type_atomic_op,
 	kt_event_type_thr_start,
 	kt_event_type_thr_stop,
 	kt_event_type_preempt_enable,
@@ -163,13 +158,20 @@ struct kt_tab_s {
 struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
 	kt_clk_t		clk;
-	kt_tab_sync_t		*next; /* next sync object in memblock */
 	int			lock_tid; /* id of thread that locked mutex */
+	struct list_head	list;
+};
+
+struct kt_tab_lock_s {
+	kt_tab_obj_t		tab;
+	spinlock_t		lock;
+	struct list_head	list;
 };
 
 struct kt_tab_memblock_s {
 	kt_tab_obj_t		tab;
-	kt_tab_sync_t		*head;
+	struct list_head	sync_list;
+	struct list_head	lock_list;
 };
 
 struct kt_tab_test_s {
@@ -317,6 +319,9 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
 /* Synchronization. */
 
+kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr);
+void kt_sync_destroy(kt_thr_t *thr, uptr_t addr);
+
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
@@ -327,8 +332,76 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
 
-int kt_atomic32_pure_read(const void *addr);
-void kt_atomic32_pure_set(void *addr, int value);
+void kt_atomic32_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
+void kt_atomic32_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
+int kt_atomic32_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
+int kt_atomic32_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
+
+void kt_atomic32_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_atomic32_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+int kt_atomic32_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+int kt_atomic32_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+
+long kt_atomic64_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_atomic64_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+
+void kt_atomic64_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+void kt_atomic64_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+int kt_atomic64_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+int kt_atomic64_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
+
+void kt_atomic64_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_atomic64_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+int kt_atomic64_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+int kt_atomic64_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+
+s64 kt_atomic64_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value);
+s32 kt_atomic32_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value);
+
+s64 kt_atomic64_cmpxchg(kt_thr_t *t, uptr_t pc, uptr_t a, s64 old, s64 new);
+s32 kt_atomic32_cmpxchg(kt_thr_t *t, uptr_t pc, uptr_t a, s32 old, s32 new);
+s16 kt_atomic16_cmpxchg(kt_thr_t *t, uptr_t pc, uptr_t a, s16 old, s16 new);
+
+s64 kt_atomic64_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value);
+s32 kt_atomic32_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value);
+s16 kt_atomic16_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value);
+
+int kt_atomic32_read_no_ktsan(const void *addr);
+void kt_atomic32_set_no_ktsan(void *addr, int value);
+
+void kt_atomic32_add_no_ktsan(void *addr, int value);
+void kt_atomic32_sub_no_ktsan(void *addr, int value);
+int kt_atomic32_sub_and_test_no_ktsan(void *addr, int value);
+int kt_atomic32_add_negative_no_ktsan(void *addr, int value);
+
+void kt_atomic32_inc_no_ktsan(void *addr);
+void kt_atomic32_dec_no_ktsan(void *addr);
+int kt_atomic32_inc_and_test_no_ktsan(void *addr);
+int kt_atomic32_dec_and_test_no_ktsan(void *addr);
+
+long kt_atomic64_read_no_ktsan(const void *addr);
+void kt_atomic64_set_no_ktsan(void *addr, long value);
+
+void kt_atomic64_add_no_ktsan(void *addr, long value);
+void kt_atomic64_sub_no_ktsan(void *addr, long value);
+int kt_atomic64_sub_and_test_no_ktsan(void *addr, long value);
+int kt_atomic64_add_negative_no_ktsan(void *addr, long value);
+
+void kt_atomic64_inc_no_ktsan(void *addr);
+void kt_atomic64_dec_no_ktsan(void *addr);
+int kt_atomic64_inc_and_test_no_ktsan(void *addr);
+int kt_atomic64_dec_and_test_no_ktsan(void *addr);
+
+s64 kt_atomic64_xchg_no_ktsan(void *addr, s64 value);
+s32 kt_atomic32_xchg_no_ktsan(void *addr, s32 value);
+
+s64 kt_atomic64_cmpxchg_no_ktsan(void *addr, s64 old, s64 new);
+s32 kt_atomic32_cmpxchg_no_ktsan(void *addr, s32 old, s32 new);
+s16 kt_atomic16_cmpxchg_no_ktsan(void *addr, s16 old, s16 new);
+
+s64 kt_atomic64_xadd_no_ktsan(void *addr, s64 value);
+s32 kt_atomic32_xadd_no_ktsan(void *addr, s32 value);
+s16 kt_atomic16_xadd_no_ktsan(void *addr, s16 value);
 
 /* Per-cpu synchronization. */
 
@@ -346,6 +419,7 @@ void kt_percpu_release(kt_thr_t *thr, uptr_t pc);
 /* Memory block allocation. */
 
 uptr_t kt_memblock_addr(uptr_t addr);
+void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync);
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 

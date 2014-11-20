@@ -1,7 +1,9 @@
 #ifndef ASM_X86_CMPXCHG_H
 #define ASM_X86_CMPXCHG_H
 
+#include <linux/bug.h>
 #include <linux/compiler.h>
+#include <linux/ktsan.h>
 #include <asm/alternative.h> /* Provides LOCK_PREFIX */
 
 #define __HAVE_ARCH_CMPXCHG 1
@@ -69,6 +71,7 @@ extern void __add_wrong_size(void)
 		__ret;							\
 	})
 
+#ifndef CONFIG_KTSAN
 /*
  * Note: no "lock" prefix even on SMP: xchg always implies lock anyway.
  * Since this is generally used to protect other memory information, we
@@ -76,6 +79,31 @@ extern void __add_wrong_size(void)
  * information around.
  */
 #define xchg(ptr, v)	__xchg_op((ptr), (v), xchg, "")
+#else /* CONFIG_KTSAN */
+#define xchg(ptr, v)							\
+({									\
+	__typeof__(*(ptr)) ret;						\
+	s64 ret64;							\
+	s32 ret32;							\
+									\
+	__typeof__(*(ptr)) lv = (v);					\
+									\
+	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
+		     sizeof(*(ptr)) != 4);				\
+									\
+	if (sizeof(*(ptr)) == 8) {					\
+		ret64 = ktsan_atomic64_xchg((void *)(ptr),		\
+					    *((s64 *)(&lv)));		\
+		ret = *((__typeof__(ptr))(&ret64));			\
+	} else if (sizeof(*(ptr)) == 4) {				\
+		ret32 = ktsan_atomic32_xchg((void *)(ptr),		\
+					    *((s32 *)(&lv)));		\
+		ret = *((__typeof__(ptr))(&ret32));			\
+	}								\
+									\
+	ret;								\
+})
+#endif /* CONFIG_KTSAN */
 
 /*
  * Atomic compare and exchange.  Compare OLD with MEM, if identical,
@@ -145,12 +173,47 @@ extern void __add_wrong_size(void)
 # include <asm/cmpxchg_64.h>
 #endif
 
+#ifndef CONFIG_KTSAN
 #define cmpxchg(ptr, old, new)						\
 	__cmpxchg(ptr, old, new, sizeof(*(ptr)))
+#else /* CONFIG_KTSAN */
+#define cmpxchg(ptr, old, new)						\
+({									\
+	__typeof__(*(ptr)) ret;						\
+	s64 ret64;							\
+	s32 ret32;							\
+	s16 ret16;							\
+									\
+	__typeof__(*(ptr)) lo = (old);					\
+	__typeof__(*(ptr)) ln = (new);					\
+									\
+	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
+		     sizeof(*(ptr)) != 4 &&				\
+		     sizeof(*(ptr)) != 2);				\
+									\
+	if (sizeof(*(ptr)) == 8) {					\
+		ret64 = ktsan_atomic64_cmpxchg((void *)(ptr),		\
+				*((s64 *)(&lo)), *((s64 *)(&ln)));	\
+		ret = *((__typeof__(ptr))(&ret64));			\
+	} else if (sizeof(*(ptr)) == 4) {				\
+		ret32 = ktsan_atomic32_cmpxchg((void *)(ptr),		\
+				*((s32 *)(&lo)), *((s32 *)(&ln)));	\
+		ret = *((__typeof__(ptr))(&ret32));			\
+	} else if (sizeof(*(ptr)) == 2) {				\
+		ret16 = ktsan_atomic16_cmpxchg((void *)(ptr),		\
+				*((s16 *)(&lo)), *((s16 *)(&ln)));	\
+		ret = *((__typeof__(ptr))(&ret16));			\
+	}								\
+									\
+	ret;								\
+})
+#endif /* CONFIG_KTSAN */
 
+/* FIXME(xairy): ktsan? */
 #define sync_cmpxchg(ptr, old, new)					\
 	__sync_cmpxchg(ptr, old, new, sizeof(*(ptr)))
 
+/* FIXME(xairy): ktsan? */
 #define cmpxchg_local(ptr, old, new)					\
 	__cmpxchg_local(ptr, old, new, sizeof(*(ptr)))
 
@@ -162,11 +225,50 @@ extern void __add_wrong_size(void)
  * xadd_sync() is always locked
  * xadd_local() is never locked
  */
+
 #define __xadd(ptr, inc, lock)	__xchg_op((ptr), (inc), xadd, lock)
+
+#ifndef CONFIG_KTSAN
 #define xadd(ptr, inc)		__xadd((ptr), (inc), LOCK_PREFIX)
+#else /* CONFIG_KTSAN */
+#define xadd(ptr, inc)							\
+({									\
+	__typeof__(*(ptr)) ret;						\
+	s64 ret64;							\
+	s32 ret32;							\
+	s16 ret16;							\
+									\
+	__typeof__(*(ptr)) li = (inc);					\
+									\
+	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
+		     sizeof(*(ptr)) != 4 &&				\
+		     sizeof(*(ptr)) != 2);				\
+									\
+	if (sizeof(*(ptr)) == 8) {					\
+		ret64 = ktsan_atomic64_xadd((void *)(ptr),		\
+					    *((s64 *)(&li)));		\
+		ret = *((__typeof__(ptr))(&ret64));			\
+	} else if (sizeof(*(ptr)) == 4) {				\
+		ret32 = ktsan_atomic32_xadd((void *)(ptr),		\
+					    *((s32 *)(&li)));		\
+		ret = *((__typeof__(ptr))(&ret32));			\
+	} else if (sizeof(*(ptr)) == 2) {				\
+		ret16 = ktsan_atomic16_xadd((void *)(ptr),		\
+					    *((s16 *)(&li)));		\
+		ret = *((__typeof__(ptr))(&ret16));			\
+	}								\
+									\
+	ret;								\
+})
+#endif /* CONFIG_KTSAN */
+
+/* FIXME(xairy): ktsan? */
 #define xadd_sync(ptr, inc)	__xadd((ptr), (inc), "lock; ")
+
+/* FIXME(xairy): ktsan? */
 #define xadd_local(ptr, inc)	__xadd((ptr), (inc), "")
 
+/* FIXME(xairy): ktsan here and below? */
 #define __add(ptr, inc, lock)						\
 	({								\
 	        __typeof__ (*(ptr)) __ret = (inc);			\
