@@ -3,7 +3,7 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 
-static kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
+kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
 	bool created;
