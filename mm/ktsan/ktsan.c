@@ -279,6 +279,30 @@ void ktsan_rcu_callback()
 }
 EXPORT_SYMBOL(ktsan_rcu_callback);
 
+void ktsan_rcu_read_lock_bh()
+{
+	/* TODO(xairy). */
+}
+EXPORT_SYMBOL(ktsan_rcu_read_lock_bh);
+
+void ktsan_rcu_read_unlock_bh()
+{
+	/* TODO(xairy). */
+}
+EXPORT_SYMBOL(ktsan_rcu_read_unlock_bh);
+
+void ktsan_rcu_read_lock_sched()
+{
+	/* TODO(xairy). */
+}
+EXPORT_SYMBOL(ktsan_rcu_read_lock_sched);
+
+void ktsan_rcu_read_unlock_sched()
+{
+	/* TODO(xairy). */
+}
+EXPORT_SYMBOL(ktsan_rcu_read_unlock_sched);
+
 int ktsan_atomic32_read(const void *addr)
 {
 	int rv;

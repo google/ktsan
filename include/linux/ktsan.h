@@ -36,11 +36,25 @@ void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
 void ktsan_mtx_post_lock(void *addr, bool write, bool try);
 void ktsan_mtx_pre_unlock(void *addr, bool write);
 
-/* FIXME: post lock, pre unlock. */
+/* FIXME: rcu post lock, pre unlock? */
+
 void ktsan_rcu_read_lock(void);
 void ktsan_rcu_read_unlock(void);
 void ktsan_rcu_synchronize(void);
 void ktsan_rcu_callback(void);
+
+void ktsan_rcu_read_lock_bh(void);
+void ktsan_rcu_read_unlock_bh(void);
+/* TODO(xairy): synchronize, callback */
+
+void ktsan_rcu_read_lock_sched(void);
+void ktsan_rcu_read_unlock_sched(void);
+/* TODO(xairy): synchronize, callback */
+
+/* TODO(xairy): _expedited. */
+
+void ktsan_rcu_assign_pointer(void *old, void *new);
+void ktsan_rcu_dereference(void *addr);
 
 int ktsan_atomic32_read(const void *addr);
 void ktsan_atomic32_set(void *addr, int value);
