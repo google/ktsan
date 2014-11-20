@@ -37,3 +37,19 @@ void kt_rcu_callback(kt_thr_t *thr, uptr_t pc)
 	kt_clk_acquire(thr, &thr->clk, &kt_ctx.rcu_clk);
 	spin_unlock(&kt_ctx.rcu_lock);
 }
+
+void kt_rcu_assign_pointer(kt_thr_t *thr, uptr_t pc, uptr_t addr)
+{
+	kt_trace_add_event(thr, kt_event_type_rcu_assign_pointer, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+
+	kt_sync_release(thr, pc, addr);
+}
+
+void kt_rcu_dereference(kt_thr_t *thr, uptr_t pc, uptr_t addr)
+{
+	kt_trace_add_event(thr, kt_event_type_rcu_dereference, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+
+	kt_sync_acquire(thr, pc, addr);
+}
