@@ -86,24 +86,22 @@ extern void __add_wrong_size(void)
 	s16 ret16;							\
 									\
 	__typeof__(*(ptr)) lv = (v);					\
-	s64 s64lv = *((s64 *)(&lv));					\
-	s32 s32lv = *((s32 *)(&lv));					\
-	s16 s16lv = *((s16 *)(&lv));					\
-									\
-	void* vptr = (void *)(ptr);					\
 									\
 	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
 		     sizeof(*(ptr)) != 4 &&				\
 	             sizeof(*(ptr)) != 2);				\
 									\
 	if (sizeof(*(ptr)) == 8) {					\
-		ret64 = ktsan_atomic64_xchg(vptr, s64lv);		\
+		ret64 = ktsan_atomic64_xchg((void *)(ptr),		\
+					    *((s64 *)(&lv)));		\
 		ret = *((__typeof__(ptr))(&ret64));			\
 	} else if (sizeof(*(ptr)) == 4) {				\
-		ret32 = ktsan_atomic32_xchg(vptr, s32lv);		\
+		ret32 = ktsan_atomic32_xchg((void *)(ptr),		\
+					    *((s32 *)(&lv)));		\
 		ret = *((__typeof__(ptr))(&ret32));			\
 	} else if (sizeof(*(ptr)) == 2) {				\
-		ret16 = ktsan_atomic16_xchg(vptr, s16lv);		\
+		ret16 = ktsan_atomic16_xchg((void *)(ptr),		\
+					    *((s16 *)(&lv)));		\
 		ret = *((__typeof__(ptr))(&ret16));			\
 	}								\
 									\
@@ -192,18 +190,7 @@ extern void __add_wrong_size(void)
 	s8 ret8;							\
 									\
 	__typeof__(*(ptr)) lo = (old);					\
-	s64 s64lo = *((s64 *)(&lo));					\
-	s32 s32lo = *((s32 *)(&lo));					\
-	s16 s16lo = *((s16 *)(&lo));					\
-	s8 s8lo = *((s8 *)(&lo));					\
-									\
 	__typeof__(*(ptr)) ln = (new);					\
-	s64 s64ln = *((s64 *)(&ln));					\
-	s32 s32ln = *((s32 *)(&ln));					\
-	s16 s16ln = *((s16 *)(&ln));					\
-	s8 s8ln = *((s8 *)(&ln));					\
-									\
-	void* vptr = (void *)(ptr);					\
 									\
 	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
 		     sizeof(*(ptr)) != 4 &&				\
@@ -211,16 +198,20 @@ extern void __add_wrong_size(void)
 		     sizeof(*(ptr)) != 1);				\
 									\
 	if (sizeof(*(ptr)) == 8) {					\
-		ret64 = ktsan_atomic64_cmpxchg(vptr, s64lo, s64ln);	\
+		ret64 = ktsan_atomic64_cmpxchg((void *)(ptr),		\
+				*((s64 *)(&lo)), *((s64 *)(&ln)));	\
 		ret = *((__typeof__(ptr))(&ret64));			\
 	} else if (sizeof(*(ptr)) == 4) {				\
-		ret32 = ktsan_atomic32_cmpxchg(vptr, s32lo, s32ln);	\
+		ret32 = ktsan_atomic32_cmpxchg((void *)(ptr),		\
+				*((s32 *)(&lo)), *((s32 *)(&ln)));	\
 		ret = *((__typeof__(ptr))(&ret32));			\
 	} else if (sizeof(*(ptr)) == 2) {				\
-		ret16 = ktsan_atomic16_cmpxchg(vptr, s16lo, s16ln);	\
+		ret16 = ktsan_atomic16_cmpxchg((void *)(ptr),		\
+				*((s16 *)(&lo)), *((s16 *)(&ln)));	\
 		ret = *((__typeof__(ptr))(&ret16));			\
 	} else if (sizeof(*(ptr)) == 1) {				\
-		ret8 = ktsan_atomic8_cmpxchg(vptr, s8lo, s8ln);	\
+		ret8 = ktsan_atomic8_cmpxchg((void *)(ptr),		\
+				*((s8 *)(&lo)), *((s8 *)(&ln)));	\
 		ret = *((__typeof__(ptr))(&ret8));			\
 	}								\
 									\
@@ -258,24 +249,22 @@ extern void __add_wrong_size(void)
 	s16 ret16;							\
 									\
 	__typeof__(*(ptr)) li = (inc);					\
-	s64 s64li = *((s64 *)(&li));					\
-	s32 s32li = *((s32 *)(&li));					\
-	s16 s16li = *((s16 *)(&li));					\
-									\
-	void* vptr = (void *)(ptr);					\
 									\
 	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
 		     sizeof(*(ptr)) != 4 &&				\
 		     sizeof(*(ptr)) != 2);				\
 									\
 	if (sizeof(*(ptr)) == 8) {					\
-		ret64 = ktsan_atomic64_xadd(vptr, s64li);		\
+		ret64 = ktsan_atomic64_xadd((void *)(ptr),		\
+					    *((s64 *)(&li)));		\
 		ret = *((__typeof__(ptr))(&ret64));			\
 	} else if (sizeof(*(ptr)) == 4) {				\
-		ret32 = ktsan_atomic32_xadd(vptr, s32li);		\
+		ret32 = ktsan_atomic32_xadd((void *)(ptr),		\
+					    *((s32 *)(&li)));		\
 		ret = *((__typeof__(ptr))(&ret32));			\
 	} else if (sizeof(*(ptr)) == 2) {				\
-		ret16 = ktsan_atomic16_xadd(vptr, s16li);		\
+		ret16 = ktsan_atomic16_xadd((void *)(ptr),		\
+					    *((s16 *)(&li)));		\
 		ret = *((__typeof__(ptr))(&ret16));			\
 	}								\
 									\
