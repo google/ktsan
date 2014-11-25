@@ -629,7 +629,6 @@ static inline void rcu_preempt_sleep_check(void)
 #else /* CONFIG_KTSAN */
 #define rcu_assign_pointer(p, v)				\
 	do {							\
-		/* FIXME: disable / enable. */			\
 		ktsan_report_disable();				\
 		smp_store_release(&p, RCU_INITIALIZER(v));	\
 		ktsan_report_enable();				\
@@ -699,7 +698,6 @@ static inline void rcu_preempt_sleep_check(void)
 ({							\
 	__typeof__(*(p)) *rv;				\
 							\
-	/* FIXME: disable / enable. */			\
 	ktsan_report_disable();				\
 	rv = __rcu_dereference_check((p),		\
 		rcu_read_lock_held() || (c), __rcu);	\

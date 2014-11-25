@@ -56,6 +56,7 @@
 #include <linux/random.h>
 #include <linux/ftrace_event.h>
 #include <linux/suspend.h>
+#include <linux/ktsan.h>
 
 #include "tree.h"
 #include "rcu.h"
@@ -2815,6 +2816,7 @@ void synchronize_sched(void)
 		synchronize_sched_expedited();
 	else
 		wait_rcu_gp(call_rcu_sched);
+	ktsan_rcu_synchronize_sched();
 }
 EXPORT_SYMBOL_GPL(synchronize_sched);
 
@@ -2842,6 +2844,7 @@ void synchronize_rcu_bh(void)
 		synchronize_rcu_bh_expedited();
 	else
 		wait_rcu_gp(call_rcu_bh);
+	ktsan_rcu_synchronize_bh();
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu_bh);
 
