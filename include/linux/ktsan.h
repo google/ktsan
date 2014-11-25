@@ -132,13 +132,27 @@ static inline void ktsan_memblock_free(void *addr, size_t size) {}
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
 
-static inline void ktsan_mtx_pre_lock(void *addr, bool write, bool try) {}
-static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try) {}
-static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
-
 static inline void ktsan_rcu_read_lock(void) {}
 static inline void ktsan_rcu_read_unlock(void) {}
 static inline void ktsan_rcu_synchronize(void) {}
+static inline void ktsan_rcu_callback(void) {}
+
+static inline void ktsan_rcu_read_lock_bh(void) {}
+static inline void ktsan_rcu_read_unlock_bh(void) {}
+static inline void ktsan_rcu_synchronize_bh(void) {}
+static inline void ktsan_rcu_callback_bh(void) {}
+
+static inline void ktsan_rcu_read_lock_sched(void) {}
+static inline void ktsan_rcu_read_unlock_sched(void) {}
+static inline void ktsan_rcu_synchronize_sched(void) {}
+static inline void ktsan_rcu_callback_sched(void) {}
+
+static inline void ktsan_rcu_assign_pointer(void *new) {}
+static inline void ktsan_rcu_dereference(void *addr) {}
+
+static inline void ktsan_mtx_pre_lock(void *addr, bool write, bool try) {}
+static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try) {}
+static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
 
 /* ktsan_atomic* are not called in non-ktsan build. */
 
