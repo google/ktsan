@@ -110,6 +110,10 @@ static inline bool __rcu_reclaim(const char *rn, struct rcu_head *head)
 	unsigned long offset = (unsigned long)head->func;
 
 	rcu_lock_acquire(&rcu_callback_map);
+	/* XXX(xairy): call all three? */
+	ktsan_rcu_callback();
+	ktsan_rcu_callback_bh();
+	ktsan_rcu_callback_sched();
 	if (__is_kfree_rcu_offset(offset)) {
 		RCU_TRACE(trace_rcu_invoke_kfree_callback(rn, head, offset));
 		kfree((void *)head - offset);
@@ -117,7 +121,6 @@ static inline bool __rcu_reclaim(const char *rn, struct rcu_head *head)
 		return true;
 	} else {
 		RCU_TRACE(trace_rcu_invoke_callback(rn, head));
-		ktsan_rcu_callback();
 		head->func(head);
 		rcu_lock_release(&rcu_callback_map);
 		return false;
