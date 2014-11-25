@@ -260,6 +260,10 @@ struct kt_ctx_s {
 	kt_cache_t		percpu_sync_cache;
 	kt_clk_t		rcu_clk;
 	spinlock_t		rcu_lock;
+	kt_clk_t		rcu_bh_clk;
+	spinlock_t		rcu_bh_lock;
+	kt_clk_t		rcu_sched_clk;
+	spinlock_t		rcu_sched_lock;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -342,6 +346,17 @@ void kt_rcu_read_lock(kt_thr_t *thr, uptr_t pc);
 void kt_rcu_read_unlock(kt_thr_t *thr, uptr_t pc);
 void kt_rcu_synchronize(kt_thr_t *thr, uptr_t pc);
 void kt_rcu_callback(kt_thr_t *thr, uptr_t pc);
+
+void kt_rcu_read_lock_bh(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_read_unlock_bh(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_synchronize_bh(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_callback_bh(kt_thr_t *thr, uptr_t pc);
+
+void kt_rcu_read_lock_sched(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_read_unlock_sched(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_synchronize_sched(kt_thr_t *thr, uptr_t pc);
+void kt_rcu_callback_sched(kt_thr_t *thr, uptr_t pc);
+
 void kt_rcu_assign_pointer(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_rcu_dereference(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 

@@ -103,6 +103,10 @@ void __init ktsan_init_early(void)
 		      sizeof(kt_percpu_sync_t), 2000);
 	kt_clk_init(&ctx->rcu_clk);
 	spin_lock_init(&ctx->rcu_lock);
+	kt_clk_init(&ctx->rcu_bh_clk);
+	spin_lock_init(&ctx->rcu_bh_lock);
+	kt_clk_init(&ctx->rcu_sched_clk);
+	spin_lock_init(&ctx->rcu_sched_lock);
 }
 
 void ktsan_init(void)
@@ -247,7 +251,7 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
-void ktsan_rcu_read_lock()
+void ktsan_rcu_read_lock(void)
 {
 	ENTER(false);
 	kt_rcu_read_lock(thr, pc);
@@ -255,7 +259,7 @@ void ktsan_rcu_read_lock()
 }
 EXPORT_SYMBOL(ktsan_rcu_read_lock);
 
-void ktsan_rcu_read_unlock()
+void ktsan_rcu_read_unlock(void)
 {
 	ENTER(false);
 	kt_rcu_read_unlock(thr, pc);
@@ -263,7 +267,7 @@ void ktsan_rcu_read_unlock()
 }
 EXPORT_SYMBOL(ktsan_rcu_read_unlock);
 
-void ktsan_rcu_synchronize()
+void ktsan_rcu_synchronize(void)
 {
 	ENTER(false);
 	kt_rcu_synchronize(thr, pc);
@@ -271,7 +275,7 @@ void ktsan_rcu_synchronize()
 }
 EXPORT_SYMBOL(ktsan_rcu_synchronize);
 
-void ktsan_rcu_callback()
+void ktsan_rcu_callback(void)
 {
 	ENTER(false);
 	kt_rcu_callback(thr, pc);
@@ -279,29 +283,69 @@ void ktsan_rcu_callback()
 }
 EXPORT_SYMBOL(ktsan_rcu_callback);
 
-void ktsan_rcu_read_lock_bh()
+void ktsan_rcu_read_lock_bh(void)
 {
-	/* TODO(xairy). */
+	ENTER(false);
+	kt_rcu_read_lock_bh(thr, pc);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_rcu_read_lock_bh);
 
-void ktsan_rcu_read_unlock_bh()
+void ktsan_rcu_read_unlock_bh(void)
 {
-	/* TODO(xairy). */
+	ENTER(false);
+	kt_rcu_read_unlock_bh(thr, pc);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_rcu_read_unlock_bh);
 
-void ktsan_rcu_read_lock_sched()
+void ktsan_rcu_synchronize_bh(void)
 {
-	/* TODO(xairy). */
+	ENTER(false);
+	kt_rcu_synchronize_bh(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_synchronize_bh);
+
+void ktsan_rcu_callback_bh(void)
+{
+	ENTER(false);
+	kt_rcu_callback_bh(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_callback_bh);
+
+void ktsan_rcu_read_lock_sched(void)
+{
+	ENTER(false);
+	kt_rcu_read_lock_sched(thr, pc);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_rcu_read_lock_sched);
 
-void ktsan_rcu_read_unlock_sched()
+void ktsan_rcu_read_unlock_sched(void)
 {
-	/* TODO(xairy). */
+	ENTER(false);
+	kt_rcu_read_unlock_sched(thr, pc);
+	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_rcu_read_unlock_sched);
+
+void ktsan_rcu_synchronize_sched(void)
+{
+	ENTER(false);
+	kt_rcu_synchronize_sched(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_synchronize_sched);
+
+void ktsan_rcu_callback_sched(void)
+{
+	ENTER(false);
+	kt_rcu_callback_sched(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_rcu_callback_sched);
 
 void ktsan_rcu_assign_pointer(void *new)
 {
