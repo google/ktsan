@@ -489,10 +489,15 @@ static void kt_test_rcu(void)
 {
 	kt_test(kt_nop, rcu_read_under_lock, rcu_synchronize,
 		"rcu-read-synchronize", "no race expected");
+
+	/* FIXME(xairy): this test doesn't produce report. */
 	kt_test(kt_nop, rcu_write_under_lock, rcu_write_under_lock,
 		"rcu-write-write", "race expected");
+
+	/* FIXME(xairy): this test doesn't produce report. */
 	kt_test(kt_nop, rcu_read_under_lock, rcu_write_under_lock,
 		"rcu-read-write", "race expected");
+
 	kt_test(kt_nop, rcu_read_under_lock, rcu_assign_ptr,
 		"rcu-read-assign", "no race expected");
 }

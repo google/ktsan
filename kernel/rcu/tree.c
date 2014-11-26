@@ -2652,6 +2652,17 @@ static void rcu_do_batch(struct rcu_state *rsp, struct rcu_data *rdp)
 		next = list->next;
 		prefetch(next);
 		debug_rcu_head_unqueue(list);
+
+		BUG_ON(rsp != &rcu_bh_state && rsp != &rcu_sched_state);
+		if (rsp == &rcu_bh_state) {
+			/* call_rcu is defined to be call_rcu_sched
+			   in the current kernel configuration. */
+			ktsan_rcu_callback(ktsan_rcu_type_common);
+			ktsan_rcu_callback(ktsan_rcu_type_sched);
+		} else {
+			ktsan_rcu_callback(ktsan_rcu_type_bh);
+		}
+
 		if (__rcu_reclaim(rsp->name, list))
 			count_lazy++;
 		list = next;
@@ -3172,7 +3183,7 @@ void synchronize_sched(void)
 		synchronize_sched_expedited();
 	else
 		wait_rcu_gp(call_rcu_sched);
-	ktsan_rcu_synchronize_sched();
+	ktsan_rcu_synchronize(ktsan_rcu_type_sched);
 }
 EXPORT_SYMBOL_GPL(synchronize_sched);
 
@@ -3200,7 +3211,7 @@ void synchronize_rcu_bh(void)
 		synchronize_rcu_bh_expedited();
 	else
 		wait_rcu_gp(call_rcu_bh);
-	ktsan_rcu_synchronize_bh();
+	ktsan_rcu_synchronize(ktsan_rcu_type_bh);
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu_bh);
 
