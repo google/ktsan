@@ -557,6 +557,8 @@ static inline void rcu_preempt_sleep_check(void)
 	rcu_dereference_sparse(p, space); \
 	((typeof(*p) __force __kernel *)(_________p1)); \
 })
+
+#ifndef CONFIG_KTSAN
 #define __rcu_dereference_check(p, c, space) \
 ({ \
 	typeof(*p) *_________p1 = (typeof(*p) *__force)ACCESS_ONCE(p); \
@@ -565,6 +567,21 @@ static inline void rcu_preempt_sleep_check(void)
 	smp_read_barrier_depends(); /* Dependency order vs. p above. */ \
 	((typeof(*p) __force __kernel *)(_________p1)); \
 })
+#else /* CONFIG_KTSAN */
+#define __rcu_dereference_check(p, c, space) \
+({ \
+	typeof(*p) *_________p1; \
+	ktsan_report_disable(); \
+	_________p1 = (typeof(*p) *__force)ACCESS_ONCE(p); \
+	rcu_lockdep_assert(c, "suspicious rcu_dereference_check() usage"); \
+	rcu_dereference_sparse(p, space); \
+	smp_read_barrier_depends(); /* Dependency order vs. p above. */ \
+	ktsan_report_enable(); \
+	ktsan_rcu_dereference((void *)p); \
+	((typeof(*p) __force __kernel *)(_________p1)); \
+})
+#endif /* CONFIG_KTSAN */
+
 #define __rcu_dereference_protected(p, c, space) \
 ({ \
 	rcu_lockdep_assert(c, "suspicious rcu_dereference_protected() usage"); \
@@ -690,23 +707,8 @@ static inline void rcu_preempt_sleep_check(void)
  * which pointers are protected by RCU and checks that the pointer is
  * annotated as __rcu.
  */
-#ifndef CONFIG_KTSAN
 #define rcu_dereference_check(p, c) \
 	__rcu_dereference_check((p), rcu_read_lock_held() || (c), __rcu)
-#else /* CONFIG_KTSAN */
-#define rcu_dereference_check(p, c)			\
-({							\
-	__typeof__(*(p)) *rv;				\
-							\
-	ktsan_report_disable();				\
-	rv = __rcu_dereference_check((p),		\
-		rcu_read_lock_held() || (c), __rcu);	\
-	ktsan_report_enable();				\
-	ktsan_rcu_dereference((void *)p);		\
-							\
-	rv;						\
-})
-#endif /* CONFIG_KTSAN */
 
 /**
  * rcu_dereference_bh_check() - rcu_dereference_bh with debug checking
@@ -868,7 +870,7 @@ static inline void rcu_read_lock(void)
 	rcu_lock_acquire(&rcu_lock_map);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_lock() used illegally while idle");
-	ktsan_rcu_read_lock();
+	ktsan_rcu_read_lock(ktsan_rcu_type_common);
 }
 
 /*
@@ -916,7 +918,7 @@ static inline void rcu_read_lock(void)
  */
 static inline void rcu_read_unlock(void)
 {
-	ktsan_rcu_read_unlock();
+	ktsan_rcu_read_unlock(ktsan_rcu_type_common);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_unlock() used illegally while idle");
 	rcu_lock_release(&rcu_lock_map);
@@ -948,7 +950,7 @@ static inline void rcu_read_lock_bh(void)
 	rcu_lock_acquire(&rcu_bh_lock_map);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_lock_bh() used illegally while idle");
-	ktsan_rcu_read_lock_bh();
+	ktsan_rcu_read_lock(ktsan_rcu_type_bh);
 }
 
 /*
@@ -958,7 +960,7 @@ static inline void rcu_read_lock_bh(void)
  */
 static inline void rcu_read_unlock_bh(void)
 {
-	ktsan_rcu_read_unlock_bh();
+	ktsan_rcu_read_unlock(ktsan_rcu_type_bh);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_unlock_bh() used illegally while idle");
 	rcu_lock_release(&rcu_bh_lock_map);
@@ -986,7 +988,7 @@ static inline void rcu_read_lock_sched(void)
 	rcu_lock_acquire(&rcu_sched_lock_map);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_lock_sched() used illegally while idle");
-	ktsan_rcu_read_lock_sched();
+	ktsan_rcu_read_lock(ktsan_rcu_type_sched);
 }
 
 /* Used by lockdep and tracing: cannot be traced, cannot call lockdep. */
@@ -994,7 +996,7 @@ static inline notrace void rcu_read_lock_sched_notrace(void)
 {
 	preempt_disable_notrace();
 	__acquire(RCU_SCHED);
-	ktsan_rcu_read_lock_sched();
+	ktsan_rcu_read_lock(ktsan_rcu_type_sched);
 }
 
 /*
@@ -1004,7 +1006,7 @@ static inline notrace void rcu_read_lock_sched_notrace(void)
  */
 static inline void rcu_read_unlock_sched(void)
 {
-	ktsan_rcu_read_unlock_sched();
+	ktsan_rcu_read_unlock(ktsan_rcu_type_sched);
 	rcu_lockdep_assert(rcu_is_watching(),
 			   "rcu_read_unlock_sched() used illegally while idle");
 	rcu_lock_release(&rcu_sched_lock_map);
@@ -1015,7 +1017,7 @@ static inline void rcu_read_unlock_sched(void)
 /* Used by lockdep and tracing: cannot be traced, cannot call lockdep. */
 static inline notrace void rcu_read_unlock_sched_notrace(void)
 {
-	ktsan_rcu_read_unlock_sched();
+	ktsan_rcu_read_unlock(ktsan_rcu_type_sched);
 	__release(RCU_SCHED);
 	preempt_enable_notrace();
 }

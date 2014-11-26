@@ -23,8 +23,6 @@
 #ifndef __LINUX_RCU_H
 #define __LINUX_RCU_H
 
-#include <linux/ktsan.h>
-
 #include <trace/events/rcu.h>
 #ifdef CONFIG_RCU_TRACE
 #define RCU_TRACE(stmt) stmt
@@ -110,10 +108,6 @@ static inline bool __rcu_reclaim(const char *rn, struct rcu_head *head)
 	unsigned long offset = (unsigned long)head->func;
 
 	rcu_lock_acquire(&rcu_callback_map);
-	/* XXX(xairy): call all three? */
-	ktsan_rcu_callback();
-	ktsan_rcu_callback_bh();
-	ktsan_rcu_callback_sched();
 	if (__is_kfree_rcu_offset(offset)) {
 		RCU_TRACE(trace_rcu_invoke_kfree_callback(rn, head, offset));
 		kfree((void *)head - offset);
