@@ -142,11 +142,13 @@ static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
 
 /* ktsan_atomic* are not called in non-ktsan build. */
 
-static inline void ktsan_preempt_disable(void) {}
-static inline void ktsan_preempt_enable(void) {}
+static inline void ktsan_preempt_add(int value) {}
+static inline void ktsan_preempt_sub(int value) {}
 
 static inline void ktsan_irq_disable(void) {}
 static inline void ktsan_irq_enable(void) {}
+static inline void ktsan_irq_save(void) {}
+static inline void ktsan_irq_restore(unsigned long flags) {}
 
 static inline void ktsan_percpu_acquire(void *addr) {}
 
