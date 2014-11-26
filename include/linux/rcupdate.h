@@ -689,7 +689,7 @@ static inline void rcu_preempt_sleep_check(void)
 		smp_store_release(&p, RCU_INITIALIZER(v));	\
 		ktsan_report_enable();				\
 		ktsan_rcu_assign_pointer((void *)(v));		\
-	} while(0)
+	} while (0)
 #endif /* CONFIG_KTSAN */
 
 /**
