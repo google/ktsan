@@ -626,6 +626,7 @@ static inline void rcu_preempt_sleep_check(void)
 #define __rcu_dereference_check(p, c, space) \
 ({ \
 	typeof(*p) *________p1; \
+	/* FIXME(xairy): remove when atomics and barriers are intercepted. */ \
 	ktsan_report_disable(); \
 	________p1 = (typeof(*p) *__force)lockless_dereference(p); \
 	rcu_lockdep_assert(c, "suspicious rcu_dereference_check() usage"); \
@@ -685,6 +686,8 @@ static inline void rcu_preempt_sleep_check(void)
 #else /* CONFIG_KTSAN */
 #define rcu_assign_pointer(p, v)				\
 	do {							\
+		/* FIXME(xairy): remove when atomics and	\
+		   barriers are intercepted. */			\
 		ktsan_report_disable();				\
 		smp_store_release(&p, RCU_INITIALIZER(v));	\
 		ktsan_report_enable();				\
