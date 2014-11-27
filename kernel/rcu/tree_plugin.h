@@ -549,7 +549,7 @@ void synchronize_rcu(void)
 		synchronize_rcu_expedited();
 	else
 		wait_rcu_gp(call_rcu);
-	ktsan_rcu_synchronize();
+	ktsan_sync_acquire(&ktsan_sync_glob[ktsan_sync_glob_type_rcu_common]);
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu);
 
