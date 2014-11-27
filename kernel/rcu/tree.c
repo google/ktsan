@@ -2657,10 +2657,13 @@ static void rcu_do_batch(struct rcu_state *rsp, struct rcu_data *rdp)
 		if (rsp == &rcu_bh_state) {
 			/* call_rcu is defined to be call_rcu_sched
 			   in the current kernel configuration. */
-			ktsan_rcu_callback(ktsan_rcu_type_common);
-			ktsan_rcu_callback(ktsan_rcu_type_sched);
+			ktsan_sync_acquire(&ktsan_glob_sync[
+				ktsan_glob_sync_type_rcu_common]);
+			ktsan_sync_acquire(&ktsan_glob_sync[
+				ktsan_glob_sync_type_rcu_sched]);
 		} else {
-			ktsan_rcu_callback(ktsan_rcu_type_bh);
+			ktsan_sync_acquire(&ktsan_glob_sync[
+				ktsan_glob_sync_type_rcu_bh]);
 		}
 
 		if (__rcu_reclaim(rsp->name, list))
@@ -3183,7 +3186,7 @@ void synchronize_sched(void)
 		synchronize_sched_expedited();
 	else
 		wait_rcu_gp(call_rcu_sched);
-	ktsan_rcu_synchronize(ktsan_rcu_type_sched);
+	ktsan_sync_acquire(&ktsan_glob_sync[ktsan_glob_sync_type_rcu_sched]);
 }
 EXPORT_SYMBOL_GPL(synchronize_sched);
 
@@ -3211,7 +3214,7 @@ void synchronize_rcu_bh(void)
 		synchronize_rcu_bh_expedited();
 	else
 		wait_rcu_gp(call_rcu_bh);
-	ktsan_rcu_synchronize(ktsan_rcu_type_bh);
+	ktsan_sync_acquire(&ktsan_glob_sync[ktsan_glob_sync_type_rcu_bh]);
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu_bh);
 

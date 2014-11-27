@@ -8,6 +8,9 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 
+int ktsan_glob_sync[ktsan_glob_sync_type_count];
+EXPORT_SYMBOL(ktsan_glob_sync);
+
 kt_ctx_t kt_ctx;
 
 #define DISABLE_INTERRUPTS(flags)	\
@@ -92,7 +95,6 @@ exit:								\
 void __init ktsan_init_early(void)
 {
 	kt_ctx_t *ctx = &kt_ctx;
-	int i;
 
 	kt_tab_init(&ctx->sync_tab, 10007,
 		    sizeof(kt_tab_sync_t), 600 * 1000);
@@ -102,10 +104,6 @@ void __init ktsan_init_early(void)
 	kt_thr_pool_init();
 	kt_cache_init(&ctx->percpu_sync_cache,
 		      sizeof(kt_percpu_sync_t), 2000);
-	for (i = 0; i < kt_rcu_type_count; i++) {
-		kt_clk_init(&ctx->rcu_clks[i]);
-		spin_lock_init(&ctx->rcu_locks[i]);
-	}
 }
 
 void ktsan_init(void)
@@ -196,7 +194,7 @@ EXPORT_SYMBOL(ktsan_report_enable);
 
 void ktsan_sync_acquire(void *addr)
 {
-	ENTER(true);
+	ENTER(false);
 	/* TODO(xairy): add event to trace. */
 	kt_sync_acquire(thr, pc, (uptr_t)addr);
 	LEAVE();
@@ -205,12 +203,12 @@ EXPORT_SYMBOL(ktsan_sync_acquire);
 
 void ktsan_sync_release(void *addr)
 {
-	ENTER(true);
+	ENTER(false);
 	/* TODO(xairy): add event to trace. */
 	kt_sync_release(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
-EXPORT_SYMBOL(kt_sync_release);
+EXPORT_SYMBOL(ktsan_sync_release);
 
 void ktsan_memblock_alloc(void *addr, size_t size)
 {
@@ -249,54 +247,6 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
-
-void ktsan_rcu_read_lock(enum ktsan_rcu_type_e type)
-{
-	ENTER(false);
-	kt_rcu_read_lock(thr, pc, (kt_rcu_type_t)type);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_rcu_read_lock);
-
-void ktsan_rcu_read_unlock(enum ktsan_rcu_type_e type)
-{
-	ENTER(false);
-	kt_rcu_read_unlock(thr, pc, (kt_rcu_type_t)type);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_rcu_read_unlock);
-
-void ktsan_rcu_synchronize(enum ktsan_rcu_type_e type)
-{
-	ENTER(false);
-	kt_rcu_synchronize(thr, pc, (kt_rcu_type_t)type);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_rcu_synchronize);
-
-void ktsan_rcu_callback(enum ktsan_rcu_type_e type)
-{
-	ENTER(false);
-	kt_rcu_callback(thr, pc, (kt_rcu_type_t)type);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_rcu_callback);
-
-void ktsan_rcu_assign_pointer(void *new)
-{
-	ENTER(false);
-	kt_rcu_assign_pointer(thr, pc, (uptr_t)new);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_rcu_assign_pointer);
-
-void ktsan_rcu_dereference(void *addr)
-{
-	ENTER(false);
-	kt_rcu_dereference(thr, pc, (uptr_t)addr);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_rcu_dereference);
 
 int ktsan_atomic32_read(const void *addr)
 {

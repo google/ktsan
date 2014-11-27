@@ -7,11 +7,14 @@
 
 struct page;
 
-enum ktsan_rcu_type_e {
-	ktsan_rcu_type_common,
-	ktsan_rcu_type_bh,
-	ktsan_rcu_type_sched,
+enum ktsan_glob_sync_type_e {
+	ktsan_glob_sync_type_rcu_common,
+	ktsan_glob_sync_type_rcu_bh,
+	ktsan_glob_sync_type_rcu_sched,
+	ktsan_glob_sync_type_count,
 };
+
+extern int ktsan_glob_sync[ktsan_glob_sync_type_count];
 
 #ifdef CONFIG_KTSAN
 
@@ -41,14 +44,6 @@ void ktsan_sync_release(void *addr);
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
 void ktsan_mtx_post_lock(void *addr, bool write, bool try);
 void ktsan_mtx_pre_unlock(void *addr, bool write);
-
-void ktsan_rcu_read_lock(enum ktsan_rcu_type_e type);
-void ktsan_rcu_read_unlock(enum ktsan_rcu_type_e type);
-void ktsan_rcu_synchronize(enum ktsan_rcu_type_e type);
-void ktsan_rcu_callback(enum ktsan_rcu_type_e type);
-
-void ktsan_rcu_assign_pointer(void *new);
-void ktsan_rcu_dereference(void *addr);
 
 int ktsan_atomic32_read(const void *addr);
 void ktsan_atomic32_set(void *addr, int value);
@@ -127,14 +122,6 @@ static inline void ktsan_memblock_free(void *addr, size_t size) {}
 
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
-
-static inline void ktsan_rcu_read_lock(enum ktsan_rcu_type_e type) {}
-static inline void ktsan_rcu_read_unlock(enum ktsan_rcu_type_e type) {}
-static inline void ktsan_rcu_synchronize(enum ktsan_rcu_type_e type) {}
-static inline void ktsan_rcu_callback(enum ktsan_rcu_type_e type) {}
-
-static inline void ktsan_rcu_assign_pointer(void *new) {}
-static inline void ktsan_rcu_dereference(void *addr) {}
 
 static inline void ktsan_mtx_pre_lock(void *addr, bool write, bool try) {}
 static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try) {}
