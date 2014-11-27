@@ -195,7 +195,8 @@ EXPORT_SYMBOL(ktsan_report_enable);
 void ktsan_sync_acquire(void *addr)
 {
 	ENTER(false);
-	/* TODO(xairy): add event to trace. */
+	kt_trace_add_event(thr, kt_event_type_acquire, pc);
+	kt_clk_tick(&thr->clk, thr->id);
 	kt_sync_acquire(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
@@ -204,7 +205,8 @@ EXPORT_SYMBOL(ktsan_sync_acquire);
 void ktsan_sync_release(void *addr)
 {
 	ENTER(false);
-	/* TODO(xairy): add event to trace. */
+	kt_trace_add_event(thr, kt_event_type_release, pc);
+	kt_clk_tick(&thr->clk, thr->id);
 	kt_sync_release(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
