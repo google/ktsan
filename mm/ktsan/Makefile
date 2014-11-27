@@ -7,7 +7,6 @@ obj-y := ktsan.o		\
 	 sync_mtx.o		\
 	 sync_atomic.o		\
 	 sync_percpu.o		\
-	 sync_rcu.o		\
 	 clk.o			\
 	 tab.o			\
 	 report.o		\

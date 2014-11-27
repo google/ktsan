@@ -55,7 +55,6 @@ typedef struct kt_id_manager_s		kt_id_manager_t;
 typedef struct kt_thr_pool_s		kt_thr_pool_t;
 typedef struct kt_shadow_s		kt_shadow_t;
 typedef struct kt_percpu_sync_s		kt_percpu_sync_t;
-typedef enum kt_rcu_type_e		kt_rcu_type_t;
 
 /* Stack. */
 
@@ -82,12 +81,6 @@ enum kt_event_type_e {
 	kt_event_type_preempt_disable,
 	kt_event_type_irq_enable,
 	kt_event_type_irq_disable,
-	kt_event_type_rcu_read_lock,
-	kt_event_type_rcu_read_unlock,
-	kt_event_type_rcu_synchronize,
-	kt_event_type_rcu_callback,
-	kt_event_type_rcu_assign_pointer,
-	kt_event_type_rcu_dereference,
 };
 
 struct kt_event_s {
@@ -219,15 +212,6 @@ struct kt_percpu_sync_s {
 	struct list_head list;
 };
 
-/* RCU. */
-
-enum kt_rcu_type_e {
-	kt_rcu_type_common,
-	kt_rcu_type_bh,
-	kt_rcu_type_sched,
-	kt_rcu_type_count,
-};
-
 /* Statistics. */
 
 enum kt_stat_e {
@@ -268,8 +252,6 @@ struct kt_ctx_s {
 	kt_tab_t		test_tab;
 	kt_thr_pool_t		thr_pool;
 	kt_cache_t		percpu_sync_cache;
-	kt_clk_t		rcu_clks[kt_rcu_type_count];
-	spinlock_t		rcu_locks[kt_rcu_type_count];
 };
 
 extern kt_ctx_t kt_ctx;
@@ -347,14 +329,6 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
-
-void kt_rcu_read_lock(kt_thr_t *thr, uptr_t pc, kt_rcu_type_t type);
-void kt_rcu_read_unlock(kt_thr_t *thr, uptr_t pc, kt_rcu_type_t type);
-void kt_rcu_synchronize(kt_thr_t *thr, uptr_t pc, kt_rcu_type_t type);
-void kt_rcu_callback(kt_thr_t *thr, uptr_t pc, kt_rcu_type_t type);
-
-void kt_rcu_assign_pointer(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-void kt_rcu_dereference(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
