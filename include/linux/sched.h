@@ -1312,7 +1312,8 @@ struct task_struct {
 #endif
 /* task state */
 	int exit_state;
-	int exit_code, exit_signal;
+	int exit_code;
+	atomic_t exit_signal;
 	int pdeath_signal;  /*  The signal sent when the parent dies  */
 	unsigned int jobctl;	/* JOBCTL_*, siglock protected */
 
@@ -2504,7 +2505,7 @@ static inline int get_nr_threads(struct task_struct *tsk)
 
 static inline bool thread_group_leader(struct task_struct *p)
 {
-	return p->exit_signal >= 0;
+	return atomic_read(&p->exit_signal) >= 0;
 }
 
 /* Do to the insanities of de_thread it is possible for a process
