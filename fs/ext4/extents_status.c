@@ -825,9 +825,11 @@ out:
 		es->es_pblk = es1->es_pblk;
 		if (!ext4_es_is_referenced(es))
 			ext4_es_set_referenced(es);
-		stats->es_stats_cache_hits++;
+		atomic64_set(&stats->es_stats_cache_hits,
+			atomic64_read(&stats->es_stats_cache_hits) + 1);
 	} else {
-		stats->es_stats_cache_misses++;
+		atomic64_set(&stats->es_stats_cache_misses,
+			atomic64_read(&stats->es_stats_cache_misses) + 1);
 	}
 
 	read_unlock(&EXT4_I(inode)->i_es_lock);
@@ -1125,8 +1127,8 @@ static int ext4_es_seq_shrinker_info_show(struct seq_file *seq, void *v)
 		   percpu_counter_sum_positive(&es_stats->es_stats_all_cnt),
 		   percpu_counter_sum_positive(&es_stats->es_stats_shk_cnt));
 	seq_printf(seq, "  %lu/%lu cache hits/misses\n",
-		   es_stats->es_stats_cache_hits,
-		   es_stats->es_stats_cache_misses);
+		   atomic64_read(&es_stats->es_stats_cache_hits),
+		   atomic64_read(&es_stats->es_stats_cache_misses));
 	if (inode_cnt)
 		seq_printf(seq, "  %d inodes on list\n", inode_cnt);
 
@@ -1192,8 +1194,8 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
 	sbi->s_es_nr_inode = 0;
 	spin_lock_init(&sbi->s_es_lock);
 	sbi->s_es_stats.es_stats_shrunk = 0;
-	sbi->s_es_stats.es_stats_cache_hits = 0;
-	sbi->s_es_stats.es_stats_cache_misses = 0;
+	atomic64_set(&sbi->s_es_stats.es_stats_cache_hits, 0);
+	atomic64_set(&sbi->s_es_stats.es_stats_cache_misses, 0);
 	sbi->s_es_stats.es_stats_scan_time = 0;
 	sbi->s_es_stats.es_stats_max_scan_time = 0;
 	err = percpu_counter_init(&sbi->s_es_stats.es_stats_all_cnt, 0, GFP_KERNEL);
