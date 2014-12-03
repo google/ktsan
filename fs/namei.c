@@ -288,7 +288,7 @@ static int check_acl(struct inode *inode, int mask)
  */
 static int acl_permission_check(struct inode *inode, int mask)
 {
-	unsigned int mode = inode->i_mode;
+	unsigned int mode = ACCESS_ONCE(inode->i_mode);
 
 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
 		mode >>= 6;
