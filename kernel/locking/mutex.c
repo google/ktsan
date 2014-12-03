@@ -209,7 +209,7 @@ ww_mutex_set_context_fastpath(struct ww_mutex *lock,
 
 static inline bool owner_running(struct mutex *lock, struct task_struct *owner)
 {
-	if (lock->owner != owner)
+	if (ACCESS_ONCE(lock->owner) != owner)
 		return false;
 
 	/*
