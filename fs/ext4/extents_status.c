@@ -1234,9 +1234,6 @@ void ext4_es_lru_add(struct inode *inode)
 
 	ei->i_touch_when = jiffies;
 
-	if (!list_empty(&ei->i_es_lru))
-		return;
-
 	spin_lock(&sbi->s_es_lru_lock);
 	if (list_empty(&ei->i_es_lru))
 		list_add_tail(&ei->i_es_lru, &sbi->s_es_lru);
