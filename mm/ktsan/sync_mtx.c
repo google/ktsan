@@ -4,6 +4,8 @@
 
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 {
+	/* Will be used for deadlock detection.
+	   We can also put sleeps for random time here. */
 }
 
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
