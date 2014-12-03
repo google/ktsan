@@ -782,9 +782,11 @@ out:
 		es->es_lblk = es1->es_lblk;
 		es->es_len = es1->es_len;
 		es->es_pblk = es1->es_pblk;
-		stats->es_stats_cache_hits++;
+		atomic64_set(&stats->es_stats_cache_hits,
+			atomic64_read(&stats->es_stats_cache_hits) + 1);
 	} else {
-		stats->es_stats_cache_misses++;
+		atomic64_set(&stats->es_stats_cache_misses,
+			atomic64_read(&stats->es_stats_cache_misses) + 1);
 	}
 
 	read_unlock(&EXT4_I(inode)->i_es_lock);
@@ -1116,8 +1118,8 @@ static int ext4_es_seq_shrinker_info_show(struct seq_file *seq, void *v)
 		   percpu_counter_sum_positive(&es_stats->es_stats_all_cnt),
 		   percpu_counter_sum_positive(&es_stats->es_stats_lru_cnt));
 	seq_printf(seq, "  %lu/%lu cache hits/misses\n",
-		   es_stats->es_stats_cache_hits,
-		   es_stats->es_stats_cache_misses);
+		   atomic64_read(&es_stats->es_stats_cache_hits),
+		   atomic64_read(&es_stats->es_stats_cache_misses));
 	if (es_stats->es_stats_last_sorted != 0)
 		seq_printf(seq, "  %u ms last sorted interval\n",
 			   jiffies_to_msecs(jiffies -
@@ -1185,8 +1187,8 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
 	spin_lock_init(&sbi->s_es_lru_lock);
 	sbi->s_es_stats.es_stats_last_sorted = 0;
 	sbi->s_es_stats.es_stats_shrunk = 0;
-	sbi->s_es_stats.es_stats_cache_hits = 0;
-	sbi->s_es_stats.es_stats_cache_misses = 0;
+	atomic64_set(&sbi->s_es_stats.es_stats_cache_hits, 0);
+	atomic64_set(&sbi->s_es_stats.es_stats_cache_misses, 0);
 	sbi->s_es_stats.es_stats_scan_time = 0;
 	sbi->s_es_stats.es_stats_max_scan_time = 0;
 	err = percpu_counter_init(&sbi->s_es_stats.es_stats_all_cnt, 0, GFP_KERNEL);
