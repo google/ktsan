@@ -505,11 +505,12 @@ pipe_poll(struct file *filp, poll_table *wait)
 	poll_wait(filp, &pipe->wait, wait);
 
 	/* Reading only -- no need for acquiring the semaphore.  */
-	nrbufs = pipe->nrbufs;
+	nrbufs = ACCESS_ONCE(pipe->nrbufs);
 	mask = 0;
 	if (filp->f_mode & FMODE_READ) {
 		mask = (nrbufs > 0) ? POLLIN | POLLRDNORM : 0;
-		if (!pipe->writers && filp->f_version != pipe->w_counter)
+		if (!ACCESS_ONCE(pipe->writers) &&
+		    filp->f_version != pipe->w_counter)
 			mask |= POLLHUP;
 	}
 
