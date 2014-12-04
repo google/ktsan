@@ -581,32 +581,17 @@ static inline void rcu_preempt_sleep_check(void)
 	rcu_dereference_sparse(p, space); \
 	((typeof(*p) __force __kernel *)(_________p1)); \
 })
-
-#ifndef CONFIG_KTSAN
 #define __rcu_dereference_check(p, c, space) \
 ({ \
 	typeof(*p) *_________p1 = (typeof(*p) *__force)ACCESS_ONCE(p); \
 	rcu_lockdep_assert(c, "suspicious rcu_dereference_check() usage"); \
 	rcu_dereference_sparse(p, space); \
 	smp_read_barrier_depends(); /* Dependency order vs. p above. */ \
+	/* hlist_bl_set_first_rcu changes the last bit of the pointer by \
+	   applying LIST_BL_LOCKMASK. Do & ~7 to ignore that. */ \
+	ktsan_sync_acquire((void *)((unsigned long)_________p1 & ~7)); \
 	((typeof(*p) __force __kernel *)(_________p1)); \
 })
-#else /* CONFIG_KTSAN */
-#define __rcu_dereference_check(p, c, space) \
-({ \
-	typeof(*p) *_________p1; \
-	/* FIXME(xairy): remove when atomics and barriers are intercepted. */ \
-	ktsan_report_disable(); \
-	_________p1 = (typeof(*p) *__force)ACCESS_ONCE(p); \
-	rcu_lockdep_assert(c, "suspicious rcu_dereference_check() usage"); \
-	rcu_dereference_sparse(p, space); \
-	smp_read_barrier_depends(); /* Dependency order vs. p above. */ \
-	ktsan_report_enable(); \
-	ktsan_sync_acquire((void *)(p)); \
-	((typeof(*p) __force __kernel *)(_________p1)); \
-})
-#endif /* CONFIG_KTSAN */
-
 #define __rcu_dereference_protected(p, c, space) \
 ({ \
 	rcu_lockdep_assert(c, "suspicious rcu_dereference_protected() usage"); \
@@ -686,12 +671,12 @@ static inline void rcu_preempt_sleep_check(void)
 #else /* CONFIG_KTSAN */
 #define rcu_assign_pointer(p, v)				\
 	do {							\
-		/* FIXME(xairy): remove when atomics and	\
-		   barriers are intercepted. */			\
-		ktsan_report_disable();				\
+		/* hlist_bl_set_first_rcu changes the last bit	\
+		   of the pointer by applying LIST_BL_LOCKMASK.	\
+		   Do & ~7 to ignore that. */			\
+		ktsan_sync_release(				\
+			(void *)((unsigned long)(v) & ~7));	\
 		smp_store_release(&p, RCU_INITIALIZER(v));	\
-		ktsan_report_enable();				\
-		ktsan_sync_release((void *)(v));		\
 	} while (0)
 #endif /* CONFIG_KTSAN */
 
