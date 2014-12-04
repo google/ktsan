@@ -3820,7 +3820,7 @@ static void drain_array(struct kmem_cache *cachep, struct kmem_cache_node *n,
 	LIST_HEAD(list);
 	int tofree;
 
-	if (!ac || !ac->avail)
+	if (!ac || !ACCESS_ONCE(ac->avail))
 		return;
 	if (atomic_read(&ac->touched) && !force) {
 		atomic_set(&ac->touched, 0);
