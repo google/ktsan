@@ -641,6 +641,81 @@ s16 ktsan_atomic16_xadd(void *addr, s16 value)
 }
 EXPORT_SYMBOL(ktsan_atomic16_xadd);
 
+void ktsan_bitop_set_bit(void *addr, long nr)
+{
+	ENTER(false);
+	kt_bitop_set_bit(thr, pc, (uptr_t)addr, nr);
+	LEAVE();
+
+	if (!event_handled)
+		kt_bitop_set_bit_no_ktsan(addr, nr);
+}
+EXPORT_SYMBOL(ktsan_bitop_set_bit);
+
+void ktsan_bitop_clear_bit(void *addr, long nr)
+{
+	ENTER(false);
+	kt_bitop_clear_bit(thr, pc, (uptr_t)addr, nr);
+	LEAVE();
+
+	if (!event_handled)
+		kt_bitop_clear_bit_no_ktsan(addr, nr);
+}
+EXPORT_SYMBOL(ktsan_bitop_clear_bit);
+
+void ktsan_bitop_change_bit(void *addr, long nr)
+{
+	ENTER(false);
+	kt_bitop_change_bit(thr, pc, (uptr_t)addr, nr);
+	LEAVE();
+
+	if (!event_handled)
+		kt_bitop_change_bit_no_ktsan(addr, nr);
+}
+EXPORT_SYMBOL(ktsan_bitop_change_bit);
+
+int ktsan_bitop_test_and_set_bit(void *addr, long nr)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_bitop_test_and_set_bit(thr, pc, (uptr_t)addr, nr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_bitop_test_and_set_bit_no_ktsan(addr, nr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_bitop_test_and_set_bit);
+
+int ktsan_bitop_test_and_clear_bit(void *addr, long nr)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_bitop_test_and_clear_bit(thr, pc, (uptr_t)addr, nr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_bitop_test_and_clear_bit_no_ktsan(addr, nr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_bitop_test_and_clear_bit);
+
+int ktsan_bitop_test_and_change_bit(void *addr, long nr)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_bitop_test_and_change_bit(thr, pc, (uptr_t)addr, nr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_bitop_test_and_change_bit_no_ktsan(addr, nr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_bitop_test_and_change_bit);
+
 void ktsan_preempt_add(int value)
 {
 	ENTER(false);

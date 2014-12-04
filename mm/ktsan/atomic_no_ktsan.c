@@ -1,6 +1,7 @@
 #undef CONFIG_KTSAN
 
 #include <linux/atomic.h>
+#include <linux/bitops.h>
 
 int kt_atomic32_read_no_ktsan(const void *addr)
 {
@@ -150,4 +151,34 @@ s32 kt_atomic32_xadd_no_ktsan(void *addr, s32 value)
 s16 kt_atomic16_xadd_no_ktsan(void *addr, s16 value)
 {
 	return xadd((s16 *)addr, value);
+}
+
+void kt_bitop_set_bit_no_ktsan(void *addr, long nr)
+{
+	set_bit(nr, addr);
+}
+
+void kt_bitop_clear_bit_no_ktsan(void *addr, long nr)
+{
+	clear_bit(nr, addr);
+}
+
+void kt_bitop_change_bit_no_ktsan(void *addr, long nr)
+{
+	change_bit(nr, addr);
+}
+
+int kt_bitop_test_and_set_bit_no_ktsan(void *addr, long nr)
+{
+	return test_and_set_bit(nr, addr);
+}
+
+int kt_bitop_test_and_clear_bit_no_ktsan(void *addr, long nr)
+{
+	return test_and_clear_bit(nr, addr);
+}
+
+int kt_bitop_test_and_change_bit_no_ktsan(void *addr, long nr)
+{
+	return test_and_change_bit(nr, addr);
 }

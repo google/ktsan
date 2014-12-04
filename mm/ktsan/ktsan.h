@@ -408,6 +408,22 @@ s64 kt_atomic64_xadd_no_ktsan(void *addr, s64 value);
 s32 kt_atomic32_xadd_no_ktsan(void *addr, s32 value);
 s16 kt_atomic16_xadd_no_ktsan(void *addr, s16 value);
 
+void kt_bitop_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
+void kt_bitop_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
+void kt_bitop_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
+
+int kt_bitop_test_and_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t a, long nr);
+int kt_bitop_test_and_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t a, long nr);
+int kt_bitop_test_and_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t a, long nr);
+
+void kt_bitop_set_bit_no_ktsan(void *addr, long nr);
+void kt_bitop_clear_bit_no_ktsan(void *addr, long nr);
+void kt_bitop_change_bit_no_ktsan(void *addr, long nr);
+
+int kt_bitop_test_and_set_bit_no_ktsan(void *addr, long nr);
+int kt_bitop_test_and_clear_bit_no_ktsan(void *addr, long nr);
+int kt_bitop_test_and_change_bit_no_ktsan(void *addr, long nr);
+
 /* Per-cpu synchronization. */
 
 void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value);

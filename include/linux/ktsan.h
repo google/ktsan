@@ -84,6 +84,14 @@ s64 ktsan_atomic64_xadd(void *addr, s64 value);
 s32 ktsan_atomic32_xadd(void *addr, s32 value);
 s16 ktsan_atomic16_xadd(void *addr, s16 value);
 
+void ktsan_bitop_set_bit(void *addr, long nr);
+void ktsan_bitop_clear_bit(void *addr, long nr);
+void ktsan_bitop_change_bit(void *addr, long nr);
+
+int ktsan_bitop_test_and_set_bit(void *addr, long nr);
+int ktsan_bitop_test_and_clear_bit(void *addr, long nr);
+int ktsan_bitop_test_and_change_bit(void *addr, long nr);
+
 void ktsan_preempt_add(int value);
 void ktsan_preempt_sub(int value);
 
@@ -128,6 +136,7 @@ static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try) {}
 static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
 
 /* ktsan_atomic* are not called in non-ktsan build. */
+/* ktsan_bitop* are not called in non-ktsan build. */
 
 static inline void ktsan_preempt_add(int value) {}
 static inline void ktsan_preempt_sub(int value) {}
