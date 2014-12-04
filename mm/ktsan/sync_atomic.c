@@ -35,7 +35,7 @@ int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	int rv;
 
 	KT_ATOMIC_OP(rv = kt_atomic32_read_no_ktsan((const void *)addr),
-			kt_memory_order_release);
+			kt_memory_order_acquire);
 
 	return rv;
 }
@@ -43,7 +43,7 @@ int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 {
 	KT_ATOMIC_OP(kt_atomic32_set_no_ktsan((void *)addr, value),
-			kt_memory_order_acquire);
+			kt_memory_order_release);
 }
 
 void kt_atomic32_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
