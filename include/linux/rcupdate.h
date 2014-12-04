@@ -613,29 +613,17 @@ static inline void rcu_preempt_sleep_check(void)
 	((typeof(*p) __force __kernel *)(_________p1)); \
 })
 
-#ifndef CONFIG_KTSAN
 #define __rcu_dereference_check(p, c, space) \
 ({ \
 	/* Dependency order vs. p above. */ \
 	typeof(*p) *________p1 = (typeof(*p) *__force)lockless_dereference(p); \
 	rcu_lockdep_assert(c, "suspicious rcu_dereference_check() usage"); \
 	rcu_dereference_sparse(p, space); \
+	/* hlist_bl_set_first_rcu changes the last bit of the pointer by \
+	   applying LIST_BL_LOCKMASK. Do & ~7 to ignore that. */ \
+	ktsan_sync_acquire((void *)((unsigned long)________p1 & ~7)); \
 	((typeof(*p) __force __kernel *)(________p1)); \
 })
-#else /* CONFIG_KTSAN */
-#define __rcu_dereference_check(p, c, space) \
-({ \
-	typeof(*p) *________p1; \
-	/* FIXME(xairy): remove when atomics and barriers are intercepted. */ \
-	ktsan_report_disable(); \
-	________p1 = (typeof(*p) *__force)lockless_dereference(p); \
-	rcu_lockdep_assert(c, "suspicious rcu_dereference_check() usage"); \
-	rcu_dereference_sparse(p, space); \
-	ktsan_report_enable(); \
-	ktsan_sync_acquire((void *)(p)); \
-	((typeof(*p) __force __kernel *)(________p1)); \
-})
-#endif /* CONFIG_KTSAN */
 
 #define __rcu_dereference_protected(p, c, space) \
 ({ \
@@ -686,12 +674,12 @@ static inline void rcu_preempt_sleep_check(void)
 #else /* CONFIG_KTSAN */
 #define rcu_assign_pointer(p, v)				\
 	do {							\
-		/* FIXME(xairy): remove when atomics and	\
-		   barriers are intercepted. */			\
-		ktsan_report_disable();				\
+		/* hlist_bl_set_first_rcu changes the last bit	\
+		   of the pointer by applying LIST_BL_LOCKMASK.	\
+		   Do & ~7 to ignore that. */			\
+		ktsan_sync_release(				\
+			(void *)((unsigned long)(v) & ~7));	\
 		smp_store_release(&p, RCU_INITIALIZER(v));	\
-		ktsan_report_enable();				\
-		ktsan_sync_release((void *)(v));		\
 	} while (0)
 #endif /* CONFIG_KTSAN */
 
