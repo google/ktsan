@@ -608,7 +608,7 @@ static void __locks_delete_block(struct file_lock *waiter)
 {
 	locks_delete_global_blocked(waiter);
 	list_del_init(&waiter->fl_block);
-	waiter->fl_next = NULL;
+	ACCESS_ONCE(waiter->fl_next) = NULL;
 }
 
 static void locks_delete_block(struct file_lock *waiter)
@@ -2095,7 +2095,8 @@ static int do_lock_file_wait(struct file *filp, unsigned int cmd,
 		error = vfs_lock_file(filp, cmd, fl, NULL);
 		if (error != FILE_LOCK_DEFERRED)
 			break;
-		error = wait_event_interruptible(fl->fl_wait, !fl->fl_next);
+		error = wait_event_interruptible(fl->fl_wait,
+				!ACCESS_ONCE(fl->fl_next));
 		if (!error)
 			continue;
 
