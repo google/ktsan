@@ -821,7 +821,7 @@ void wq_worker_waking_up(struct task_struct *task, int cpu)
 {
 	struct worker *worker = kthread_data(task);
 
-	if (!(worker->flags & WORKER_NOT_RUNNING)) {
+	if (!(ACCESS_ONCE(worker->flags) & WORKER_NOT_RUNNING)) {
 		WARN_ON_ONCE(worker->pool->cpu != cpu);
 		atomic_inc(&worker->pool->nr_running);
 	}
@@ -920,7 +920,7 @@ static inline void worker_clr_flags(struct worker *worker, unsigned int flags)
 
 	WARN_ON_ONCE(worker->task != current);
 
-	worker->flags &= ~flags;
+	ACCESS_ONCE(worker->flags) &= ~flags;
 
 	/*
 	 * If transitioning out of NOT_RUNNING, increment nr_running.  Note
