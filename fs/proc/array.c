@@ -474,7 +474,7 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ll(m, ' ', sid);
 	seq_put_decimal_ll(m, ' ', tty_nr);
 	seq_put_decimal_ll(m, ' ', tty_pgrp);
-	seq_put_decimal_ull(m, ' ', task->flags);
+	seq_put_decimal_ull(m, ' ', ACCESS_ONCE(task->flags));
 	seq_put_decimal_ull(m, ' ', min_flt);
 	seq_put_decimal_ull(m, ' ', cmin_flt);
 	seq_put_decimal_ull(m, ' ', maj_flt);

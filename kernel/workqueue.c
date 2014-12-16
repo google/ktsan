@@ -2220,7 +2220,7 @@ static int rescuer_thread(void *__rescuer)
 	 * Mark rescuer as worker too.  As WORKER_PREP is never cleared, it
 	 * doesn't participate in concurrency management.
 	 */
-	rescuer->task->flags |= PF_WQ_WORKER;
+	ACCESS_ONCE(rescuer->task->flags) |= PF_WQ_WORKER;
 repeat:
 	set_current_state(TASK_INTERRUPTIBLE);
 
