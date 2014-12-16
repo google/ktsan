@@ -904,7 +904,7 @@ static inline int wants_signal(int sig, struct task_struct *p)
 {
 	if (sigismember(&p->blocked, sig))
 		return 0;
-	if (p->flags & PF_EXITING)
+	if (ACCESS_ONCE(p->flags) & PF_EXITING)
 		return 0;
 	if (sig == SIGKILL)
 		return 1;
