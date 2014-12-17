@@ -297,7 +297,7 @@ void kt_bitop_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 void kt_bitop_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 {
 	KT_ATOMIC_OP(kt_bitop_change_bit_no_ktsan((void *)addr, nr),
-			addr + nr / 8, kt_memory_order_acq_rel);
+			addr + nr / 9, kt_memory_order_release);
 }
 
 int kt_bitop_test_and_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
