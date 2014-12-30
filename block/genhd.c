@@ -658,7 +658,7 @@ void del_gendisk(struct gendisk *disk)
 	blk_unregister_region(disk_devt(disk), disk->minors);
 
 	part_stat_set_all(&disk->part0, 0);
-	disk->part0.stamp = 0;
+	atomic64_set(&disk->part0.stamp, 0);
 
 	kobject_put(disk->part0.holder_dir);
 	kobject_put(disk->slave_dir);

@@ -191,7 +191,7 @@ struct array_cache {
 	unsigned int avail;
 	unsigned int limit;
 	unsigned int batchcount;
-	unsigned int touched;
+	atomic_t touched;
 	void *entry[];	/*
 			 * Must have this definition in here for the proper
 			 * alignment of array_cache. Also simplifies accessing
@@ -265,7 +265,7 @@ static void kmem_cache_node_init(struct kmem_cache_node *parent)
 	parent->colour_next = 0;
 	spin_lock_init(&parent->list_lock);
 	parent->free_objects = 0;
-	parent->free_touched = 0;
+	atomic_set(&parent->free_touched, 0);
 }
 
 #define MAKE_LIST(cachep, listp, slab, nodeid)				\
@@ -672,7 +672,7 @@ static void init_arraycache(struct array_cache *ac, int limit, int batch)
 		ac->avail = 0;
 		ac->limit = limit;
 		ac->batchcount = batch;
-		ac->touched = 0;
+		atomic_set(&ac->touched, 0);
 	}
 }
 
@@ -2041,7 +2041,7 @@ static int __init_refok setup_cpu_cache(struct kmem_cache *cachep, gfp_t gfp)
 	cpu_cache_get(cachep)->avail = 0;
 	cpu_cache_get(cachep)->limit = BOOT_CPUCACHE_ENTRIES;
 	cpu_cache_get(cachep)->batchcount = 1;
-	cpu_cache_get(cachep)->touched = 0;
+	atomic_set(&cpu_cache_get(cachep)->touched, 0);
 	cachep->batchcount = 1;
 	cachep->limit = BOOT_CPUCACHE_ENTRIES;
 	return 0;
@@ -2762,7 +2762,7 @@ static void *cache_alloc_refill(struct kmem_cache *cachep, gfp_t flags,
 retry:
 	ac = cpu_cache_get(cachep);
 	batchcount = ac->batchcount;
-	if (!ac->touched && batchcount > BATCHREFILL_LIMIT) {
+	if (!atomic_read(&ac->touched) && batchcount > BATCHREFILL_LIMIT) {
 		/*
 		 * If there was little recent activity on this cache, then
 		 * perform only a partial refill.  Otherwise we could generate
@@ -2777,7 +2777,7 @@ retry:
 
 	/* See if we can refill from the shared array */
 	if (n->shared && transfer_objects(ac, n->shared, batchcount)) {
-		n->shared->touched = 1;
+		atomic_set(&n->shared->touched, 1);
 		goto alloc_done;
 	}
 
@@ -2787,7 +2787,7 @@ retry:
 		/* Get slab alloc is to come from. */
 		entry = n->slabs_partial.next;
 		if (entry == &n->slabs_partial) {
-			n->free_touched = 1;
+			atomic_set(&n->free_touched, 1);
 			entry = n->slabs_free.next;
 			if (entry == &n->slabs_free)
 				goto must_grow;
@@ -2841,7 +2841,7 @@ force_grow:
 		if (!ac->avail)		/* objects refilled by interrupt? */
 			goto retry;
 	}
-	ac->touched = 1;
+	atomic_set(&ac->touched, 1);
 
 	return ac_get_obj(cachep, ac, flags, force_refill);
 }
@@ -2926,7 +2926,7 @@ static inline void *____cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 
 	ac = cpu_cache_get(cachep);
 	if (likely(ac->avail)) {
-		ac->touched = 1;
+		atomic_set(&ac->touched, 1);
 		objp = ac_get_obj(cachep, ac, flags, false);
 
 		/*
@@ -3091,7 +3091,7 @@ retry:
 	spin_lock(&n->list_lock);
 	entry = n->slabs_partial.next;
 	if (entry == &n->slabs_partial) {
-		n->free_touched = 1;
+		atomic_set(&n->free_touched, 1);
 		entry = n->slabs_free.next;
 		if (entry == &n->slabs_free)
 			goto must_grow;
@@ -3814,10 +3814,10 @@ static void drain_array(struct kmem_cache *cachep, struct kmem_cache_node *n,
 	LIST_HEAD(list);
 	int tofree;
 
-	if (!ac || !ac->avail)
+	if (!ac || !ACCESS_ONCE(ac->avail))
 		return;
-	if (ac->touched && !force) {
-		ac->touched = 0;
+	if (atomic_read(&ac->touched) && !force) {
+		atomic_set(&ac->touched, 0);
 	} else {
 		spin_lock_irq(&n->list_lock);
 		if (ac->avail) {
@@ -3882,9 +3882,7 @@ static void cache_reap(struct work_struct *w)
 
 		drain_array(searchp, n, n->shared, 0, node);
 
-		if (n->free_touched)
-			n->free_touched = 0;
-		else {
+		if (!atomic_cmpxchg(&n->free_touched, 1, 0)) {
 			int freed;
 
 			freed = drain_freelist(searchp, n, (n->free_limit +

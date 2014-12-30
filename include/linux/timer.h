@@ -168,7 +168,7 @@ static inline void init_timer_on_stack_key(struct timer_list *timer,
  */
 static inline int timer_pending(const struct timer_list * timer)
 {
-	return timer->entry.next != NULL;
+	return ACCESS_ONCE(timer->entry.next) != NULL;
 }
 
 extern void add_timer_on(struct timer_list *timer, int cpu);

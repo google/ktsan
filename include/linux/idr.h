@@ -45,7 +45,7 @@ struct idr {
 	int			layers;	/* only valid w/o concurrent changes */
 	int			cur;	/* current pos for cyclic allocation */
 	spinlock_t		lock;
-	int			id_free_cnt;
+	atomic_t		id_free_cnt;
 	struct idr_layer	*id_free;
 };
 

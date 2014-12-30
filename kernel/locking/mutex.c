@@ -209,7 +209,7 @@ ww_mutex_set_context_fastpath(struct ww_mutex *lock,
 
 static inline bool owner_running(struct mutex *lock, struct task_struct *owner)
 {
-	if (lock->owner != owner)
+	if (ACCESS_ONCE(lock->owner) != owner)
 		return false;
 
 	/*
@@ -244,7 +244,7 @@ int mutex_spin_on_owner(struct mutex *lock, struct task_struct *owner)
 	 * owner changed, which is a sign for heavy contention. Return
 	 * success only when lock->owner is NULL.
 	 */
-	return lock->owner == NULL;
+	return ACCESS_ONCE(lock->owner) == NULL;
 }
 
 /*

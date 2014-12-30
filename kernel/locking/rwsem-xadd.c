@@ -310,7 +310,7 @@ static inline bool rwsem_can_spin_on_owner(struct rw_semaphore *sem)
 static inline bool owner_running(struct rw_semaphore *sem,
 				 struct task_struct *owner)
 {
-	if (sem->owner != owner)
+	if (ACCESS_ONCE(sem->owner) != owner)
 		return false;
 
 	/*
@@ -341,7 +341,7 @@ bool rwsem_spin_on_owner(struct rw_semaphore *sem, struct task_struct *owner)
 	 * owner changed, which is a sign for heavy contention. Return
 	 * success only when sem->owner is NULL.
 	 */
-	return sem->owner == NULL;
+	return ACCESS_ONCE(sem->owner) == NULL;
 }
 
 static bool rwsem_optimistic_spin(struct rw_semaphore *sem)
