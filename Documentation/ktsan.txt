@@ -1,0 +1,242 @@
+KernelThreadSanitizer
+=====================
+
+0. Overview
+===========
+
+KernelThreadSanitizer (ktsan) is a dynamic data race detector for Linux kernel.
+Supports only x86_64 SMP kernel. Currently in development.
+A patched GCC is required to build the kernel with ktsan enabled.
+For the current state of the tool see the 'Current state' section.
+
+Project homepage: https://code.google.com/p/thread-sanitizer/wiki/ThreadSanitizerForKernel
+
+Project repository: https://github.com/google/ktsan
+
+
+1. Reports
+==========
+
+Here is an example of a report that can be obtained while running ktsan:
+
+==================================================================
+ThreadSanitizer: data-race in __kmem_cache_alias
+
+Write of size 4 by thread T1 (K1):
+ [<ffffffff812376e1>] __kmem_cache_alias+0x81/0xa0 mm/slab.c:2071
+ [<ffffffff811ed2ce>] kmem_cache_create+0x5e/0x2b0 mm/slab_common.c:389
+ [<ffffffff82564a99>] scsi_init_queue+0xac/0x1ac drivers/scsi/scsi_lib.c:2266
+ [<ffffffff82564964>] init_scsi+0x15/0x9e drivers/scsi/scsi.c:1228
+ [<ffffffff8100033d>] do_one_initcall+0xbd/0x220 init/main.c:802
+ [<     inlined    >] kernel_init_freeable+0x2c4/0x391 do_initcall_level init/main.c:867
+ [<     inlined    >] kernel_init_freeable+0x2c4/0x391 do_initcalls init/main.c:875
+ [<     inlined    >] kernel_init_freeable+0x2c4/0x391 do_basic_setup init/main.c:894
+ [<ffffffff82508923>] kernel_init_freeable+0x2c4/0x391 init/main.c:1020
+ [<ffffffff81e2aaf6>] kernel_init+0x16/0x150 init/main.c:945
+ [<ffffffff81e3f6bc>] ret_from_fork+0x7c/0xb0 arch/x86/kernel/entry_64.S:347
+DBG: cpu = ffff88053fc9df10
+
+Previous read of size 4 by thread T459 (K456):
+ [<ffffffff8123441c>] kmem_cache_alloc+0xfc/0x8e0 mm/slab.c:3404
+ [<ffffffff8126702c>] getname_kernel+0x6c/0xd0 fs/namei.c:230
+ [<ffffffff810a3100>] ____call_usermodehelper+0x230/0x2d0 kernel/kmod.c:256
+ [<ffffffff81e3f6bc>] ret_from_fork+0x7c/0xb0 arch/x86/kernel/entry_64.S:347
+DBG: cpu = 0
+
+DBG: addr: ffff880203400774
+DBG: first offset: 4, second offset: 4
+DBG: T1 clock: {T1: 6677455, T459: 0}
+DBG: T459 clock: {T459: 986}
+==================================================================
+
+This report was preprocessed using our symbolizer script that adds file and
+line info, see the homepage for details.
+
+As the report shows, there is a data race between a write of size 4 in
+__kmem_cache_alias and a read of size 4 in kmem_cache_alloc, both of which
+access cachep->object_size without any synchronization.
+
+This report haven't been sent upstream, since kernel developers tend to think
+that 4-byte sized loads and stores are atomic.
+
+
+2. Technical description
+========================
+
+Overall ktsan logic is similar to that of the userspace ThreadSanitizer.
+Compiler instrumentation is used to add a __tsan__loadN / __tsan_storeN
+calls before each memory access. Also a lot of hooks are added in scheduler
+and various synchronization primitives. All theese hooks are used to gather
+information about kernel's execution. A report is printed when a data race
+is detected.
+
+Information about ThreadSanitizer alorithm can be found on the homepage
+of the tool. For questions contact dvyukov@google.com.
+
+TODO: describe ThreadSanitizer algorithm
+
+Currently ktsan has support for the following synchronization primitives:
+spinlock, rwlock, sema, rwsem, completion, mutex, atomics, atomic bitops,
+rcu, rcu_bh, rcu_sched, bit_lock, per-cpu variables.
+
+Support for the following primitives is not added yet: srcu, memory barriers.
+
+
+3. Implementation details
+=========================
+
+Instrumentation
+---------------
+
+A patched GCC is required to built the kernel with ktsan enabled.
+More information can be found on the homepage.
+
+The following kernel parts are not instrumented:
+arch/x86/boot/, arch/x86/boot/compressed/, arch/x86/kernel/nmi.o,
+arch/x86/kernel/cpu/common.o, arch/x86/kernel/cpu/perf_event.o,
+arch/x86/realmode/, arch/x86/vdso/, kernel/sched/, kernel/softirq.o.
+
+Mainly the reason for these parts being not instrumented is that kernel
+doesn't boot when instrumentation is enabled. The exact reasons for this
+behavior weren't investigated. Also kernel/softirq.o instumentation had
+to be disabled, since it corrupts the trace (some functions are entered,
+but not exited).
+
+The lack of instrumentation can cause parts of the stack traces go missing.
+This happens only for stack traces of the previous access, since they are
+restored using trace. In particular this happens in the rb_insert_color report,
+because a few stack trace's frames come from kernel/sched/core.o.
+
+To disable the instrumentation of a particular kernel part add to makefile
+KTSAN_SANITIZE := n (to disable instrumentation of a whole module) or
+KTSAN_SANITIZE_file.o = n (to disable instrumentation of a particular file).
+
+Right now many kernel developers don't use atomics explicitly thinking that
+all less-than-8 bytes sized memory accesses should be atomic. Sometimes they
+even use ACCESS_ONCE to prevent compiler's reordering. Because of the large
+amount of "benign" races caused by this we decided to ignore memory accesses
+which are done using ACCESS_ONCE for now. This is done by disabling compiler
+instrumentation for volatile types' accesses. Therefore ACCESS_ONCE may be
+used to suppress unwanted race reports.
+
+
+Shadow
+------
+
+The shadow memory holds infromation about a few (4 right now) last memory
+accesses to each memory cell (with is 8-byte sized now). So for each 8 bytes
+of kernel memory threre are 32 bytes of shadow memory, which contain the
+thread id, clock, size, etc. of a few last accesses to these 8 bytes.
+
+For each physical memory page another 4 shadow pages are allocated. The
+implementation is almost same as in kmemcheck. The '__GFP_NOTRACK' flag
+can be used to disable allocating shadow for a particular memory page.
+
+
+Threads
+-------
+
+Each kernel thread has a corresponding ktsan thread structure. It contains
+various fields: ids, clock, trace, etc. (see mm/ktsan/ktsan.h).
+
+All the synchronization events and memory accesses that come from scheduler
+are ignored. This is done so two consequently executed theads not to be
+sychronized with each other.
+
+Each thread has a cpu pointer assigned to it. When a thread enters scheduler
+the cpu pointer is assigned to NULL. When it leaves scheduler it assigned
+to the pointer to the new cpu it's strted to run on. Before each synchronization
+event or memory access the cpu pointer of the current thread is checked. If
+it's equal to NULL the event is ignored.
+
+Also all ktsan events that come from interrupts are now ignored. It causes
+some issues since interrupts might be used for synchronization (see the
+'Current state' section).
+
+Since a data race may happen after a kernel thread was destroyed, the ktsan
+thread structure is put in quaratine instead of being freed.
+
+
+Synchronization primitives
+--------------------------
+
+A clock for each sync object (see ThreadSanitizer algorithm) is stored in a
+sync object structre (see mm/ktsan/ktsan.h), which is allocated when the
+sync object is accessed for the first time. When a block of memory is freed,
+we delete the structures of the sync objects lying in this block.
+
+Also when freeing a block of memory we make an artificial write into every byte
+of this block to catch racy use-after-free accesses. When allocating a memory
+block we imitate access to this block clearing all the previous accesses'
+description from the according shadow memory.
+
+TODO: sync primitives support implementation
+
+Atomics and memory barrier pairing are not supported yet. Right now every
+atomic operations is considered as one with an appropriate memory barrier(s).
+
+
+Other
+-----
+
+When kernel boots ktsan is not enabled from the very beginning, since it
+requires some kernel parts to be initialized before it can be enabled.
+After that ktsan is enabled by calling the 'ktsan_init()' function.
+There is also 'ktsan_init_early()' that reserves physical memory that must
+be called before 'kmem_cache_init()'. (Actually everything from 'ktsan_init()'
+can probably be moved to 'ktsan_init_early()'). We don't use kmem_caches, but
+have our own allocator.
+
+Before handling any ktsan event (memory accesses, syncronization events, etc.)
+we ensure that 1) ktsan is enabled, 2) we are not in an interrupt, 3) we are
+not in scheduler (unless this events should be handled even if it comes from
+scheduler, e.g. thread start and stop events), 4) we are not in ktsan runtime
+already (to avoid recursion). If any of the checks fail we ignore the event.
+See the macro 'ENTER' in mm/ktsan/ktsan.h for details.
+
+There a few tests for ktsan that deliberately try to do data races to see if
+ktsan can detect them. The tests can be run by writing 'tsan_run_tests' into
+the /proc/ktsan_tests file. Right now there a few false negatives in the tests.
+
+Also ktsan gather various statisticcs while running. It can be seen by reading
+the /proc/ktsan_stats file.
+
+
+4. Current state
+================
+
+Project repository: https://github.com/google/ktsan
+
+There are two important branches in the repository: tsan for ktsan changes
+itself, and tsan-fixes for various false positive fixes and suppressions.
+
+Currently the kernel with ktsan enabled boots, but still produces a lot of
+false positive reports. It seems that to get rid of these reports, events that
+come from interrupts shouldn't be ignored by ktsan since they are used for some
+synchronization.
+
+Right now ktsan requires a lot of physical memory (about 16 GB), but this value
+can be reduced by descreasing 'KT_MAX_THREAD_ID' in mm/ktsan.h. However it
+shouldn't be less than the maximum number of alive threads.
+
+
+5. Other notes
+==============
+
+Atomics + memory barriers
+-------------------------
+
+Stand-alone memory barrier (membar) support:
+You will need to add 2 additional vector clocks (VCs) per thread: one
+for non-materialized acquire synchronization (acquire_clk) and another
+for non-materialized release synchronization (release_clk).
+Then, instrument all relaxed/membar-less atomic loads with
+kt_clk_acquire(&thr->acquire_clk, &atomic_var->clk). And instrument
+rmb (read memory barrier) with kt_clk_acquire(&thr->clk,
+&thr->acquire_clk). This will effectively turn "atomic_load; rmb"
+sequence into load-acquire.
+Similarly for wmb (write memory barrier): instrument wmb with
+kt_clk_release(&thr->release_clk, &thr->clk); and relaxed/membar-less
+atomic stores with kt_clk_release(&atomic_var->clk,
+&thr->release_clk). This will effectively turn "wmb; atomic_store"
+sequence into store-release.

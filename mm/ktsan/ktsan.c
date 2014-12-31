@@ -49,6 +49,7 @@ kt_ctx_t kt_ctx;
 	if (IN_INTERRUPT())					\
 		goto exit;					\
 								\
+	/* TODO(xairy): check if we even need theese checks. */	\
 	if (!current)						\
 		goto exit;					\
 	if (!current->ktsan.thr)				\
