@@ -91,9 +91,9 @@ EXPORT_SYMBOL(down_write_trylock);
  */
 void up_read(struct rw_semaphore *sem)
 {
-	ktsan_mtx_pre_unlock(sem, false);
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 
+	ktsan_mtx_pre_unlock(sem, false);
 	__up_read(sem);
 }
 
@@ -104,10 +104,10 @@ EXPORT_SYMBOL(up_read);
  */
 void up_write(struct rw_semaphore *sem)
 {
-	ktsan_mtx_pre_unlock(sem, true);
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 
 	rwsem_clear_owner(sem);
+	ktsan_mtx_pre_unlock(sem, true);
 	__up_write(sem);
 }
 
