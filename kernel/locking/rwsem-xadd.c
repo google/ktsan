@@ -330,7 +330,7 @@ bool rwsem_spin_on_owner(struct rw_semaphore *sem, struct task_struct *owner)
 	long count;
 
 	rcu_read_lock();
-	while (sem->owner == owner) {
+	while (ACCESS_ONCE(sem->owner) == owner) {
 		/*
 		 * Ensure we emit the owner->on_cpu, dereference _after_
 		 * checking sem->owner still matches owner, if that fails,
