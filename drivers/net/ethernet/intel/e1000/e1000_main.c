@@ -2549,7 +2549,7 @@ link_up:
 	ew32(ICS, E1000_ICS_RXDMT0);
 
 	/* Force detection of hung controller every watchdog period */
-	adapter->detect_tx_hung = true;
+	ACCESS_ONCE(adapter->detect_tx_hung) = true;
 
 	/* Reschedule the task */
 	if (!test_bit(__E1000_DOWN, &adapter->flags))
@@ -3895,11 +3895,11 @@ static bool e1000_clean_tx_irq(struct e1000_adapter *adapter,
 		}
 	}
 
-	if (adapter->detect_tx_hung) {
+	if (ACCESS_ONCE(adapter->detect_tx_hung)) {
 		/* Detect a transmit hang in hardware, this serializes the
 		 * check with the clearing of time_stamp and movement of i
 		 */
-		adapter->detect_tx_hung = false;
+		ACCESS_ONCE(adapter->detect_tx_hung) = false;
 		if (tx_ring->buffer_info[eop].time_stamp &&
 		    time_after(jiffies, tx_ring->buffer_info[eop].time_stamp +
 			       (adapter->tx_timeout_factor * HZ)) &&
