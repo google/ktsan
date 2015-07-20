@@ -27,6 +27,8 @@ struct ktsan_thr_s {
 void ktsan_init_early(void);
 void ktsan_init(void);
 
+void ktsan_print_diagnostics(void);
+
 void ktsan_report_disable(void);
 void ktsan_report_enable(void);
 

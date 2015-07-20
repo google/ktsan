@@ -15,20 +15,18 @@ kt_ctx_t kt_ctx;
 
 #define DISABLE_INTERRUPTS(flags)	\
 	preempt_disable();		\
-	local_irq_save(flags);		\
+	flags = arch_local_irq_save();	\
 	stop_nmi()			\
 /**/
 
 #define ENABLE_INTERRUPTS(flags)	\
 	restart_nmi();			\
-	local_irq_restore(flags);	\
+	arch_local_irq_restore(flags);	\
 	preempt_enable()		\
 /**/
 
 #define IN_INTERRUPT()			\
-	(in_irq() ||			\
-	 in_serving_softirq() ||	\
-	 in_nmi())			\
+	 (in_nmi())			\
 /**/
 
 /* If scheduler is false the events generated from
@@ -40,12 +38,16 @@ kt_ctx_t kt_ctx;
 	int kt_inside_was;					\
 	bool event_handled;					\
 								\
+	thr = NULL;						\
+	kt_inside_was = -1;					\
 	event_handled = false;					\
+								\
+	DISABLE_INTERRUPTS(kt_flags);				\
 								\
 	if (!kt_ctx.enabled)					\
 		goto exit;					\
 								\
-	/* Ignore reports from interrupts for now. */		\
+	/* Ignore reports from some interrupts for now. */	\
 	if (IN_INTERRUPT())					\
 		goto exit;					\
 								\
@@ -58,7 +60,7 @@ kt_ctx_t kt_ctx;
 	thr = current->ktsan.thr;				\
 	pc = (uptr_t)_RET_IP_;					\
 								\
-	if (!(scheduler) && thr->cpu == NULL)			\
+	if (thr->cpu == NULL && !(scheduler))			\
 		goto exit;					\
 								\
 	kt_inside_was = kt_atomic32_cmpxchg_no_ktsan(		\
@@ -67,22 +69,12 @@ kt_ctx_t kt_ctx;
 		goto exit;					\
 	}							\
 								\
-	/* Interrupts should be disabled after setting		\
-	   thr->inside, since local_irq_save and		\
-	   preempt_disable are called. */			\
-	DISABLE_INTERRUPTS(kt_flags);				\
-								\
 	event_handled = true;					\
 /**/
 
 #define LEAVE()							\
 	/* thr might become NULL in ktsan_thread_destroy. */	\
 	thr = current->ktsan.thr;				\
-								\
-	/* Interrupts should be enabled before setting		\
-	   thr->inside, since local_irq_restore and		\
-	   preempt_enable are called. */			\
-	ENABLE_INTERRUPTS(kt_flags);				\
 								\
 	if (thr) {						\
 		kt_inside_was =	kt_atomic32_cmpxchg_no_ktsan(	\
@@ -91,6 +83,7 @@ kt_ctx_t kt_ctx;
 	}							\
 								\
 exit:								\
+	ENABLE_INTERRUPTS(kt_flags);				\
 /**/
 
 void __init ktsan_init_early(void)
@@ -104,7 +97,7 @@ void __init ktsan_init_early(void)
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
 	kt_thr_pool_init();
 	kt_cache_init(&ctx->percpu_sync_cache,
-		      sizeof(kt_percpu_sync_t), 5000);
+		      sizeof(kt_percpu_sync_t), 30 * 1000);
 }
 
 void ktsan_init(void)
@@ -136,6 +129,31 @@ void ktsan_init(void)
 	ctx->enabled = 1;
 
 	pr_err("ktsan: enabled.\n");
+}
+
+void ktsan_print_diagnostics(void)
+{
+	ENTER(false);
+	LEAVE();
+
+	pr_err("#! ktsan runtime is %s!\n",
+		event_handled ? "active" : "not active");
+	if (!event_handled) {
+		pr_err("  kt_ctx.enabled:      %s\n",
+			(kt_ctx.enabled) ? "+" : "-");
+		pr_err("  !IN_INTERRUPT():     %s\n",
+			(!IN_INTERRUPT()) ? "+" : "-");
+		pr_err("  current:             %s\n",
+			(current) ? "+" : "-");
+		pr_err("  current->ktsan.thr : %s\n",
+			(current->ktsan.thr) ? "+" : "-");
+		pr_err("  thr->cpu != NULL:    %s\n",
+			(thr->cpu != NULL) ? "+" : "-");
+		pr_err("  kt_inside_was == 0:  %s\n",\
+			(kt_inside_was == 0) ? "+" : "-");
+		pr_err("Stack trace:\n");
+		kt_stack_print_current(_RET_IP_);
+	}
 }
 
 /* FIXME(xairy): not sure if this is the best place for this
