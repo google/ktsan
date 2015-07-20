@@ -19,12 +19,12 @@
 #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
 static inline void mutex_set_owner(struct mutex *lock)
 {
-	lock->owner = current;
+	ACCESS_ONCE(lock->owner) = current;
 }
 
 static inline void mutex_clear_owner(struct mutex *lock)
 {
-	lock->owner = NULL;
+	ACCESS_ONCE(lock->owner) = NULL;
 }
 #else
 static inline void mutex_set_owner(struct mutex *lock)
