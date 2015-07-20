@@ -43,7 +43,7 @@ void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 			return;
 
 	percpu_sync = kt_cache_alloc(&kt_ctx.percpu_sync_cache);
-	BUG_ON(percpu_sync == NULL);
+	BUG_ON(percpu_sync == NULL); /* Ran out of memory. */
 	percpu_sync->addr = addr;
 	INIT_LIST_HEAD(&percpu_sync->list);
 	list_add(&percpu_sync->list, &thr->percpu_list);
