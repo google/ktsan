@@ -55,8 +55,7 @@ unsigned int pipe_min_size = PAGE_SIZE;
 
 static void pipe_lock_nested(struct pipe_inode_info *pipe, int subclass)
 {
-	if (pipe->files)
-		mutex_lock_nested(&pipe->mutex, subclass);
+	mutex_lock_nested(&pipe->mutex, subclass);
 }
 
 void pipe_lock(struct pipe_inode_info *pipe)
@@ -70,8 +69,7 @@ EXPORT_SYMBOL(pipe_lock);
 
 void pipe_unlock(struct pipe_inode_info *pipe)
 {
-	if (pipe->files)
-		mutex_unlock(&pipe->mutex);
+	mutex_unlock(&pipe->mutex);
 }
 EXPORT_SYMBOL(pipe_unlock);
 
@@ -507,11 +505,12 @@ pipe_poll(struct file *filp, poll_table *wait)
 	poll_wait(filp, &pipe->wait, wait);
 
 	/* Reading only -- no need for acquiring the semaphore.  */
-	nrbufs = pipe->nrbufs;
+	nrbufs = ACCESS_ONCE(pipe->nrbufs);
 	mask = 0;
 	if (filp->f_mode & FMODE_READ) {
 		mask = (nrbufs > 0) ? POLLIN | POLLRDNORM : 0;
-		if (!pipe->writers && filp->f_version != pipe->w_counter)
+		if (!ACCESS_ONCE(pipe->writers) &&
+		    filp->f_version != pipe->w_counter)
 			mask |= POLLHUP;
 	}
 

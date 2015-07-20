@@ -822,7 +822,7 @@ void wq_worker_waking_up(struct task_struct *task, int cpu)
 {
 	struct worker *worker = kthread_data(task);
 
-	if (!(worker->flags & WORKER_NOT_RUNNING)) {
+	if (!(ACCESS_ONCE(worker->flags) & WORKER_NOT_RUNNING)) {
 		WARN_ON_ONCE(worker->pool->cpu != cpu);
 		atomic_inc(&worker->pool->nr_running);
 	}
@@ -921,7 +921,7 @@ static inline void worker_clr_flags(struct worker *worker, unsigned int flags)
 
 	WARN_ON_ONCE(worker->task != current);
 
-	worker->flags &= ~flags;
+	ACCESS_ONCE(worker->flags) &= ~flags;
 
 	/*
 	 * If transitioning out of NOT_RUNNING, increment nr_running.  Note
@@ -1460,7 +1460,7 @@ static void __queue_delayed_work(int cpu, struct workqueue_struct *wq,
 
 	dwork->wq = wq;
 	dwork->cpu = cpu;
-	timer->expires = jiffies + delay;
+	ACCESS_ONCE(timer->expires) = jiffies + delay;
 
 	if (unlikely(cpu != WORK_CPU_UNBOUND))
 		add_timer_on(timer, cpu);
@@ -2226,7 +2226,7 @@ static int rescuer_thread(void *__rescuer)
 	 * Mark rescuer as worker too.  As WORKER_PREP is never cleared, it
 	 * doesn't participate in concurrency management.
 	 */
-	rescuer->task->flags |= PF_WQ_WORKER;
+	ACCESS_ONCE(rescuer->task->flags) |= PF_WQ_WORKER;
 repeat:
 	set_current_state(TASK_INTERRUPTIBLE);
 

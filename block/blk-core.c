@@ -1341,16 +1341,17 @@ static void part_round_stats_single(int cpu, struct hd_struct *part,
 {
 	int inflight;
 
-	if (now == part->stamp)
+	if (now == atomic64_read(&part->stamp))
 		return;
 
 	inflight = part_in_flight(part);
 	if (inflight) {
 		__part_stat_add(cpu, part, time_in_queue,
-				inflight * (now - part->stamp));
-		__part_stat_add(cpu, part, io_ticks, (now - part->stamp));
+				inflight * (now - atomic64_read(&part->stamp)));
+		__part_stat_add(cpu, part, io_ticks,
+				(now - atomic64_read(&part->stamp)));
 	}
-	part->stamp = now;
+	atomic64_set(&part->stamp, now);
 }
 
 /**

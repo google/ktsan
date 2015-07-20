@@ -252,7 +252,7 @@ static void kernfs_refresh_inode(struct kernfs_node *kn, struct inode *inode)
 {
 	struct kernfs_iattrs *attrs = kn->iattr;
 
-	inode->i_mode = kn->mode;
+	ACCESS_ONCE(inode->i_mode) = kn->mode;
 	if (attrs) {
 		/*
 		 * kernfs_node has non-default attributes get them from
