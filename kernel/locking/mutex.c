@@ -230,7 +230,7 @@ bool mutex_spin_on_owner(struct mutex *lock, struct task_struct *owner)
 	bool ret = true;
 
 	rcu_read_lock();
-	while (lock->owner == owner) {
+	while (ACCESS_ONCE(lock->owner) == owner) {
 		/*
 		 * Ensure we emit the owner->on_cpu, dereference _after_
 		 * checking lock->owner still matches owner. If that fails,
