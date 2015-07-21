@@ -6,19 +6,22 @@
 
 void kt_percpu_release(kt_thr_t *thr, uptr_t pc)
 {
-	struct list_head *entry, *tmp;
 	kt_percpu_sync_t *sync;
 
-	list_for_each_safe(entry, tmp, &thr->percpu_list) {
-		sync = list_entry(entry, kt_percpu_sync_t, list);
-		list_del_init(entry);
-
+	list_for_each_entry(sync, &thr->percpu_list, list) {
 		kt_trace_add_event(thr, kt_event_type_release, pc);
 		kt_clk_tick(&thr->clk, thr->id);
 		kt_sync_release(thr, pc, sync->addr);
-
-		kt_cache_free(&kt_ctx.percpu_sync_cache, sync);
 	}
+}
+
+static void kt_percpu_try_release(kt_thr_t *thr, uptr_t pc)
+{
+	if (thr->preempt_depth > 0 || thr->irqs_disabled)
+		return;
+
+	kt_percpu_release(thr, pc);
+	kt_percpu_list_clean(thr, pc);
 }
 
 void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
@@ -49,12 +52,16 @@ void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	list_add(&percpu_sync->list, &thr->percpu_list);
 }
 
-static void kt_percpu_try_release(kt_thr_t *thr, uptr_t pc)
+void kt_percpu_list_clean(kt_thr_t *thr, uptr_t pc)
 {
-	if (thr->preempt_depth > 0 || thr->irqs_disabled)
-		return;
+	struct list_head *entry, *tmp;
+	kt_percpu_sync_t *sync;
 
-	kt_percpu_release(thr, pc);
+	list_for_each_safe(entry, tmp, &thr->percpu_list) {
+		sync = list_entry(entry, kt_percpu_sync_t, list);
+		list_del_init(entry);
+		kt_cache_free(&kt_ctx.percpu_sync_cache, sync);
+	}
 }
 
 void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value)
