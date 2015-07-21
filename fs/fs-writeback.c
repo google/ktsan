@@ -1495,14 +1495,14 @@ static long writeback_sb_inodes(struct super_block *sb,
 		 * are doing WB_SYNC_NONE writeback. So this catches only the
 		 * WB_SYNC_ALL case.
 		 */
-		if (inode->i_state & I_SYNC) {
+		if (ACCESS_ONCE(inode->i_state) & I_SYNC) {
 			/* Wait for I_SYNC. This function drops i_lock... */
 			inode_sleep_on_writeback(inode);
 			/* Inode may be gone, start again */
 			spin_lock(&wb->list_lock);
 			continue;
 		}
-		inode->i_state |= I_SYNC;
+		ACCESS_ONCE(inode->i_state) |= I_SYNC;
 		wbc_attach_and_unlock_inode(&wbc, inode);
 
 		write_chunk = writeback_chunk_size(wb, work);
@@ -2026,8 +2026,8 @@ void __mark_inode_dirty(struct inode *inode, int flags)
 	 */
 	smp_mb();
 
-	if (((inode->i_state & flags) == flags) ||
-	    (dirtytime && (inode->i_state & I_DIRTY_INODE)))
+	if (((ACCESS_ONCE(inode->i_state) & flags) == flags) ||
+	    (dirtytime && (ACCESS_ONCE(inode->i_state) & I_DIRTY_INODE)))
 		return;
 
 	if (unlikely(block_dump))
