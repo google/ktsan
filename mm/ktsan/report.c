@@ -56,6 +56,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 		(1 << info->new.size), info->new.tid, new->kid);
 	kt_stack_print_current(info->strip_addr);
 	pr_err("DBG: cpu = %lx\n", (uptr_t)new->cpu);
+	pr_err("DBG: cpu id = %d\n", smp_processor_id());
 	pr_err("\n");
 
 	/* FIXME(xairy): stack might be wrong if id was reassigned. */
