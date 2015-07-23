@@ -81,7 +81,7 @@ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch)
 	if (count >= batch || count <= -batch) {
 		unsigned long flags;
 		raw_spin_lock_irqsave(&fbc->lock, flags);
-		fbc->count += count;
+		WRITE_ONCE(fbc->count, READ_ONCE(fbc->count) + count);
 		__this_cpu_sub(*fbc->counters, count - amount);
 		raw_spin_unlock_irqrestore(&fbc->lock, flags);
 	} else {
