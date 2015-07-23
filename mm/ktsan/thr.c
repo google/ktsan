@@ -104,6 +104,12 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 	kt_trace_add_event(thr, kt_event_type_thr_stop, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 
+	/* Current thread might be rescheduled even if preemption is disabled
+	   (for example using might_sleep()). Therefore, percpu syncs won't
+	   be released before thread switching. Release them here. */
+	kt_percpu_release(thr, pc);
+	kt_percpu_list_clean(thr, pc);
+
 	thr->cpu = NULL;
 }
 

@@ -2655,15 +2655,15 @@ static void rcu_do_batch(struct rcu_state *rsp, struct rcu_data *rdp)
 
 		BUG_ON(rsp != &rcu_bh_state && rsp != &rcu_sched_state);
 		if (rsp == &rcu_bh_state) {
+			ktsan_sync_acquire(&ktsan_glob_sync[
+				ktsan_glob_sync_type_rcu_bh]);
+		} else {
 			/* call_rcu is defined to be call_rcu_sched
 			   in the current kernel configuration. */
 			ktsan_sync_acquire(&ktsan_glob_sync[
 				ktsan_glob_sync_type_rcu_common]);
 			ktsan_sync_acquire(&ktsan_glob_sync[
 				ktsan_glob_sync_type_rcu_sched]);
-		} else {
-			ktsan_sync_acquire(&ktsan_glob_sync[
-				ktsan_glob_sync_type_rcu_bh]);
 		}
 
 		if (__rcu_reclaim(rsp->name, list))

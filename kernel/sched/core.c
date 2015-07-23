@@ -2482,18 +2482,24 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 		if (prev->sched_class->task_dead)
 			prev->sched_class->task_dead(prev);
 
-		/* To store stats in a per cpu struct set thr->cpu
-		   with ktsan_thr_start and revert with ktsan_thr_stop. */
-		ktsan_thr_start();
-		ktsan_thr_destroy(&prev->ktsan);
-		ktsan_thr_stop();
-
 		/*
 		 * Remove function-return probe instances associated with this
 		 * task and put them back on the free list.
 		 */
 		kprobe_flush_task(prev);
+
+		/* To store stats in a per cpu struct set thr->cpu
+		   with ktsan_thr_start and revert with ktsan_thr_stop. */
+		ktsan_thr_start();
+
+		/* Synchronize to the previous thread since it might
+		  have accessed prev struct, see comment in __schedule. */
+		ktsan_sync_acquire(prev);
+
 		put_task_struct(prev);
+
+		ktsan_thr_destroy(&prev->ktsan);
+		ktsan_thr_stop();
 	}
 
 	tick_nohz_task_switch(current);
@@ -3004,11 +3010,16 @@ static void __sched __schedule(void)
 	struct rq *rq;
 	int cpu;
 
-	ktsan_thr_stop();
 	cpu = smp_processor_id();
 	rq = cpu_rq(cpu);
 	rcu_note_context_switch();
 	prev = rq->curr;
+
+	/* The next thread might access prev structure while deleting it,
+	   but the synchronization that come from scheduler is not seen by
+	   ktsan, so we manually synchronize the next and prev threads. */
+	ktsan_sync_release(prev);
+	ktsan_thr_stop();
 
 	schedule_debug(prev);
 
