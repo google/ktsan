@@ -15,7 +15,11 @@
 #define KT_THREAD_ID_BITS 13
 #define KT_CLOCK_BITS 42
 
-#define KT_MAX_THREAD_ID 1024
+#define KT_MAX_SYNC_COUNT (800 * 1000)
+#define KT_MAX_MEMBLOCK_COUNT (200 * 1000)
+#define KT_MAX_PERCPU_SYNC_COUNT (30 * 1000)
+#define KT_MAX_THREAD_COUNT 1024
+
 #define KT_QUARANTINE_SIZE 512
 
 #define KT_MAX_STACK_FRAMES 64
@@ -103,7 +107,7 @@ struct kt_trace_s {
 /* Clocks. */
 
 struct kt_clk_s {
-	kt_time_t		time[KT_MAX_THREAD_ID];
+	kt_time_t		time[KT_MAX_THREAD_COUNT];
 };
 
 /* Shadow. */
@@ -198,7 +202,7 @@ struct kt_thr_s {
 
 struct kt_thr_pool_s {
 	kt_cache_t		cache;
-	kt_thr_t		*thrs[KT_MAX_THREAD_ID];
+	kt_thr_t		*thrs[KT_MAX_THREAD_COUNT];
 	int			new_id;
 	struct list_head	quarantine;
 	int			quarantine_size;
@@ -287,8 +291,8 @@ void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
 static inline
 kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
 {
-	WARN_ON_ONCE(tid >= KT_MAX_THREAD_ID);
-	if (tid >= KT_MAX_THREAD_ID)
+	WARN_ON_ONCE(tid >= KT_MAX_THREAD_COUNT);
+	if (tid >= KT_MAX_THREAD_COUNT)
 		return 0;
 	return clk->time[tid];
 }
@@ -296,8 +300,8 @@ kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
 static inline
 void kt_clk_tick(kt_clk_t *clk, int tid)
 {
-	WARN_ON_ONCE(tid >= KT_MAX_THREAD_ID);
-	if (tid >= KT_MAX_THREAD_ID)
+	WARN_ON_ONCE(tid >= KT_MAX_THREAD_COUNT);
+	if (tid >= KT_MAX_THREAD_COUNT)
 		return;
 	clk->time[tid]++;
 }
