@@ -40,18 +40,21 @@ int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	return rv;
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 {
 	KT_ATOMIC_OP(kt_atomic32_set_no_ktsan((void *)addr, value),
 			addr, kt_memory_order_release);
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 {
 	KT_ATOMIC_OP(kt_atomic32_add_no_ktsan((void *)addr, value),
 			addr, kt_memory_order_acq_rel);
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 {
 	KT_ATOMIC_OP(kt_atomic32_sub_no_ktsan((void *)addr, value),
@@ -78,12 +81,14 @@ int kt_atomic32_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 	return rv;
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	KT_ATOMIC_OP(kt_atomic32_inc_no_ktsan((void *)addr),
 			addr, kt_memory_order_acq_rel);
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	KT_ATOMIC_OP(kt_atomic32_dec_no_ktsan((void *)addr),
@@ -120,18 +125,21 @@ long kt_atomic64_read(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	return rv;
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
 {
 	KT_ATOMIC_OP(kt_atomic64_set_no_ktsan((void *)addr, value),
 			addr, kt_memory_order_release);
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
 {
 	KT_ATOMIC_OP(kt_atomic64_add_no_ktsan((void *)addr, value),
 			addr, kt_memory_order_acq_rel);
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
 {
 	KT_ATOMIC_OP(kt_atomic64_sub_no_ktsan((void *)addr, value),
@@ -158,12 +166,14 @@ int kt_atomic64_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
 	return rv;
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	KT_ATOMIC_OP(kt_atomic64_inc_no_ktsan((void *)addr),
 			addr, kt_memory_order_acq_rel);
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	KT_ATOMIC_OP(kt_atomic64_dec_no_ktsan((void *)addr),
@@ -212,8 +222,12 @@ s32 kt_atomic32_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value)
 
 s16 kt_atomic16_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value)
 {
-	/* TODO(xairy). */
-	return kt_atomic16_xchg_no_ktsan((void *)addr, value);
+	s16 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic16_xchg_no_ktsan((void *)addr, value),
+			addr, kt_memory_order_acq_rel);
+
+	return rv;
 }
 
 s64 kt_atomic64_cmpxchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 old, s64 new)
@@ -248,8 +262,12 @@ s16 kt_atomic16_cmpxchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 old, s16 new)
 
 s8 kt_atomic8_cmpxchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s8 old, s8 new)
 {
-	/* TODO(xairy). */
-	return kt_atomic8_cmpxchg_no_ktsan((void *)addr, old, new);
+	s8 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic8_cmpxchg_no_ktsan((void *)addr, old, new),
+			addr, kt_memory_order_acq_rel);
+
+	return rv;
 }
 
 s64 kt_atomic64_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value)
@@ -282,18 +300,21 @@ s16 kt_atomic16_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value)
 	return rv;
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_bitop_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 {
 	KT_ATOMIC_OP(kt_bitop_set_bit_no_ktsan((void *)addr, nr),
 			addr + nr / 8, kt_memory_order_release);
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_bitop_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 {
 	KT_ATOMIC_OP(kt_bitop_clear_bit_no_ktsan((void *)addr, nr),
 			addr + nr / 8, kt_memory_order_release);
 }
 
+/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_bitop_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 {
 	KT_ATOMIC_OP(kt_bitop_change_bit_no_ktsan((void *)addr, nr),
