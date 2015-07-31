@@ -4,6 +4,8 @@
 #include <asm/alternative.h>
 #include <asm/nops.h>
 
+#include <linux/ktsan.h>
+
 /*
  * Force strict CPU ordering.
  * And yes, this is required on UP too when we're talking
@@ -19,9 +21,27 @@
 #define rmb() alternative("lock; addl $0,0(%%esp)", "lfence", X86_FEATURE_XMM2)
 #define wmb() alternative("lock; addl $0,0(%%esp)", "sfence", X86_FEATURE_XMM)
 #else
+#ifndef CONFIG_KTSAN
 #define mb() 	asm volatile("mfence":::"memory")
 #define rmb()	asm volatile("lfence":::"memory")
 #define wmb()	asm volatile("sfence" ::: "memory")
+#else /* CONFIG_KTSAN */
+#define mb()								\
+({									\
+	asm volatile("mfence":::"memory");				\
+	ktsan_membar_acq_rel();						\
+})
+#define rmb()								\
+({									\
+	asm volatile("lfence":::"memory");				\
+	ktsan_membar_acquire();						\
+})
+#define wmb()								\
+({									\
+	asm volatile("sfence":::"memory");				\
+	ktsan_membar_release();						\
+})
+#endif
 #endif
 
 #ifdef CONFIG_X86_PPRO_FENCE
@@ -33,8 +53,21 @@
 
 #ifdef CONFIG_SMP
 #define smp_mb()	mb()
+#ifndef CONFIG_KTSAN
 #define smp_rmb()	dma_rmb()
 #define smp_wmb()	barrier()
+#else /* CONFIG_KTSAN */
+#define smp_rmb()							\
+({									\
+	dma_rmb();							\
+	ktsan_membar_acquire();						\
+})
+#define smp_wmb()							\
+({									\
+	barrier();							\
+	ktsan_membar_release();						\
+})
+#endif
 #define smp_store_mb(var, value) do { (void)xchg(&var, value); } while (0)
 #else /* !SMP */
 #define smp_mb()	barrier()
@@ -43,8 +76,13 @@
 #define smp_store_mb(var, value) do { WRITE_ONCE(var, value); barrier(); } while (0)
 #endif /* SMP */
 
+#ifndef CONFIG_KTSAN
 #define read_barrier_depends()		do { } while (0)
 #define smp_read_barrier_depends()	do { } while (0)
+#else /* CONFIG_KTSAN */
+#define read_barrier_depends()		ktsan_membar_acquire()
+#define smp_read_barrier_depends()	ktsan_membar_acquire()
+#endif
 
 #if defined(CONFIG_X86_PPRO_FENCE)
 
@@ -52,6 +90,8 @@
  * For this option x86 doesn't have a strong TSO memory
  * model and we should fall back to full barriers.
  */
+
+/* TODO(xairy). */
 
 #define smp_store_release(p, v)						\
 do {									\
@@ -88,8 +128,13 @@ do {									\
 #endif
 
 /* Atomic operations are already serializing on x86 */
+#ifndef CONFIG_KTSAN
 #define smp_mb__before_atomic()	barrier()
 #define smp_mb__after_atomic()	barrier()
+#else /* CONFIG_KTSAN */
+#define smp_mb__before_atomic()	ktsan_membar_acquire()
+#define smp_mb__after_atomic()	ktsan_membar_release()
+#endif
 
 /*
  * Stop RDTSC speculation. This is needed when you need to use RDTSC
