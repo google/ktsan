@@ -10,7 +10,7 @@ void kt_thr_pool_init(void)
 {
 	kt_thr_pool_t *pool = &kt_ctx.thr_pool;
 
-	kt_cache_init(&pool->cache, sizeof(kt_thr_t), KT_MAX_THREAD_ID);
+	kt_cache_init(&pool->cache, sizeof(kt_thr_t), KT_MAX_THREAD_COUNT);
 	memset(pool->thrs, 0, sizeof(pool->thrs));
 	pool->new_id = 0;
 	INIT_LIST_HEAD(&pool->quarantine);
@@ -83,7 +83,7 @@ kt_thr_t *kt_thr_get(int id)
 	void *thr;
 
 	BUG_ON(id < 0);
-	BUG_ON(id >= KT_MAX_THREAD_ID);
+	BUG_ON(id >= KT_MAX_THREAD_COUNT);
 	spin_lock(&pool->lock);
 	thr = pool->thrs[id];
 	spin_unlock(&pool->lock);

@@ -248,11 +248,38 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
  * required ordering.
  */
 
-#define READ_ONCE(x) \
-	({ union { typeof(x) __val; char __c[1]; } __u; __read_once_size(&(x), __u.__c, sizeof(x)); __u.__val; })
+#ifdef CONFIG_KTSAN
+void ktsan_sync_acquire(void *addr);
+void ktsan_sync_release(void *addr);
+#else /* CONFIG_KTSAN */
+static inline void ktsan_sync_acquire(void *addr);
+static inline void ktsan_sync_release(void *addr);
+#endif
 
-#define WRITE_ONCE(x, val) \
-	({ union { typeof(x) __val; char __c[1]; } __u = { .__val = (val) }; __write_once_size(&(x), __u.__c, sizeof(x)); __u.__val; })
+#define READ_ONCE(x)					\
+({							\
+	typeof(x)* ___x1 = &(x);			\
+	union { typeof(x) __val; char __c[1]; } __u;	\
+	__read_once_size(___x1, __u.__c, sizeof(x));	\
+	/* FIXME(xairy): acquire to suppress some	\
+	   benign races, remove when standalone memory	\
+	   barriers are supported. */			\
+	ktsan_sync_acquire((void *)(___x1));		\
+	__u.__val;					\
+})
+
+#define WRITE_ONCE(x, val)				\
+({							\
+	typeof(x)* ___x1 = &(x);			\
+	union { typeof(x) __val; char __c[1]; } __u =	\
+		{ .__val = (val) };			\
+	/* FIXME(xairy): release to suppress some	\
+	   benign races, remove when standalone memory	\
+	   barriers are supported. */			\
+	ktsan_sync_release((void *)(___x1));		\
+	__write_once_size(___x1, __u.__c, sizeof(x));	\
+	__u.__val;					\
+})
 
 /**
  * READ_ONCE_CTRL - Read a value heading a control dependency

@@ -704,7 +704,7 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
 		read_unlock(&journal->j_state_lock);
 		wake_up(&journal->j_wait_commit);
 		wait_event(journal->j_wait_done_commit,
-				!tid_gt(tid, journal->j_commit_sequence));
+			!tid_gt(tid, READ_ONCE(journal->j_commit_sequence)));
 		read_lock(&journal->j_state_lock);
 	}
 	read_unlock(&journal->j_state_lock);
