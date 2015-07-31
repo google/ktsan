@@ -50,25 +50,22 @@ int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	return rv;
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 {
 	KT_ATOMIC_OP(kt_atomic32_set_no_ktsan((void *)addr, value),
-			addr, kt_memory_order_release);
+			addr, kt_memory_order_relaxed_release);
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 {
 	KT_ATOMIC_OP(kt_atomic32_add_no_ktsan((void *)addr, value),
-			addr, kt_memory_order_acq_rel);
+			addr, kt_memory_order_relaxed_acq_rel);
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 {
 	KT_ATOMIC_OP(kt_atomic32_sub_no_ktsan((void *)addr, value),
-			addr, kt_memory_order_acq_rel);
+			addr, kt_memory_order_relaxed_acq_rel);
 }
 
 int kt_atomic32_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
@@ -91,18 +88,16 @@ int kt_atomic32_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 	return rv;
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	KT_ATOMIC_OP(kt_atomic32_inc_no_ktsan((void *)addr),
-			addr, kt_memory_order_acq_rel);
+			addr, kt_memory_order_relaxed_acq_rel);
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic32_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	KT_ATOMIC_OP(kt_atomic32_dec_no_ktsan((void *)addr),
-			addr, kt_memory_order_acq_rel);
+			addr, kt_memory_order_relaxed_acq_rel);
 }
 
 int kt_atomic32_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr)
@@ -135,25 +130,22 @@ long kt_atomic64_read(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	return rv;
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
 {
 	KT_ATOMIC_OP(kt_atomic64_set_no_ktsan((void *)addr, value),
-			addr, kt_memory_order_release);
+			addr, kt_memory_order_relaxed_release);
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
 {
 	KT_ATOMIC_OP(kt_atomic64_add_no_ktsan((void *)addr, value),
-			addr, kt_memory_order_acq_rel);
+			addr, kt_memory_order_relaxed_acq_rel);
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
 {
 	KT_ATOMIC_OP(kt_atomic64_sub_no_ktsan((void *)addr, value),
-			addr, kt_memory_order_acq_rel);
+			addr, kt_memory_order_relaxed_acq_rel);
 }
 
 int kt_atomic64_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
@@ -176,18 +168,16 @@ int kt_atomic64_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
 	return rv;
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	KT_ATOMIC_OP(kt_atomic64_inc_no_ktsan((void *)addr),
-			addr, kt_memory_order_acq_rel);
+			addr, kt_memory_order_relaxed_acq_rel);
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_atomic64_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	KT_ATOMIC_OP(kt_atomic64_dec_no_ktsan((void *)addr),
-			addr, kt_memory_order_acq_rel);
+			addr, kt_memory_order_relaxed_acq_rel);
 }
 
 int kt_atomic64_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr)
@@ -310,25 +300,22 @@ s16 kt_atomic16_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value)
 	return rv;
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_bitop_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 {
 	KT_ATOMIC_OP(kt_bitop_set_bit_no_ktsan((void *)addr, nr),
-			addr + nr / 8, kt_memory_order_release);
+			addr + nr / 8, kt_memory_order_relaxed_release);
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_bitop_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 {
 	KT_ATOMIC_OP(kt_bitop_clear_bit_no_ktsan((void *)addr, nr),
-			addr + nr / 8, kt_memory_order_release);
+			addr + nr / 8, kt_memory_order_relaxed_release);
 }
 
-/* FIXME(xairy): doesn't imply memory barrier. */
 void kt_bitop_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 {
 	KT_ATOMIC_OP(kt_bitop_change_bit_no_ktsan((void *)addr, nr),
-			addr + nr / 9, kt_memory_order_release);
+			addr + nr / 9, kt_memory_order_relaxed_release);
 }
 
 int kt_bitop_test_and_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
