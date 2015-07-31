@@ -4,7 +4,9 @@
 #include <linux/spinlock.h>
 
 enum kt_memory_order_e {
-	kt_memory_order_relaxed,
+	kt_memory_order_relaxed_acquire,
+	kt_memory_order_relaxed_release,
+	kt_memory_order_relaxed_acq_rel,
 	kt_memory_order_acquire,
 	kt_memory_order_release,
 	kt_memory_order_acq_rel,
@@ -15,15 +17,23 @@ enum kt_memory_order_e {
 		kt_tab_sync_t *sync;					\
 									\
 		sync = kt_sync_ensure_created(thr, (ad));		\
+									\
 		if ((mo) == kt_memory_order_acquire ||			\
 		    (mo) == kt_memory_order_acq_rel)			\
-			kt_clk_acquire(thr, &thr->clk, &sync->clk);	\
+			kt_clk_acquire(&thr->clk, &sync->clk);		\
+		if ((mo) == kt_memory_order_relaxed_acquire ||		\
+		    (mo) == kt_memory_order_relaxed_acq_rel)		\
+			kt_clk_acquire(&thr->acquire_clk, &sync->clk);	\
 									\
 		(op);							\
 									\
 		if ((mo) == kt_memory_order_release ||			\
 		    (mo) == kt_memory_order_acq_rel)			\
-			kt_clk_acquire(thr, &sync->clk, &thr->clk);	\
+			kt_clk_acquire(&sync->clk, &thr->clk);		\
+		if ((mo) == kt_memory_order_relaxed_release ||		\
+		    (mo) == kt_memory_order_relaxed_acq_rel)		\
+			kt_clk_acquire(&sync->clk, &thr->release_clk);	\
+									\
 		spin_unlock(&sync->tab.lock);				\
 									\
 		kt_trace_add_event(thr, kt_event_type_atomic_op, pc);	\
@@ -349,4 +359,20 @@ int kt_bitop_test_and_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 			addr + nr / 8, kt_memory_order_acq_rel);
 
 	return rv;
+}
+
+void kt_membar_acquire(kt_thr_t *thr)
+{
+	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
+}
+
+void kt_membar_release(kt_thr_t *thr)
+{
+	kt_clk_acquire(&thr->release_clk, &thr->clk);
+}
+
+void kt_membar_acq_rel(kt_thr_t *thr)
+{
+	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
+	kt_clk_acquire(&thr->release_clk, &thr->clk);
 }

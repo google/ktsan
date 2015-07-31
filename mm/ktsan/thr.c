@@ -44,6 +44,8 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_atomic32_set_no_ktsan(&new->inside, 0);
 	new->cpu = NULL;
 	kt_clk_init(&new->clk);
+	kt_clk_init(&new->acquire_clk);
+	kt_clk_init(&new->release_clk);
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
 	INIT_LIST_HEAD(&new->quarantine_list);
@@ -56,7 +58,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	if (thr == NULL)
 		return new;
 
-	kt_clk_acquire(thr, &new->clk, &thr->clk);
+	kt_clk_acquire(&new->clk, &thr->clk);
 
 	kt_stat_inc(thr, kt_stat_thread_create);
 	kt_stat_inc(thr, kt_stat_threads);
@@ -115,5 +117,5 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 
 void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
 {
-	kt_clk_acquire(thr, &other->clk, &thr->clk);
+	kt_clk_acquire(&other->clk, &thr->clk);
 }
