@@ -276,6 +276,46 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
+void ktsan_sync_relaxed_acquire(void *addr)
+{
+	ENTER(false);
+	kt_sync_relaxed_acquire(thr, pc, (uptr_t)addr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_sync_relaxed_acquire);
+
+void ktsan_sync_relaxed_release(void *addr)
+{
+	ENTER(false);
+	kt_sync_relaxed_release(thr, pc, (uptr_t)addr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_sync_relaxed_release);
+
+void ktsan_membar_acquire(void)
+{
+	ENTER(false);
+	kt_membar_acquire(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_membar_acquire);
+
+void ktsan_membar_release(void)
+{
+	ENTER(false);
+	kt_membar_release(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_membar_release);
+
+void ktsan_membar_acq_rel(void)
+{
+	ENTER(false);
+	kt_membar_acq_rel(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_membar_acq_rel);
+
 int ktsan_atomic32_read(const void *addr)
 {
 	int rv;
@@ -741,30 +781,6 @@ int ktsan_bitop_test_and_change_bit(void *addr, long nr)
 	return rv;
 }
 EXPORT_SYMBOL(ktsan_bitop_test_and_change_bit);
-
-void ktsan_membar_acquire(void)
-{
-	ENTER(false);
-	kt_membar_acquire(thr);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_membar_acquire);
-
-void ktsan_membar_release(void)
-{
-	ENTER(false);
-	kt_membar_release(thr);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_membar_release);
-
-void ktsan_membar_acq_rel(void)
-{
-	ENTER(false);
-	kt_membar_acq_rel(thr);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_membar_acq_rel);
 
 void ktsan_preempt_add(int value)
 {

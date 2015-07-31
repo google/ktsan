@@ -336,6 +336,13 @@ void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
+void kt_sync_relaxed_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_sync_relaxed_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+
+void kt_membar_acquire(kt_thr_t *thr);
+void kt_membar_release(kt_thr_t *thr);
+void kt_membar_acq_rel(kt_thr_t *thr);
+
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
 
@@ -429,10 +436,6 @@ void kt_bitop_change_bit_no_ktsan(void *addr, long nr);
 int kt_bitop_test_and_set_bit_no_ktsan(void *addr, long nr);
 int kt_bitop_test_and_clear_bit_no_ktsan(void *addr, long nr);
 int kt_bitop_test_and_change_bit_no_ktsan(void *addr, long nr);
-
-void kt_membar_acquire(kt_thr_t *thr);
-void kt_membar_release(kt_thr_t *thr);
-void kt_membar_acq_rel(kt_thr_t *thr);
 
 /* Per-cpu synchronization. */
 

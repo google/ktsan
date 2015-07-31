@@ -12,6 +12,46 @@ enum kt_memory_order_e {
 	kt_memory_order_acq_rel,
 };
 
+void kt_sync_relaxed_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
+{
+	kt_tab_sync_t *sync;
+
+	sync = kt_sync_ensure_created(thr, addr);
+	kt_clk_acquire(&thr->acquire_clk, &sync->clk);
+	spin_unlock(&sync->tab.lock);
+
+	kt_trace_add_event(thr, kt_event_type_atomic_op, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+}
+
+void kt_sync_relaxed_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
+{
+	kt_tab_sync_t *sync;
+
+	sync = kt_sync_ensure_created(thr, addr);
+	kt_clk_acquire(&sync->clk, &thr->release_clk);
+	spin_unlock(&sync->tab.lock);
+
+	kt_trace_add_event(thr, kt_event_type_atomic_op, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+}
+
+void kt_membar_acquire(kt_thr_t *thr)
+{
+	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
+}
+
+void kt_membar_release(kt_thr_t *thr)
+{
+	kt_clk_acquire(&thr->release_clk, &thr->clk);
+}
+
+void kt_membar_acq_rel(kt_thr_t *thr)
+{
+	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
+	kt_clk_acquire(&thr->release_clk, &thr->clk);
+}
+
 #define KT_ATOMIC_OP(op, ad, mo)					\
 	do {								\
 		kt_tab_sync_t *sync;					\
@@ -346,20 +386,4 @@ int kt_bitop_test_and_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 			addr + nr / 8, kt_memory_order_acq_rel);
 
 	return rv;
-}
-
-void kt_membar_acquire(kt_thr_t *thr)
-{
-	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
-}
-
-void kt_membar_release(kt_thr_t *thr)
-{
-	kt_clk_acquire(&thr->release_clk, &thr->clk);
-}
-
-void kt_membar_acq_rel(kt_thr_t *thr)
-{
-	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
-	kt_clk_acquire(&thr->release_clk, &thr->clk);
 }
