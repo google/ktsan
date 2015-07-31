@@ -191,6 +191,8 @@ struct kt_thr_s {
 	atomic_t		inside;	/* already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
+	kt_clk_t		acquire_clk;
+	kt_clk_t		release_clk;
 	kt_trace_t		trace;
 	int			call_depth;
 	struct list_head	quarantine_list;
@@ -286,7 +288,7 @@ void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 /* Clocks. */
 
 void kt_clk_init(kt_clk_t *clk);
-void kt_clk_acquire(kt_thr_t *thr, kt_clk_t *dst, kt_clk_t *src);
+void kt_clk_acquire(kt_clk_t *dst, kt_clk_t *src);
 
 static inline
 kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
@@ -427,6 +429,10 @@ void kt_bitop_change_bit_no_ktsan(void *addr, long nr);
 int kt_bitop_test_and_set_bit_no_ktsan(void *addr, long nr);
 int kt_bitop_test_and_clear_bit_no_ktsan(void *addr, long nr);
 int kt_bitop_test_and_change_bit_no_ktsan(void *addr, long nr);
+
+void kt_membar_acquire(kt_thr_t *thr);
+void kt_membar_release(kt_thr_t *thr);
+void kt_membar_acq_rel(kt_thr_t *thr);
 
 /* Per-cpu synchronization. */
 

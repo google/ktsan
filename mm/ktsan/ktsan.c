@@ -742,6 +742,30 @@ int ktsan_bitop_test_and_change_bit(void *addr, long nr)
 }
 EXPORT_SYMBOL(ktsan_bitop_test_and_change_bit);
 
+void ktsan_membar_acquire(void)
+{
+	ENTER(false);
+	kt_membar_acquire(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_membar_acquire);
+
+void ktsan_membar_release(void)
+{
+	ENTER(false);
+	kt_membar_release(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_membar_release);
+
+void ktsan_membar_acq_rel(void)
+{
+	ENTER(false);
+	kt_membar_acq_rel(thr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_membar_acq_rel);
+
 void ktsan_preempt_add(int value)
 {
 	ENTER(false);

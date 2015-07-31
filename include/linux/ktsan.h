@@ -94,6 +94,10 @@ int ktsan_bitop_test_and_set_bit(void *addr, long nr);
 int ktsan_bitop_test_and_clear_bit(void *addr, long nr);
 int ktsan_bitop_test_and_change_bit(void *addr, long nr);
 
+void ktsan_membar_acquire(void);
+void ktsan_membar_release(void);
+void ktsan_membar_acq_rel(void);
+
 void ktsan_preempt_add(int value);
 void ktsan_preempt_sub(int value);
 
@@ -139,6 +143,10 @@ static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
 
 /* ktsan_atomic* are not called in non-ktsan build. */
 /* ktsan_bitop* are not called in non-ktsan build. */
+
+static inline void ktsan_membar_acquire(void) {}
+static inline void ktsan_membar_release(void) {}
+static inline void ktsan_membar_acq_rel(void) {}
 
 static inline void ktsan_preempt_add(int value) {}
 static inline void ktsan_preempt_sub(int value) {}
