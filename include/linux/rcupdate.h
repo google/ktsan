@@ -619,9 +619,6 @@ static inline void rcu_preempt_sleep_check(void)
 	typeof(*p) *________p1 = (typeof(*p) *__force)lockless_dereference(p); \
 	rcu_lockdep_assert(c, "suspicious rcu_dereference_check() usage"); \
 	rcu_dereference_sparse(p, space); \
-	/* hlist_bl_set_first_rcu changes the last bit of the pointer by \
-	   applying LIST_BL_LOCKMASK. Do & ~7 to ignore that. */ \
-	ktsan_sync_acquire((void *)((unsigned long)________p1 & ~7)); \
 	((typeof(*p) __force __kernel *)(________p1)); \
 })
 
@@ -669,21 +666,7 @@ static inline void rcu_preempt_sleep_check(void)
  * please be careful when making changes to rcu_assign_pointer() and the
  * other macros that it invokes.
  */
-#ifndef CONFIG_KTSAN
 #define rcu_assign_pointer(p, v) smp_store_release(&p, RCU_INITIALIZER(v))
-#else /* CONFIG_KTSAN */
-#define rcu_assign_pointer(p, v)				\
-	do {							\
-		typeof(*(v)) __force __rcu * ___v1 =		\
-					RCU_INITIALIZER(v);	\
-		/* hlist_bl_set_first_rcu changes the last bit	\
-		   of the pointer by applying LIST_BL_LOCKMASK.	\
-		   Do & ~7 to ignore that. */			\
-		ktsan_sync_release(				\
-			(void *)((unsigned long)(___v1) & ~7));	\
-		smp_store_release(&p, ___v1);	\
-	} while (0)
-#endif /* CONFIG_KTSAN */
 
 /**
  * rcu_access_pointer() - fetch RCU pointer with no dereferencing
