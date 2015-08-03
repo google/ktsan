@@ -276,21 +276,21 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
-void ktsan_sync_relaxed_acquire(void *addr)
+void ktsan_sync_nonmat_acquire(void *addr)
 {
 	ENTER(false);
-	kt_sync_relaxed_acquire(thr, pc, (uptr_t)addr);
+	kt_sync_nonmat_acquire(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_sync_relaxed_acquire);
+EXPORT_SYMBOL(ktsan_sync_nonmat_acquire);
 
-void ktsan_sync_relaxed_release(void *addr)
+void ktsan_sync_nonmat_release(void *addr)
 {
 	ENTER(false);
-	kt_sync_relaxed_release(thr, pc, (uptr_t)addr);
+	kt_sync_nonmat_release(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_sync_relaxed_release);
+EXPORT_SYMBOL(ktsan_sync_nonmat_release);
 
 void ktsan_membar_acquire(void)
 {

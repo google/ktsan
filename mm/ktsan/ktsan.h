@@ -336,8 +336,8 @@ void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
-void kt_sync_relaxed_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-void kt_sync_relaxed_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_sync_nonmat_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_sync_nonmat_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
 void kt_membar_acquire(kt_thr_t *thr);
 void kt_membar_release(kt_thr_t *thr);

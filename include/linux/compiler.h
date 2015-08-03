@@ -249,11 +249,11 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
  */
 
 #ifdef CONFIG_KTSAN
-void ktsan_sync_relaxed_acquire(void *addr);
-void ktsan_sync_relaxed_release(void *addr);
+void ktsan_sync_nonmat_acquire(void *addr);
+void ktsan_sync_nonmat_release(void *addr);
 #else /* CONFIG_KTSAN */
-static inline void ktsan_sync_relaxed_acquire(void *addr);
-static inline void ktsan_sync_relaxed_release(void *addr);
+static inline void ktsan_sync_nonmat_acquire(void *addr);
+static inline void ktsan_sync_nonmat_release(void *addr);
 #endif
 
 #define READ_ONCE(x)					\
@@ -261,7 +261,7 @@ static inline void ktsan_sync_relaxed_release(void *addr);
 	typeof(x)* ___x1 = &(x);			\
 	union { typeof(x) __val; char __c[1]; } __u;	\
 	__read_once_size(___x1, __u.__c, sizeof(x));	\
-	ktsan_sync_relaxed_acquire((void *)(___x1));	\
+	ktsan_sync_nonmat_acquire((void *)(___x1));	\
 	__u.__val;					\
 })
 
@@ -270,7 +270,7 @@ static inline void ktsan_sync_relaxed_release(void *addr);
 	typeof(x)* ___x1 = &(x);			\
 	union { typeof(x) __val; char __c[1]; } __u =	\
 		{ .__val = (val) };			\
-	ktsan_sync_relaxed_release((void *)(___x1));	\
+	ktsan_sync_nonmat_release((void *)(___x1));	\
 	__write_once_size(___x1, __u.__c, sizeof(x));	\
 	__u.__val;					\
 })
