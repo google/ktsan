@@ -84,14 +84,14 @@
 #define smp_read_barrier_depends()	ktsan_membar_acquire()
 #endif
 
+#ifndef CONFIG_KTSAN
+
 #if defined(CONFIG_X86_PPRO_FENCE)
 
 /*
  * For this option x86 doesn't have a strong TSO memory
  * model and we should fall back to full barriers.
  */
-
-/* TODO(xairy). */
 
 #define smp_store_release(p, v)						\
 do {									\
@@ -126,6 +126,29 @@ do {									\
 })
 
 #endif
+
+#else /* CONFIG_KTSAN */
+
+#define smp_store_release(p, v)						\
+do {									\
+	typeof(p) ___p1 = (p);						\
+	compiletime_assert_atomic_type(*___p1);				\
+	ktsan_sync_release((void *)___p1);				\
+	asm volatile("mfence":::"memory");				\
+	ACCESS_ONCE(*___p1) = (v);					\
+} while (0)
+
+#define smp_load_acquire(p)						\
+({									\
+	typeof(p) ___p1 = (p);						\
+	typeof(*p) ___p2 = ACCESS_ONCE(*___p1);				\
+	compiletime_assert_atomic_type(*___p1);				\
+	asm volatile("mfence":::"memory");				\
+	ktsan_sync_acquire((void *)___p1);				\
+	___p2;								\
+})
+
+#endif /* CONFIG_KTSAN */
 
 /* Atomic operations are already serializing on x86 */
 #ifndef CONFIG_KTSAN
