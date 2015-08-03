@@ -47,8 +47,8 @@ void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
 void ktsan_mtx_post_lock(void *addr, bool write, bool try);
 void ktsan_mtx_pre_unlock(void *addr, bool write);
 
-void ktsan_sync_relaxed_acquire(void *addr);
-void ktsan_sync_relaxed_release(void *addr);
+void ktsan_sync_nonmat_acquire(void *addr);
+void ktsan_sync_nonmat_release(void *addr);
 
 void ktsan_membar_acquire(void);
 void ktsan_membar_release(void);
@@ -147,8 +147,8 @@ static inline void ktsan_mtx_pre_lock(void *addr, bool write, bool try) {}
 static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try) {}
 static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
 
-static inline void ktsan_sync_relaxed_acquire(void *addr) {}
-static inline void ktsan_sync_relaxed_release(void *addr) {}
+static inline void ktsan_sync_nonmat_acquire(void *addr) {}
+static inline void ktsan_sync_nonmat_release(void *addr) {}
 
 static inline void ktsan_membar_acquire(void) {}
 static inline void ktsan_membar_release(void) {}
