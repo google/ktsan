@@ -101,6 +101,9 @@ int ktsan_bitop_test_and_set_bit(void *addr, long nr);
 int ktsan_bitop_test_and_clear_bit(void *addr, long nr);
 int ktsan_bitop_test_and_change_bit(void *addr, long nr);
 
+int ktsan_bitop_test_and_set_bit_lock(void *addr, long nr);
+void ktsan_bitop_clear_bit_unlock(void *addr, long nr);
+
 void ktsan_preempt_add(int value);
 void ktsan_preempt_sub(int value);
 
