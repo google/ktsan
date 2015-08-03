@@ -182,3 +182,13 @@ int kt_bitop_test_and_change_bit_no_ktsan(void *addr, long nr)
 {
 	return test_and_change_bit(nr, addr);
 }
+
+int kt_bitop_test_and_set_bit_lock_no_ktsan(void *addr, long nr)
+{
+	return test_and_set_bit_lock(nr, addr);
+}
+
+void kt_bitop_clear_bit_unlock_no_ktsan(void *addr, long nr)
+{
+	clear_bit_unlock(nr, addr);
+}

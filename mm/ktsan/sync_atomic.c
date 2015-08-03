@@ -39,17 +39,23 @@ void kt_sync_relaxed_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 void kt_membar_acquire(kt_thr_t *thr)
 {
 	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
+
+	/* TODO: trace. */
 }
 
 void kt_membar_release(kt_thr_t *thr)
 {
 	kt_clk_acquire(&thr->release_clk, &thr->clk);
+
+	/* TODO: trace. */
 }
 
 void kt_membar_acq_rel(kt_thr_t *thr)
 {
 	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
 	kt_clk_acquire(&thr->release_clk, &thr->clk);
+
+	/* TODO: trace. */
 }
 
 #define KT_ATOMIC_OP(op, ad, mo)					\
@@ -355,7 +361,7 @@ void kt_bitop_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 void kt_bitop_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 {
 	KT_ATOMIC_OP(kt_bitop_change_bit_no_ktsan((void *)addr, nr),
-			addr + nr / 9, kt_memory_order_relaxed_release);
+			addr + nr / 8, kt_memory_order_relaxed_release);
 }
 
 int kt_bitop_test_and_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
@@ -386,4 +392,20 @@ int kt_bitop_test_and_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
 			addr + nr / 8, kt_memory_order_acq_rel);
 
 	return rv;
+}
+
+int kt_bitop_test_and_set_bit_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
+{
+	int rv;
+
+	KT_ATOMIC_OP(rv = kt_bitop_test_and_set_bit_lock_no_ktsan((void *)addr, nr),
+			addr + nr / 8, kt_memory_order_acq_rel);
+
+	return rv;
+}
+
+void kt_bitop_clear_bit_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr)
+{
+	KT_ATOMIC_OP(kt_bitop_clear_bit_unlock_no_ktsan((void *)addr, nr),
+			addr + nr / 8, kt_memory_order_release);
 }

@@ -139,8 +139,12 @@ clear_bit(long nr, volatile unsigned long *addr)
  */
 static inline void clear_bit_unlock(long nr, volatile unsigned long *addr)
 {
+#ifndef CONFIG_KTSAN
 	barrier();
 	clear_bit(nr, addr);
+#else /* CONFIG_KTSAN */
+	ktsan_bitop_clear_bit_unlock((void *)addr, nr);
+#endif /* CONFIG_KTSAN */
 }
 
 static inline void __clear_bit(long nr, volatile unsigned long *addr)
@@ -233,7 +237,11 @@ static inline int test_and_set_bit(long nr, volatile unsigned long *addr)
 static __always_inline int
 test_and_set_bit_lock(long nr, volatile unsigned long *addr)
 {
+#ifndef CONFIG_KTSAN
 	return test_and_set_bit(nr, addr);
+#else /* CONFIG_KTSAN */
+	return ktsan_bitop_test_and_set_bit_lock((void *)addr, nr);
+#endif /* CONFIG_KTSAN */
 }
 
 /**

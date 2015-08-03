@@ -782,6 +782,31 @@ int ktsan_bitop_test_and_change_bit(void *addr, long nr)
 }
 EXPORT_SYMBOL(ktsan_bitop_test_and_change_bit);
 
+int ktsan_bitop_test_and_set_bit_lock(void *addr, long nr)
+{
+	int rv;
+
+	ENTER(false);
+	rv = kt_bitop_test_and_set_bit_lock(thr, pc, (uptr_t)addr, nr);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_bitop_test_and_set_bit_lock_no_ktsan(addr, nr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_bitop_test_and_set_bit_lock);
+
+void ktsan_bitop_clear_bit_unlock(void *addr, long nr)
+{
+	ENTER(false);
+	kt_bitop_clear_bit_unlock(thr, pc, (uptr_t)addr, nr);
+	LEAVE();
+
+	if (!event_handled)
+		kt_bitop_clear_bit_unlock_no_ktsan(addr, nr);
+}
+EXPORT_SYMBOL(ktsan_bitop_clear_bit_unlock);
+
 void ktsan_preempt_add(int value)
 {
 	ENTER(false);
