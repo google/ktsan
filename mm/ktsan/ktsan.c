@@ -295,7 +295,7 @@ EXPORT_SYMBOL(ktsan_sync_nonmat_release);
 void ktsan_membar_acquire(void)
 {
 	ENTER(false);
-	kt_membar_acquire(thr);
+	kt_membar_acquire(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_membar_acquire);
@@ -303,7 +303,7 @@ EXPORT_SYMBOL(ktsan_membar_acquire);
 void ktsan_membar_release(void)
 {
 	ENTER(false);
-	kt_membar_release(thr);
+	kt_membar_release(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_membar_release);
@@ -311,7 +311,7 @@ EXPORT_SYMBOL(ktsan_membar_release);
 void ktsan_membar_acq_rel(void)
 {
 	ENTER(false);
-	kt_membar_acq_rel(thr);
+	kt_membar_acq_rel(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_membar_acq_rel);

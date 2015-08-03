@@ -163,9 +163,21 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 			pc = kt_pc_decompress(event->pc);
 			pr_err(" i: %lu, release, pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
-		} else if (event->type == kt_event_type_atomic_op) {
+		} else if (event->type == kt_event_type_nonmat_acquire) {
 			pc = kt_pc_decompress(event->pc);
-			pr_err(" i: %lu, atomic , pc: [<%p>] %pS\n",
+			pr_err(" i: %lu, nm acq , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_nonmat_release) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err(" i: %lu, nm rel , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_membar_acquire) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err(" i: %lu, mb acq , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_membar_release) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err(" i: %lu, mb rel , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
 		} /*else if (event->type == kt_event_type_mop) {
 			pc = kt_pc_decompress(event->pc);

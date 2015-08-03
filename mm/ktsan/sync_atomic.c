@@ -18,8 +18,7 @@ void kt_sync_nonmat_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	kt_clk_acquire(&thr->acquire_clk, &sync->clk);
 	spin_unlock(&sync->tab.lock);
 
-	/* FIXME: trace event name. */
-	kt_trace_add_event(thr, kt_event_type_atomic_op, pc);
+	kt_trace_add_event(thr, kt_event_type_nonmat_acquire, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 }
 
@@ -31,34 +30,32 @@ void kt_sync_nonmat_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	kt_clk_acquire(&sync->clk, &thr->release_clk);
 	spin_unlock(&sync->tab.lock);
 
-	/* FIXME: trace event name. */
-	kt_trace_add_event(thr, kt_event_type_atomic_op, pc);
+	kt_trace_add_event(thr, kt_event_type_nonmat_release, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 }
 
-void kt_membar_acquire(kt_thr_t *thr)
+void kt_membar_acquire(kt_thr_t *thr, uptr_t pc)
 {
 	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
 
-	/* TODO: trace. */
+	kt_trace_add_event(thr, kt_event_type_membar_acquire, pc);
+	kt_clk_tick(&thr->clk, thr->id);
 }
 
-void kt_membar_release(kt_thr_t *thr)
+void kt_membar_release(kt_thr_t *thr, uptr_t pc)
 {
 	kt_clk_acquire(&thr->release_clk, &thr->clk);
 
-	/* TODO: trace. */
+	kt_trace_add_event(thr, kt_event_type_membar_release, pc);
+	kt_clk_tick(&thr->clk, thr->id);
 }
 
-void kt_membar_acq_rel(kt_thr_t *thr)
+void kt_membar_acq_rel(kt_thr_t *thr, uptr_t pc)
 {
-	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
-	kt_clk_acquire(&thr->release_clk, &thr->clk);
-
-	/* TODO: trace. */
+	kt_membar_acquire(thr, pc);
+	kt_membar_release(thr, pc);
 }
 
-/* TODO: trace. */
 #define KT_ATOMIC_OP(op, ad, mo, nmmo)					\
 	do {								\
 		kt_tab_sync_t *sync;					\
@@ -66,25 +63,38 @@ void kt_membar_acq_rel(kt_thr_t *thr)
 		sync = kt_sync_ensure_created(thr, (ad));		\
 									\
 		if ((mo) == kt_memory_order_acquire ||			\
-		    (mo) == kt_memory_order_acq_rel)			\
+		    (mo) == kt_memory_order_acq_rel) {			\
 			kt_clk_acquire(&thr->clk, &sync->clk);		\
+			kt_trace_add_event(thr,				\
+				kt_event_type_acquire, pc);		\
+			kt_clk_tick(&thr->clk, thr->id);		\
+		}							\
 		if ((nmmo) == kt_memory_order_acquire ||		\
-		    (nmmo) == kt_memory_order_acq_rel)			\
+		    (nmmo) == kt_memory_order_acq_rel)	{		\
 			kt_clk_acquire(&thr->acquire_clk, &sync->clk);	\
+			kt_trace_add_event(thr,				\
+				kt_event_type_nonmat_acquire, pc);	\
+			kt_clk_tick(&thr->clk, thr->id);		\
+		}							\
 									\
 		(op);							\
 									\
 		if ((mo) == kt_memory_order_release ||			\
-		    (mo) == kt_memory_order_acq_rel)			\
+		    (mo) == kt_memory_order_acq_rel) {			\
 			kt_clk_acquire(&sync->clk, &thr->clk);		\
+			kt_trace_add_event(thr,				\
+				kt_event_type_release, pc);		\
+			kt_clk_tick(&thr->clk, thr->id);		\
+		}							\
 		if ((nmmo) == kt_memory_order_release ||		\
-		    (nmmo) == kt_memory_order_acq_rel)			\
+		    (nmmo) == kt_memory_order_acq_rel) {		\
 			kt_clk_acquire(&sync->clk, &thr->release_clk);	\
+			kt_trace_add_event(thr,				\
+				kt_event_type_nonmat_release, pc);	\
+			kt_clk_tick(&thr->clk, thr->id);		\
+		}							\
 									\
 		spin_unlock(&sync->tab.lock);				\
-									\
-		kt_trace_add_event(thr, kt_event_type_atomic_op, pc);	\
-		kt_clk_tick(&thr->clk, thr->id);			\
 	} while (0)
 
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr)

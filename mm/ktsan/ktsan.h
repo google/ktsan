@@ -71,14 +71,17 @@ struct kt_stack_s {
 
 enum kt_event_type_e {
 	kt_event_type_invalid,
+	kt_event_type_mop, /* memory operation */
 	kt_event_type_func_enter,
 	kt_event_type_func_exit,
 	kt_event_type_lock,
 	kt_event_type_unlock,
 	kt_event_type_acquire,
 	kt_event_type_release,
-	kt_event_type_mop, /* memory operation */
-	kt_event_type_atomic_op,
+	kt_event_type_nonmat_acquire,
+	kt_event_type_nonmat_release,
+	kt_event_type_membar_acquire,
+	kt_event_type_membar_release,
 	kt_event_type_thr_start,
 	kt_event_type_thr_stop,
 	kt_event_type_preempt_enable,
@@ -339,9 +342,9 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 void kt_sync_nonmat_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_nonmat_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
-void kt_membar_acquire(kt_thr_t *thr);
-void kt_membar_release(kt_thr_t *thr);
-void kt_membar_acq_rel(kt_thr_t *thr);
+void kt_membar_acquire(kt_thr_t *thr, uptr_t pc);
+void kt_membar_release(kt_thr_t *thr, uptr_t pc);
+void kt_membar_acq_rel(kt_thr_t *thr, uptr_t pc);
 
 int kt_atomic32_read(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_atomic32_set(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
