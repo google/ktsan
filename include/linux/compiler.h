@@ -198,6 +198,10 @@ void ftrace_likely_update(struct ftrace_branch_data *f, int val, int expect);
 
 #include <uapi/linux/types.h>
 
+#include <linux/ktsan.h>
+
+#ifndef CONFIG_KTSAN
+
 static __always_inline void __read_once_size(const volatile void *p, void *res, int size)
 {
 	switch (size) {
@@ -226,6 +230,38 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
 	}
 }
 
+#else /* CONFIG_KTSAN */
+
+static __always_inline void __read_once_size(const volatile void *p, void *res, int size)
+{
+	switch (size) {
+	case 1: *(__u8 *)res = ktsan_atomic8_load((void *)p, ktsan_memory_order_relaxed); break;
+	case 2: *(__u16 *)res = ktsan_atomic16_load((void *)p, ktsan_memory_order_relaxed); break;
+	case 4: *(__u32 *)res = ktsan_atomic32_load((void *)p, ktsan_memory_order_relaxed); break;
+	case 8: *(__u64 *)res = ktsan_atomic64_load((void *)p, ktsan_memory_order_relaxed); break;
+	default:
+		barrier();
+		__builtin_memcpy((void *)res, (const void *)p, size);
+		barrier();
+	}
+}
+
+static __always_inline void __write_once_size(volatile void *p, void *res, int size)
+{
+	switch (size) {
+	case 1: ktsan_atomic8_store((void *)p, *(__u8 *)res, ktsan_memory_order_relaxed); break;
+	case 2: ktsan_atomic16_store((void *)p, *(__u16 *)res, ktsan_memory_order_relaxed); break;
+	case 4: ktsan_atomic32_store((void *)p, *(__u32 *)res, ktsan_memory_order_relaxed); break;
+	case 8: ktsan_atomic64_store((void *)p, *(__u64 *)res, ktsan_memory_order_relaxed); break;
+	default:
+		barrier();
+		__builtin_memcpy((void *)p, (const void *)res, size);
+		barrier();
+	}
+}
+
+#endif
+
 /*
  * Prevent the compiler from merging or refetching reads or writes. The
  * compiler is also forbidden from reordering successive instances of
@@ -248,20 +284,11 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
  * required ordering.
  */
 
-#ifdef CONFIG_KTSAN
-void ktsan_sync_nonmat_acquire(void *addr);
-void ktsan_sync_nonmat_release(void *addr);
-#else /* CONFIG_KTSAN */
-static inline void ktsan_sync_nonmat_acquire(void *addr);
-static inline void ktsan_sync_nonmat_release(void *addr);
-#endif
-
 #define READ_ONCE(x)					\
 ({							\
 	typeof(x)* ___x1 = &(x);			\
 	union { typeof(x) __val; char __c[1]; } __u;	\
 	__read_once_size(___x1, __u.__c, sizeof(x));	\
-	ktsan_sync_nonmat_acquire((void *)(___x1));	\
 	__u.__val;					\
 })
 
@@ -270,7 +297,6 @@ static inline void ktsan_sync_nonmat_release(void *addr);
 	typeof(x)* ___x1 = &(x);			\
 	union { typeof(x) __val; char __c[1]; } __u =	\
 		{ .__val = (val) };			\
-	ktsan_sync_nonmat_release((void *)(___x1));	\
 	__write_once_size(___x1, __u.__c, sizeof(x));	\
 	__u.__val;					\
 })

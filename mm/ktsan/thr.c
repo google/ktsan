@@ -41,7 +41,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	spin_unlock(&pool->lock);
 
 	new->kid = kid;
-	kt_atomic32_set_no_ktsan(&new->inside, 0);
+	kt_atomic32_store_no_ktsan(&new->inside, 0);
 	new->cpu = NULL;
 	kt_clk_init(&new->clk);
 	kt_clk_init(&new->acquire_clk);

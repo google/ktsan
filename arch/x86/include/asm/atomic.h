@@ -28,7 +28,7 @@ static __always_inline int atomic_read(const atomic_t *v)
 #ifndef CONFIG_KTSAN
 	return ACCESS_ONCE((v)->counter);
 #else
-	return ktsan_atomic32_read(v);
+	return ktsan_atomic32_load((void *)v, ktsan_memory_order_relaxed);
 #endif
 }
 
@@ -44,7 +44,7 @@ static __always_inline void atomic_set(atomic_t *v, int i)
 #ifndef CONFIG_KTSAN
 	v->counter = i;
 #else
-	ktsan_atomic32_set(v, i);
+	ktsan_atomic32_store((void *)v, i, ktsan_memory_order_relaxed);
 #endif
 }
 
