@@ -415,38 +415,6 @@ u64 kt_atomic64_fetch_add_no_ktsan(void *addr, u64 value);
 
 /* FIXME(xairy). */
 
-int kt_atomic32_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
-int kt_atomic32_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value);
-
-void kt_atomic32_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-void kt_atomic32_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-int kt_atomic32_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-int kt_atomic32_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-
-int kt_atomic64_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
-int kt_atomic64_add_negative(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value);
-
-void kt_atomic64_inc(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-void kt_atomic64_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-int kt_atomic64_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-int kt_atomic64_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-
-int kt_atomic32_sub_and_test_no_ktsan(void *addr, int value);
-int kt_atomic32_add_negative_no_ktsan(void *addr, int value);
-
-void kt_atomic32_inc_no_ktsan(void *addr);
-void kt_atomic32_dec_no_ktsan(void *addr);
-int kt_atomic32_inc_and_test_no_ktsan(void *addr);
-int kt_atomic32_dec_and_test_no_ktsan(void *addr);
-
-int kt_atomic64_sub_and_test_no_ktsan(void *addr, long value);
-int kt_atomic64_add_negative_no_ktsan(void *addr, long value);
-
-void kt_atomic64_inc_no_ktsan(void *addr);
-void kt_atomic64_dec_no_ktsan(void *addr);
-int kt_atomic64_inc_and_test_no_ktsan(void *addr);
-int kt_atomic64_dec_and_test_no_ktsan(void *addr);
-
 void kt_bitop_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
 void kt_bitop_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
 void kt_bitop_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
