@@ -63,6 +63,26 @@ u64 kt_atomic64_exchange_no_ktsan(void *addr, u64 value)
 	return xchg((u64 *)addr, value);
 }
 
+u8 kt_atomic8_compare_exchange_no_ktsan(void *addr, u8 old, u8 new)
+{
+	return cmpxchg((u8 *)addr, old, new);
+}
+
+u16 kt_atomic16_compare_exchange_no_ktsan(void *addr, u16 old, u16 new)
+{
+	return cmpxchg((u16 *)addr, old, new);
+}
+
+u32 kt_atomic32_compare_exchange_no_ktsan(void *addr, u32 old, u32 new)
+{
+	return cmpxchg((u32 *)addr, old, new);
+}
+
+u64 kt_atomic64_compare_exchange_no_ktsan(void *addr, u64 old, u64 new)
+{
+	return cmpxchg((u64 *)addr, old, new);
+}
+
 /* FIXME(xairy). */
 
 void kt_atomic32_add_no_ktsan(void *addr, int value)
@@ -143,26 +163,6 @@ int kt_atomic64_inc_and_test_no_ktsan(void *addr)
 int kt_atomic64_dec_and_test_no_ktsan(void *addr)
 {
 	return atomic64_dec_and_test((atomic64_t *)addr);
-}
-
-s64 kt_atomic64_cmpxchg_no_ktsan(void *addr, s64 old, s64 new)
-{
-	return cmpxchg((s64 *)addr, old, new);
-}
-
-s32 kt_atomic32_cmpxchg_no_ktsan(void *addr, s32 old, s32 new)
-{
-	return cmpxchg((s32 *)addr, old, new);
-}
-
-s16 kt_atomic16_cmpxchg_no_ktsan(void *addr, s16 old, s16 new)
-{
-	return cmpxchg((s16 *)addr, old, new);
-}
-
-s8 kt_atomic8_cmpxchg_no_ktsan(void *addr, s8 old, s8 new)
-{
-	return cmpxchg((s8 *)addr, old, new);
 }
 
 s64 kt_atomic64_xadd_no_ktsan(void *addr, s64 value)
