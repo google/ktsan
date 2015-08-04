@@ -43,6 +43,26 @@ void kt_atomic64_store_no_ktsan(void *addr, u64 value)
 	*(volatile u64 *)addr = value;
 }
 
+u8 kt_atomic8_exchange_no_ktsan(void *addr, u8 value)
+{
+	return xchg((u8 *)addr, value);
+}
+
+u16 kt_atomic16_exchange_no_ktsan(void *addr, u16 value)
+{
+	return xchg((u16 *)addr, value);
+}
+
+u32 kt_atomic32_exchange_no_ktsan(void *addr, u32 value)
+{
+	return xchg((u32 *)addr, value);
+}
+
+u64 kt_atomic64_exchange_no_ktsan(void *addr, u64 value)
+{
+	return xchg((u64 *)addr, value);
+}
+
 /* FIXME(xairy). */
 
 void kt_atomic32_add_no_ktsan(void *addr, int value)
@@ -123,21 +143,6 @@ int kt_atomic64_inc_and_test_no_ktsan(void *addr)
 int kt_atomic64_dec_and_test_no_ktsan(void *addr)
 {
 	return atomic64_dec_and_test((atomic64_t *)addr);
-}
-
-s64 kt_atomic64_xchg_no_ktsan(void *addr, s64 value)
-{
-	return xchg((s64 *)addr, value);
-}
-
-s32 kt_atomic32_xchg_no_ktsan(void *addr, s32 value)
-{
-	return xchg((s32 *)addr, value);
-}
-
-s16 kt_atomic16_xchg_no_ktsan(void *addr, s16 value)
-{
-	return xchg((s16 *)addr, value);
 }
 
 s64 kt_atomic64_cmpxchg_no_ktsan(void *addr, s64 old, s64 new)

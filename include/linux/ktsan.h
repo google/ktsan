@@ -80,6 +80,11 @@ u16 ktsan_atomic16_load(void *addr, ktsan_memory_order_t mo);
 u32 ktsan_atomic32_load(void *addr, ktsan_memory_order_t mo);
 u64 ktsan_atomic64_load(void *addr, ktsan_memory_order_t mo);
 
+u8 ktsan_atomic8_exchange(void *addr, u8 value, ktsan_memory_order_t mo);
+u16 ktsan_atomic16_exchange(void *addr, u16 value, ktsan_memory_order_t mo);
+u32 ktsan_atomic32_exchange(void *addr, u32 value, ktsan_memory_order_t mo);
+u64 ktsan_atomic64_exchange(void *addr, u64 value, ktsan_memory_order_t mo);
+
 /* FIXME(xairy): make annotations standard. */
 
 void ktsan_atomic32_add(void *addr, int value);
@@ -101,10 +106,6 @@ void ktsan_atomic64_inc(void *addr);
 void ktsan_atomic64_dec(void *addr);
 int ktsan_atomic64_inc_and_test(void *addr);
 int ktsan_atomic64_dec_and_test(void *addr);
-
-s64 ktsan_atomic64_xchg(void *addr, s64 value);
-s32 ktsan_atomic32_xchg(void *addr, s32 value);
-s16 ktsan_atomic16_xchg(void *addr, s16 value);
 
 s64 ktsan_atomic64_cmpxchg(void *addr, s64 old, s64 new);
 s32 ktsan_atomic32_cmpxchg(void *addr, s32 old, s32 new);

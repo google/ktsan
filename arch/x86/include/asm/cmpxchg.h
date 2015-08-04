@@ -81,28 +81,34 @@ extern void __add_wrong_size(void)
 #define xchg(ptr, v)							\
 ({									\
 	__typeof__(*(ptr)) ret;						\
-	s64 ret64;							\
-	s32 ret32;							\
-	s16 ret16;							\
+	u64 ret64;							\
+	u32 ret32;							\
+	u16 ret16;							\
+	u8 ret8;							\
 									\
 	__typeof__(*(ptr)) lv = (v);					\
 									\
 	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
 		     sizeof(*(ptr)) != 4 &&				\
-	             sizeof(*(ptr)) != 2);				\
+		     sizeof(*(ptr)) != 2 &&				\
+	             sizeof(*(ptr)) != 1);				\
 									\
 	if (sizeof(*(ptr)) == 8) {					\
-		ret64 = ktsan_atomic64_xchg((void *)(ptr),		\
-					    *((s64 *)(&lv)));		\
+		ret64 = ktsan_atomic64_exchange((void *)(ptr),		\
+			*((u64 *)(&lv)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret64));			\
 	} else if (sizeof(*(ptr)) == 4) {				\
-		ret32 = ktsan_atomic32_xchg((void *)(ptr),		\
-					    *((s32 *)(&lv)));		\
+		ret32 = ktsan_atomic32_exchange((void *)(ptr),		\
+			*((u32 *)(&lv)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret32));			\
 	} else if (sizeof(*(ptr)) == 2) {				\
-		ret16 = ktsan_atomic16_xchg((void *)(ptr),		\
-					    *((s16 *)(&lv)));		\
+		ret16 = ktsan_atomic16_exchange((void *)(ptr),		\
+			*((u16 *)(&lv)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret16));			\
+	} else if (sizeof(*(ptr)) == 1) {				\
+		ret16 = ktsan_atomic8_exchange((void *)(ptr),		\
+			*((u8 *)(&lv)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret8));			\
 	}								\
 									\
 	ret;								\
