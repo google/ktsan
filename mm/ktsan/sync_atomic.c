@@ -273,18 +273,6 @@ u64 kt_atomic64_fetch_add(kt_thr_t *thr, uptr_t pc,
 
 /* FIXME(xairy). */
 
-void kt_atomic32_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
-{
-	KT_ATOMIC_OP(kt_atomic32_add_no_ktsan((void *)addr, value),
-		addr, ktsan_memory_order_relaxed, ktsan_memory_order_acq_rel);
-}
-
-void kt_atomic32_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
-{
-	KT_ATOMIC_OP(kt_atomic32_sub_no_ktsan((void *)addr, value),
-		addr, ktsan_memory_order_relaxed, ktsan_memory_order_acq_rel);
-}
-
 int kt_atomic32_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
 {
 	int rv;
@@ -337,18 +325,6 @@ int kt_atomic32_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
 
 	return rv;
-}
-
-void kt_atomic64_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
-{
-	KT_ATOMIC_OP(kt_atomic64_add_no_ktsan((void *)addr, value),
-		addr, ktsan_memory_order_relaxed, ktsan_memory_order_acq_rel);
-}
-
-void kt_atomic64_sub(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
-{
-	KT_ATOMIC_OP(kt_atomic64_sub_no_ktsan((void *)addr, value),
-		addr, ktsan_memory_order_relaxed, ktsan_memory_order_acq_rel);
 }
 
 int kt_atomic64_sub_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr, long value)
