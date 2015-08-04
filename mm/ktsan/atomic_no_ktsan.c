@@ -105,16 +105,6 @@ u64 kt_atomic64_fetch_add_no_ktsan(void *addr, u64 value)
 
 /* FIXME(xairy). */
 
-void kt_atomic32_add_no_ktsan(void *addr, int value)
-{
-	atomic_add(value, (atomic_t *)addr);
-}
-
-void kt_atomic32_sub_no_ktsan(void *addr, int value)
-{
-	atomic_sub(value, (atomic_t *)addr);
-}
-
 int kt_atomic32_sub_and_test_no_ktsan(void *addr, int value)
 {
 	return atomic_sub_and_test(value, (atomic_t *)addr);
@@ -143,16 +133,6 @@ int kt_atomic32_inc_and_test_no_ktsan(void *addr)
 int kt_atomic32_dec_and_test_no_ktsan(void *addr)
 {
 	return atomic_dec_and_test((atomic_t *)addr);
-}
-
-void kt_atomic64_add_no_ktsan(void *addr, long value)
-{
-	atomic64_add(value, (atomic64_t *)addr);
-}
-
-void kt_atomic64_sub_no_ktsan(void *addr, long value)
-{
-	atomic64_sub(value, (atomic64_t *)addr);
 }
 
 int kt_atomic64_sub_and_test_no_ktsan(void *addr, long value)

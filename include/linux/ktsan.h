@@ -101,8 +101,6 @@ u64 ktsan_atomic64_fetch_add(void *addr, u64 value, ktsan_memory_order_t mo);
 
 /* FIXME(xairy): make annotations standard. */
 
-void ktsan_atomic32_add(void *addr, int value);
-void ktsan_atomic32_sub(void *addr, int value);
 int ktsan_atomic32_sub_and_test(void *addr, int value);
 int ktsan_atomic32_add_negative(void *addr, int value);
 
