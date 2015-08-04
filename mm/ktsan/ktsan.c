@@ -400,6 +400,62 @@ u64 ktsan_atomic64_load(void *addr, ktsan_memory_order_t mo)
 }
 EXPORT_SYMBOL(ktsan_atomic64_load);
 
+u8 ktsan_atomic8_exchange(void *addr, u8 value, ktsan_memory_order_t mo)
+{
+	u8 rv;
+
+	ENTER(false);
+	rv = kt_atomic8_exchange(thr, pc, addr, value, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic8_exchange_no_ktsan(addr, value);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic8_exchange);
+
+u16 ktsan_atomic16_exchange(void *addr, u16 value, ktsan_memory_order_t mo)
+{
+	u16 rv;
+
+	ENTER(false);
+	rv = kt_atomic16_exchange(thr, pc, addr, value, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic16_exchange_no_ktsan(addr, value);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic16_exchange);
+
+u32 ktsan_atomic32_exchange(void *addr, u32 value, ktsan_memory_order_t mo)
+{
+	u32 rv;
+
+	ENTER(false);
+	rv = kt_atomic32_exchange(thr, pc, addr, value, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_exchange_no_ktsan(addr, value);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic32_exchange);
+
+u64 ktsan_atomic64_exchange(void *addr, u64 value, ktsan_memory_order_t mo)
+{
+	u64 rv;
+
+	ENTER(false);
+	rv = kt_atomic64_exchange(thr, pc, addr, value, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_exchange_no_ktsan(addr, value);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic64_exchange);
+
 void ktsan_atomic32_add(void *addr, int value)
 {
 	ENTER(false);
@@ -599,49 +655,6 @@ int ktsan_atomic64_dec_and_test(void *addr)
 	return rv;
 }
 EXPORT_SYMBOL(ktsan_atomic64_dec_and_test);
-
-s64 ktsan_atomic64_xchg(void *addr, s64 value)
-{
-	s64 rv;
-
-	ENTER(false);
-	rv = kt_atomic64_xchg(thr, pc, (uptr_t)addr, value);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_atomic64_xchg_no_ktsan(addr, value);
-
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_atomic64_xchg);
-
-s32 ktsan_atomic32_xchg(void *addr, s32 value)
-{
-	s32 rv;
-
-	ENTER(false);
-	rv = kt_atomic32_xchg(thr, pc, (uptr_t)addr, value);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_atomic32_xchg_no_ktsan(addr, value);
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_atomic32_xchg);
-
-s16 ktsan_atomic16_xchg(void *addr, s16 value)
-{
-	s16 rv;
-
-	ENTER(false);
-	rv = kt_atomic16_xchg(thr, pc, (uptr_t)addr, value);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_atomic16_xchg_no_ktsan(addr, value);
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_atomic16_xchg);
 
 s64 ktsan_atomic64_cmpxchg(void *addr, s64 old, s64 new)
 {

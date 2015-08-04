@@ -32,15 +32,15 @@ void kt_membar_acq_rel(kt_thr_t *thr, uptr_t pc)
 									\
 		sync = kt_sync_ensure_created(thr, (ad));		\
 									\
-		if ((mo) == ktsan_memory_order_acquire ||			\
-		    (mo) == ktsan_memory_order_acq_rel) {			\
+		if ((mo) == ktsan_memory_order_acquire ||		\
+		    (mo) == ktsan_memory_order_acq_rel) {		\
 			kt_clk_acquire(&thr->clk, &sync->clk);		\
 			kt_trace_add_event(thr,				\
 				kt_event_type_acquire, pc);		\
 			kt_clk_tick(&thr->clk, thr->id);		\
 		}							\
 		if ((nmmo) == ktsan_memory_order_acquire ||		\
-		    (nmmo) == ktsan_memory_order_acq_rel)	{		\
+		    (nmmo) == ktsan_memory_order_acq_rel)	{	\
 			kt_clk_acquire(&thr->acquire_clk, &sync->clk);	\
 			kt_trace_add_event(thr,				\
 				kt_event_type_nonmat_acquire, pc);	\
@@ -49,8 +49,8 @@ void kt_membar_acq_rel(kt_thr_t *thr, uptr_t pc)
 									\
 		(op);							\
 									\
-		if ((mo) == ktsan_memory_order_release ||			\
-		    (mo) == ktsan_memory_order_acq_rel) {			\
+		if ((mo) == ktsan_memory_order_release ||		\
+		    (mo) == ktsan_memory_order_acq_rel) {		\
 			kt_clk_acquire(&sync->clk, &thr->clk);		\
 			kt_trace_add_event(thr,				\
 				kt_event_type_release, pc);		\
@@ -135,6 +135,50 @@ u64 kt_atomic64_load(kt_thr_t *thr, uptr_t pc,
 
 	KT_ATOMIC_OP(rv = kt_atomic64_load_no_ktsan(addr),
 			(uptr_t)addr, mo, ktsan_memory_order_acquire);
+
+	return rv;
+}
+
+u8 kt_atomic8_exchange(kt_thr_t *thr, uptr_t pc,
+		void *addr, u8 value, ktsan_memory_order_t mo)
+{
+	u8 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic8_exchange_no_ktsan(addr, value),
+		(uptr_t)addr, mo, ktsan_memory_order_relaxed);
+
+	return rv;
+}
+
+u16 kt_atomic16_exchange(kt_thr_t *thr, uptr_t pc,
+		void *addr, u16 value, ktsan_memory_order_t mo)
+{
+	u16 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic16_exchange_no_ktsan(addr, value),
+		(uptr_t)addr, mo, ktsan_memory_order_relaxed);
+
+	return rv;
+}
+
+u32 kt_atomic32_exchange(kt_thr_t *thr, uptr_t pc,
+		void *addr, u32 value, ktsan_memory_order_t mo)
+{
+	u32 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic32_exchange_no_ktsan(addr, value),
+		(uptr_t)addr, mo, ktsan_memory_order_relaxed);
+
+	return rv;
+}
+
+u64 kt_atomic64_exchange(kt_thr_t *thr, uptr_t pc,
+		void *addr, u64 value, ktsan_memory_order_t mo)
+{
+	u64 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic64_exchange_no_ktsan(addr, value),
+		(uptr_t)addr, mo, ktsan_memory_order_relaxed);
 
 	return rv;
 }
@@ -268,36 +312,6 @@ int kt_atomic64_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	int rv;
 
 	KT_ATOMIC_OP(rv = kt_atomic64_dec_and_test_no_ktsan((void *)addr),
-		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
-
-	return rv;
-}
-
-s64 kt_atomic64_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value)
-{
-	s64 rv;
-
-	KT_ATOMIC_OP(rv = kt_atomic64_xchg_no_ktsan((void *)addr, value),
-		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
-
-	return rv;
-}
-
-s32 kt_atomic32_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value)
-{
-	s32 rv;
-
-	KT_ATOMIC_OP(rv = kt_atomic32_xchg_no_ktsan((void *)addr, value),
-		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
-
-	return rv;
-}
-
-s16 kt_atomic16_xchg(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value)
-{
-	s16 rv;
-
-	KT_ATOMIC_OP(rv = kt_atomic16_xchg_no_ktsan((void *)addr, value),
 		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
 
 	return rv;
