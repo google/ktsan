@@ -379,6 +379,15 @@ u32 kt_atomic32_compare_exchange(kt_thr_t *thr, uptr_t pc,
 u64 kt_atomic64_compare_exchange(kt_thr_t *thr, uptr_t pc,
 		void *addr, u64 old, u64 new, ktsan_memory_order_t mo);
 
+u8 kt_atomic8_fetch_add(kt_thr_t *thr, uptr_t pc,
+		void *addr, u8 value, ktsan_memory_order_t mo);
+u16 kt_atomic16_fetch_add(kt_thr_t *thr, uptr_t pc,
+		void *addr, u16 value, ktsan_memory_order_t mo);
+u32 kt_atomic32_fetch_add(kt_thr_t *thr, uptr_t pc,
+		void *addr, u32 value, ktsan_memory_order_t mo);
+u64 kt_atomic64_fetch_add(kt_thr_t *thr, uptr_t pc,
+		void *addr, u64 value, ktsan_memory_order_t mo);
+
 void kt_atomic8_store_no_ktsan(void *addr, u8 value);
 void kt_atomic16_store_no_ktsan(void *addr, u16 value);
 void kt_atomic32_store_no_ktsan(void *addr, u32 value);
@@ -398,6 +407,11 @@ u8 kt_atomic8_compare_exchange_no_ktsan(void *addr, u8 old, u8 new);
 u16 kt_atomic16_compare_exchange_no_ktsan(void *addr, u16 old, u16 new);
 u32 kt_atomic32_compare_exchange_no_ktsan(void *addr, u32 old, u32 new);
 u64 kt_atomic64_compare_exchange_no_ktsan(void *addr, u64 old, u64 new);
+
+u8 kt_atomic8_fetch_add_no_ktsan(void *addr, u8 value);
+u16 kt_atomic16_fetch_add_no_ktsan(void *addr, u16 value);
+u32 kt_atomic32_fetch_add_no_ktsan(void *addr, u32 value);
+u64 kt_atomic64_fetch_add_no_ktsan(void *addr, u64 value);
 
 /* FIXME(xairy). */
 
@@ -421,10 +435,6 @@ void kt_atomic64_dec(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 int kt_atomic64_inc_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 int kt_atomic64_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
-s64 kt_atomic64_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value);
-s32 kt_atomic32_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value);
-s16 kt_atomic16_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value);
-
 void kt_atomic32_add_no_ktsan(void *addr, int value);
 void kt_atomic32_sub_no_ktsan(void *addr, int value);
 int kt_atomic32_sub_and_test_no_ktsan(void *addr, int value);
@@ -444,10 +454,6 @@ void kt_atomic64_inc_no_ktsan(void *addr);
 void kt_atomic64_dec_no_ktsan(void *addr);
 int kt_atomic64_inc_and_test_no_ktsan(void *addr);
 int kt_atomic64_dec_and_test_no_ktsan(void *addr);
-
-s64 kt_atomic64_xadd_no_ktsan(void *addr, s64 value);
-s32 kt_atomic32_xadd_no_ktsan(void *addr, s32 value);
-s16 kt_atomic16_xadd_no_ktsan(void *addr, s16 value);
 
 void kt_bitop_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
 void kt_bitop_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);

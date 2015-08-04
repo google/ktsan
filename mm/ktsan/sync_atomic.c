@@ -227,6 +227,50 @@ u64 kt_atomic64_compare_exchange(kt_thr_t *thr, uptr_t pc,
 	return rv;
 }
 
+u8 kt_atomic8_fetch_add(kt_thr_t *thr, uptr_t pc,
+		void *addr, u8 value, ktsan_memory_order_t mo)
+{
+	u8 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic8_fetch_add_no_ktsan(addr, value),
+		(uptr_t)addr, mo, ktsan_memory_order_relaxed);
+
+	return rv;
+}
+
+u16 kt_atomic16_fetch_add(kt_thr_t *thr, uptr_t pc,
+		void *addr, u16 value, ktsan_memory_order_t mo)
+{
+	u16 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic16_fetch_add_no_ktsan(addr, value),
+		(uptr_t)addr, mo, ktsan_memory_order_relaxed);
+
+	return rv;
+}
+
+u32 kt_atomic32_fetch_add(kt_thr_t *thr, uptr_t pc,
+		void *addr, u32 value, ktsan_memory_order_t mo)
+{
+	u32 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic32_fetch_add_no_ktsan(addr, value),
+		(uptr_t)addr, mo, ktsan_memory_order_relaxed);
+
+	return rv;
+}
+
+u64 kt_atomic64_fetch_add(kt_thr_t *thr, uptr_t pc,
+		void *addr, u64 value, ktsan_memory_order_t mo)
+{
+	u64 rv;
+
+	KT_ATOMIC_OP(rv = kt_atomic64_fetch_add_no_ktsan(addr, value),
+		(uptr_t)addr, mo, ktsan_memory_order_relaxed);
+
+	return rv;
+}
+
 /* FIXME(xairy). */
 
 void kt_atomic32_add(kt_thr_t *thr, uptr_t pc, uptr_t addr, int value)
@@ -356,36 +400,6 @@ int kt_atomic64_dec_and_test(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	int rv;
 
 	KT_ATOMIC_OP(rv = kt_atomic64_dec_and_test_no_ktsan((void *)addr),
-		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
-
-	return rv;
-}
-
-s64 kt_atomic64_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s64 value)
-{
-	s64 rv;
-
-	KT_ATOMIC_OP(rv = kt_atomic64_xadd_no_ktsan((void *)addr, value),
-		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
-
-	return rv;
-}
-
-s32 kt_atomic32_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s32 value)
-{
-	s32 rv;
-
-	KT_ATOMIC_OP(rv = kt_atomic32_xadd_no_ktsan((void *)addr, value),
-		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
-
-	return rv;
-}
-
-s16 kt_atomic16_xadd(kt_thr_t *thr, uptr_t pc, uptr_t addr, s16 value)
-{
-	s16 rv;
-
-	KT_ATOMIC_OP(rv = kt_atomic16_xadd_no_ktsan((void *)addr, value),
 		addr, ktsan_memory_order_acq_rel, ktsan_memory_order_relaxed);
 
 	return rv;
