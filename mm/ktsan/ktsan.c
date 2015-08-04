@@ -31,59 +31,59 @@ kt_ctx_t kt_ctx;
 
 /* If scheduler is false the events generated from
    the scheduler internals will be ignored. */
-#define ENTER(scheduler)					\
-	kt_thr_t *thr;						\
-	uptr_t pc;						\
-	unsigned long kt_flags;					\
-	int kt_inside_was;					\
-	bool event_handled;					\
-								\
-	thr = NULL;						\
-	kt_inside_was = -1;					\
-	event_handled = false;					\
-								\
-	DISABLE_INTERRUPTS(kt_flags);				\
-								\
-	if (!kt_ctx.enabled)					\
-		goto exit;					\
-								\
-	/* Ignore reports from some interrupts for now. */	\
-	if (IN_INTERRUPT())					\
-		goto exit;					\
-								\
-	/* TODO(xairy): check if we even need theese checks. */	\
-	if (!current)						\
-		goto exit;					\
-	if (!current->ktsan.thr)				\
-		goto exit;					\
-								\
-	thr = current->ktsan.thr;				\
-	pc = (uptr_t)_RET_IP_;					\
-								\
-	if (thr->cpu == NULL && !(scheduler))			\
-		goto exit;					\
-								\
-	kt_inside_was = kt_atomic32_cmpxchg_no_ktsan(		\
-				&thr->inside, 0, 1);		\
-	if (kt_inside_was != 0) {				\
-		goto exit;					\
-	}							\
-								\
-	event_handled = true;					\
+#define ENTER(scheduler)						\
+	kt_thr_t *thr;							\
+	uptr_t pc;							\
+	unsigned long kt_flags;						\
+	int kt_inside_was;						\
+	bool event_handled;						\
+									\
+	thr = NULL;							\
+	kt_inside_was = -1;						\
+	event_handled = false;						\
+									\
+	DISABLE_INTERRUPTS(kt_flags);					\
+									\
+	if (!kt_ctx.enabled)						\
+		goto exit;						\
+									\
+	/* Ignore reports from some interrupts for now. */		\
+	if (IN_INTERRUPT())						\
+		goto exit;						\
+									\
+	/* TODO(xairy): check if we even need theese checks. */		\
+	if (!current)							\
+		goto exit;						\
+	if (!current->ktsan.thr)					\
+		goto exit;						\
+									\
+	thr = current->ktsan.thr;					\
+	pc = (uptr_t)_RET_IP_;						\
+									\
+	if (thr->cpu == NULL && !(scheduler))				\
+		goto exit;						\
+									\
+	kt_inside_was = kt_atomic32_compare_exchange_no_ktsan(		\
+				&thr->inside, 0, 1);			\
+	if (kt_inside_was != 0) {					\
+		goto exit;						\
+	}								\
+									\
+	event_handled = true;						\
 /**/
 
-#define LEAVE()							\
-	/* thr might become NULL in ktsan_thread_destroy. */	\
-	thr = current->ktsan.thr;				\
-								\
-	if (thr) {						\
-		kt_inside_was =	kt_atomic32_cmpxchg_no_ktsan(	\
-					&thr->inside, 1, 0);	\
-		BUG_ON(kt_inside_was != 1);			\
-	}							\
-								\
-exit:								\
-	ENABLE_INTERRUPTS(kt_flags);				\
+#define LEAVE()								\
+	/* thr might become NULL in ktsan_thread_destroy. */		\
+	thr = current->ktsan.thr;					\
+									\
+	if (thr) {							\
+		kt_inside_was =	kt_atomic32_compare_exchange_no_ktsan(	\
+					&thr->inside, 1, 0);		\
+		BUG_ON(kt_inside_was != 1);				\
+	}								\
+									\
+exit:									\
+	ENABLE_INTERRUPTS(kt_flags);					\
 /**/
 
 void __init ktsan_init_early(void)
@@ -456,6 +456,66 @@ u64 ktsan_atomic64_exchange(void *addr, u64 value, ktsan_memory_order_t mo)
 }
 EXPORT_SYMBOL(ktsan_atomic64_exchange);
 
+u8 ktsan_atomic8_compare_exchange(void *addr, u8 old, u8 new,
+					ktsan_memory_order_t mo)
+{
+	u8 rv;
+
+	ENTER(false);
+	rv = kt_atomic8_compare_exchange(thr, pc, addr, old, new, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic8_compare_exchange_no_ktsan(addr, old, new);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic8_compare_exchange);
+
+u16 ktsan_atomic16_compare_exchange(void *addr, u16 old, u16 new,
+					ktsan_memory_order_t mo)
+{
+	u16 rv;
+
+	ENTER(false);
+	rv = kt_atomic16_compare_exchange(thr, pc, addr, old, new, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic16_compare_exchange_no_ktsan(addr, old, new);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic16_compare_exchange);
+
+u32 ktsan_atomic32_compare_exchange(void *addr, u32 old, u32 new,
+					ktsan_memory_order_t mo)
+{
+	u32 rv;
+
+	ENTER(false);
+	rv = kt_atomic32_compare_exchange(thr, pc, addr, old, new, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_compare_exchange_no_ktsan(addr, old, new);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic32_compare_exchange);
+
+u64 ktsan_atomic64_compare_exchange(void *addr, u64 old, u64 new,
+					ktsan_memory_order_t mo)
+{
+	u64 rv;
+
+	ENTER(false);
+	rv = kt_atomic64_compare_exchange(thr, pc, addr, old, new, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_compare_exchange_no_ktsan(addr, old, new);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic64_compare_exchange);
+
 void ktsan_atomic32_add(void *addr, int value)
 {
 	ENTER(false);
@@ -655,62 +715,6 @@ int ktsan_atomic64_dec_and_test(void *addr)
 	return rv;
 }
 EXPORT_SYMBOL(ktsan_atomic64_dec_and_test);
-
-s64 ktsan_atomic64_cmpxchg(void *addr, s64 old, s64 new)
-{
-	s64 rv;
-
-	ENTER(false);
-	rv = kt_atomic64_cmpxchg(thr, pc, (uptr_t)addr, old, new);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_atomic64_cmpxchg_no_ktsan(addr, old, new);
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_atomic64_cmpxchg);
-
-s32 ktsan_atomic32_cmpxchg(void *addr, s32 old, s32 new)
-{
-	s32 rv;
-
-	ENTER(false);
-	rv = kt_atomic32_cmpxchg(thr, pc, (uptr_t)addr, old, new);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_atomic32_cmpxchg_no_ktsan(addr, old, new);
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_atomic32_cmpxchg);
-
-s16 ktsan_atomic16_cmpxchg(void *addr, s16 old, s16 new)
-{
-	s16 rv;
-
-	ENTER(false);
-	rv = kt_atomic16_cmpxchg(thr, pc, (uptr_t)addr, old, new);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_atomic16_cmpxchg_no_ktsan(addr, old, new);
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_atomic16_cmpxchg);
-
-s8 ktsan_atomic8_cmpxchg(void *addr, s8 old, s8 new)
-{
-	s8 rv;
-
-	ENTER(false);
-	rv = kt_atomic8_cmpxchg(thr, pc, (uptr_t)addr, old, new);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_atomic8_cmpxchg_no_ktsan(addr, old, new);
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_atomic8_cmpxchg);
 
 s64 ktsan_atomic64_xadd(void *addr, s64 value)
 {
