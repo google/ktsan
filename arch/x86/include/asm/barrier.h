@@ -155,8 +155,8 @@ do {									\
 #define smp_mb__before_atomic()	barrier()
 #define smp_mb__after_atomic()	barrier()
 #else /* CONFIG_KTSAN */
-#define smp_mb__before_atomic()	ktsan_membar_acquire()
-#define smp_mb__after_atomic()	ktsan_membar_release()
+#define smp_mb__before_atomic()	ktsan_membar_release()
+#define smp_mb__after_atomic()	ktsan_membar_acquire()
 #endif
 
 /*
