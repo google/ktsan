@@ -238,17 +238,17 @@ void ktsan_sync_release(void *addr)
 }
 EXPORT_SYMBOL(ktsan_sync_release);
 
-void ktsan_memblock_alloc(void *addr, size_t size)
+void ktsan_memblock_alloc(void *addr, unsigned long size)
 {
 	ENTER(false);
-	kt_memblock_alloc(thr, pc, (uptr_t)addr, size);
+	kt_memblock_alloc(thr, pc, (uptr_t)addr, (size_t)size);
 	LEAVE();
 }
 
-void ktsan_memblock_free(void *addr, size_t size)
+void ktsan_memblock_free(void *addr, unsigned long size)
 {
 	ENTER(false);
-	kt_memblock_free(thr, pc, (uptr_t)addr, size);
+	kt_memblock_free(thr, pc, (uptr_t)addr, (size_t)size);
 	LEAVE();
 }
 
@@ -276,22 +276,6 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
-void ktsan_sync_nonmat_acquire(void *addr)
-{
-	ENTER(false);
-	kt_sync_nonmat_acquire(thr, pc, (uptr_t)addr);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_sync_nonmat_acquire);
-
-void ktsan_sync_nonmat_release(void *addr)
-{
-	ENTER(false);
-	kt_sync_nonmat_release(thr, pc, (uptr_t)addr);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_sync_nonmat_release);
-
 void ktsan_membar_acquire(void)
 {
 	ENTER(false);
@@ -316,30 +300,105 @@ void ktsan_membar_acq_rel(void)
 }
 EXPORT_SYMBOL(ktsan_membar_acq_rel);
 
-int ktsan_atomic32_read(const void *addr)
+void ktsan_atomic8_store(void *addr, u8 value, ktsan_memory_order_t mo)
 {
-	int rv;
-
 	ENTER(false);
-	rv = kt_atomic32_read(thr, pc, (uptr_t)addr);
+	kt_atomic8_store(thr, pc, addr, value, mo);
 	LEAVE();
 
 	if (!event_handled)
-		return kt_atomic32_read_no_ktsan(addr);
+		return kt_atomic8_store_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic8_store);
+
+void ktsan_atomic16_store(void *addr, u16 value, ktsan_memory_order_t mo)
+{
+	ENTER(false);
+	kt_atomic16_store(thr, pc, addr, value, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic16_store_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic16_store);
+
+void ktsan_atomic32_store(void *addr, u32 value, ktsan_memory_order_t mo)
+{
+	ENTER(false);
+	kt_atomic32_store(thr, pc, addr, value, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_store_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic32_store);
+
+void ktsan_atomic64_store(void *addr, u64 value, ktsan_memory_order_t mo)
+{
+	ENTER(false);
+	kt_atomic64_store(thr, pc, addr, value, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_store_no_ktsan(addr, value);
+}
+EXPORT_SYMBOL(ktsan_atomic64_store);
+
+u8 ktsan_atomic8_load(void *addr, ktsan_memory_order_t mo)
+{
+	u8 rv;
+
+	ENTER(false);
+	rv = kt_atomic8_load(thr, pc, addr, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic8_load_no_ktsan(addr);
 	return rv;
 }
-EXPORT_SYMBOL(ktsan_atomic32_read);
+EXPORT_SYMBOL(ktsan_atomic8_load);
 
-void ktsan_atomic32_set(void *addr, int value)
+u16 ktsan_atomic16_load(void *addr, ktsan_memory_order_t mo)
 {
+	u16 rv;
+
 	ENTER(false);
-	kt_atomic32_set(thr, pc, (uptr_t)addr, value);
+	rv = kt_atomic16_load(thr, pc, addr, mo);
 	LEAVE();
 
 	if (!event_handled)
-		kt_atomic32_set_no_ktsan(addr, value);
+		return kt_atomic16_load_no_ktsan(addr);
+	return rv;
 }
-EXPORT_SYMBOL(ktsan_atomic32_set);
+EXPORT_SYMBOL(ktsan_atomic16_load);
+
+u32 ktsan_atomic32_load(void *addr, ktsan_memory_order_t mo)
+{
+	u32 rv;
+
+	ENTER(false);
+	rv = kt_atomic32_load(thr, pc, addr, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic32_load_no_ktsan(addr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic32_load);
+
+u64 ktsan_atomic64_load(void *addr, ktsan_memory_order_t mo)
+{
+	u64 rv;
+
+	ENTER(false);
+	rv = kt_atomic64_load(thr, pc, addr, mo);
+	LEAVE();
+
+	if (!event_handled)
+		return kt_atomic64_load_no_ktsan(addr);
+	return rv;
+}
+EXPORT_SYMBOL(ktsan_atomic64_load);
 
 void ktsan_atomic32_add(void *addr, int value)
 {
@@ -440,31 +499,6 @@ int ktsan_atomic32_dec_and_test(void *addr)
 	return rv;
 }
 EXPORT_SYMBOL(ktsan_atomic32_dec_and_test);
-
-long ktsan_atomic64_read(const void *addr)
-{
-	long rv;
-
-	ENTER(false);
-	rv = kt_atomic64_read(thr, pc, (uptr_t)addr);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_atomic64_read_no_ktsan(addr);
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_atomic64_read);
-
-void ktsan_atomic64_set(void *addr, long value)
-{
-	ENTER(false);
-	kt_atomic64_set(thr, pc, (uptr_t)addr, value);
-	LEAVE();
-
-	if (!event_handled)
-		kt_atomic64_set_no_ktsan(addr, value);
-}
-EXPORT_SYMBOL(ktsan_atomic64_set);
 
 void ktsan_atomic64_add(void *addr, long value)
 {

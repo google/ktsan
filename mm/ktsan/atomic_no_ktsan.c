@@ -3,15 +3,47 @@
 #include <linux/atomic.h>
 #include <linux/bitops.h>
 
-int kt_atomic32_read_no_ktsan(const void *addr)
+u8 kt_atomic8_load_no_ktsan(void *addr)
 {
-	return atomic_read((const atomic_t *)addr);
+	return *(volatile u8 *)addr;
 }
 
-void kt_atomic32_set_no_ktsan(void *addr, int value)
+u16 kt_atomic16_load_no_ktsan(void *addr)
 {
-	atomic_set((atomic_t *)addr, value);
+	return *(volatile u16 *)addr;
 }
+
+u32 kt_atomic32_load_no_ktsan(void *addr)
+{
+	return *(volatile u32 *)addr;
+}
+
+u64 kt_atomic64_load_no_ktsan(void *addr)
+{
+	return *(volatile u64 *)addr;
+}
+
+void kt_atomic8_store_no_ktsan(void *addr, u8 value)
+{
+	*(volatile u8 *)addr = value;
+}
+
+void kt_atomic16_store_no_ktsan(void *addr, u16 value)
+{
+	*(volatile u16 *)addr = value;
+}
+
+void kt_atomic32_store_no_ktsan(void *addr, u32 value)
+{
+	*(volatile u32 *)addr = value;
+}
+
+void kt_atomic64_store_no_ktsan(void *addr, u64 value)
+{
+	*(volatile u64 *)addr = value;
+}
+
+/* FIXME(xairy). */
 
 void kt_atomic32_add_no_ktsan(void *addr, int value)
 {
@@ -51,16 +83,6 @@ int kt_atomic32_inc_and_test_no_ktsan(void *addr)
 int kt_atomic32_dec_and_test_no_ktsan(void *addr)
 {
 	return atomic_dec_and_test((atomic_t *)addr);
-}
-
-long kt_atomic64_read_no_ktsan(const void *addr)
-{
-	return atomic64_read((const atomic64_t *)addr);
-}
-
-void kt_atomic64_set_no_ktsan(void *addr, long value)
-{
-	atomic64_set((atomic64_t *)addr, value);
 }
 
 void kt_atomic64_add_no_ktsan(void *addr, long value)
