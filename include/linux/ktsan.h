@@ -136,8 +136,8 @@ static inline void ktsan_thr_destroy(struct ktsan_thr_s *old) {}
 static inline void ktsan_thr_start(void) {}
 static inline void ktsan_thr_stop(void) {}
 
-static inline void ktsan_memblock_alloc(void *addr, unsigned int size) {}
-static inline void ktsan_memblock_free(void *addr, unsigned int size) {}
+static inline void ktsan_memblock_alloc(void *addr, unsigned long size) {}
+static inline void ktsan_memblock_free(void *addr, unsigned long size) {}
 
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
