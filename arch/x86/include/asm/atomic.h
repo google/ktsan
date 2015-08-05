@@ -199,8 +199,12 @@ static __always_inline int atomic_add_negative(int i, atomic_t *v)
  */
 static __always_inline int atomic_add_return(int i, atomic_t *v)
 {
-	/* ktsan: xadd intercepted in cmpxchg.h */
+#ifndef CONFIG_KTSAN
 	return i + xadd(&v->counter, i);
+#else
+	return (ktsan_atomic32_fetch_add((void *)v, i,
+			ktsan_memory_order_acq_rel) + i);
+#endif
 }
 
 /**
@@ -212,7 +216,12 @@ static __always_inline int atomic_add_return(int i, atomic_t *v)
  */
 static __always_inline int atomic_sub_return(int i, atomic_t *v)
 {
+#ifndef CONFIG_KTSAN
 	return atomic_add_return(-i, v);
+#else
+	return (ktsan_atomic32_fetch_add((void *)v, -i,
+			ktsan_memory_order_acq_rel) - i);
+#endif
 }
 
 #define atomic_inc_return(v)  (atomic_add_return(1, v))
@@ -220,14 +229,22 @@ static __always_inline int atomic_sub_return(int i, atomic_t *v)
 
 static __always_inline int atomic_cmpxchg(atomic_t *v, int old, int new)
 {
-	/* ktsan: cmpxchg intercepted in cmpxchg.h */
+#ifndef CONFIG_KTSAN
 	return cmpxchg(&v->counter, old, new);
+#else
+	return ktsan_atomic32_compare_exchange((void *)v, old, new,
+			ktsan_memory_order_acq_rel);
+#endif
 }
 
 static inline int atomic_xchg(atomic_t *v, int new)
 {
-	/* ktsan: xchg intercepted in cmpxchg.h */
+#ifndef CONFIG_KTSAN
 	return xchg(&v->counter, new);
+#else
+	return ktsan_atomic32_exchange((void *)v, new,
+			ktsan_memory_order_acq_rel);
+#endif
 }
 
 /**
