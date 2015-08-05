@@ -26,41 +26,47 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 }
 
 #define KT_ATOMIC_OP(op, ad, mo, read, write)				\
-	do {								\
-		kt_tab_sync_t *sync;					\
+do {									\
+	kt_tab_sync_t *sync;						\
 									\
-		sync = kt_sync_ensure_created(thr, (ad));		\
+	sync = kt_sync_ensure_created(thr, (ad));			\
 									\
-		if ((mo) == ktsan_memory_order_acquire ||		\
-		    (mo) == ktsan_memory_order_acq_rel) {		\
-			kt_clk_acquire(&thr->clk, &sync->clk);		\
-			kt_trace_add_event(thr,				\
-				kt_event_type_acquire, pc);		\
-			kt_clk_tick(&thr->clk, thr->id);		\
-		} else if (read) {					\
-			kt_clk_acquire(&thr->acquire_clk, &sync->clk);	\
-			kt_trace_add_event(thr,				\
-				kt_event_type_nonmat_acquire, pc);	\
-			kt_clk_tick(&thr->clk, thr->id);		\
-		}							\
+	if ((mo) == ktsan_memory_order_acquire ||			\
+	    (mo) == ktsan_memory_order_acq_rel) {			\
+		kt_clk_acquire(&thr->clk, &sync->clk);			\
+		kt_trace_add_event(thr,					\
+			kt_event_type_acquire, pc);			\
+		kt_clk_tick(&thr->clk, thr->id);			\
 									\
-		(op);							\
+		/* Do full fence despite the actual memory order. */	\
+		kt_thread_fence_no_ktsan();				\
+	} else if (read) {						\
+		kt_clk_acquire(&thr->acquire_clk, &sync->clk);		\
+		kt_trace_add_event(thr,					\
+			kt_event_type_nonmat_acquire, pc);		\
+		kt_clk_tick(&thr->clk, thr->id);			\
+	}								\
 									\
-		if ((mo) == ktsan_memory_order_release ||		\
-		    (mo) == ktsan_memory_order_acq_rel) {		\
-			kt_clk_acquire(&sync->clk, &thr->clk);		\
-			kt_trace_add_event(thr,				\
-				kt_event_type_release, pc);		\
-			kt_clk_tick(&thr->clk, thr->id);		\
-		} else if (write) {					\
-			kt_clk_acquire(&sync->clk, &thr->release_clk);	\
-			kt_trace_add_event(thr,				\
-				kt_event_type_nonmat_release, pc);	\
-			kt_clk_tick(&thr->clk, thr->id);		\
-		}							\
+	(op);								\
 									\
-		spin_unlock(&sync->tab.lock);				\
-	} while (0)
+	if ((mo) == ktsan_memory_order_release ||			\
+	    (mo) == ktsan_memory_order_acq_rel) {			\
+		/* Do full fence despite the actual memory order. */	\
+		kt_thread_fence_no_ktsan();				\
+									\
+		kt_clk_acquire(&sync->clk, &thr->clk);			\
+		kt_trace_add_event(thr,					\
+			kt_event_type_release, pc);			\
+		kt_clk_tick(&thr->clk, thr->id);			\
+	} else if (write) {						\
+		kt_clk_acquire(&sync->clk, &thr->release_clk);		\
+		kt_trace_add_event(thr,					\
+			kt_event_type_nonmat_release, pc);		\
+		kt_clk_tick(&thr->clk, thr->id);			\
+	}								\
+									\
+	spin_unlock(&sync->tab.lock);					\
+} while (0)
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,
 		void *addr, u8 value, ktsan_memory_order_t mo)
