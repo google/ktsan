@@ -83,7 +83,7 @@ set_bit(long nr, volatile unsigned long *addr)
 			: BITOP_ADDR(addr) : "Ir" (nr) : "memory");
 	}
 #else /* CONFIG_KTSAN */
-	ktsan_bitop_set_bit((void *)addr, nr);
+	ktsan_atomic_set_bit((void *)addr, nr, ktsan_memory_order_relaxed);
 #endif /* CONFIG_KTSAN */
 }
 
@@ -125,7 +125,7 @@ clear_bit(long nr, volatile unsigned long *addr)
 			: "Ir" (nr));
 	}
 #else /* CONFIG_KTSAN */
-	ktsan_bitop_clear_bit((void *)addr, nr);
+	ktsan_atomic_clear_bit((void *)addr, nr, ktsan_memory_order_relaxed);
 #endif /* CONFIG_KTSAN */
 }
 
@@ -143,7 +143,7 @@ static inline void clear_bit_unlock(long nr, volatile unsigned long *addr)
 	barrier();
 	clear_bit(nr, addr);
 #else /* CONFIG_KTSAN */
-	ktsan_bitop_clear_bit_unlock((void *)addr, nr);
+	ktsan_atomic_clear_bit((void *)addr, nr, ktsan_memory_order_release);
 #endif /* CONFIG_KTSAN */
 }
 
@@ -206,7 +206,7 @@ static inline void change_bit(long nr, volatile unsigned long *addr)
 			: "Ir" (nr));
 	}
 #else /* CONFIG_KTSAN */
-	ktsan_bitop_change_bit((void *)addr, nr);
+	ktsan_atomic_change_bit((void *)addr, nr, ktsan_memory_order_relaxed);
 #endif /* CONFIG_KTSAN */
 }
 
@@ -223,7 +223,8 @@ static inline int test_and_set_bit(long nr, volatile unsigned long *addr)
 #ifndef CONFIG_KTSAN
 	GEN_BINARY_RMWcc(LOCK_PREFIX "bts", *addr, "Ir", nr, "%0", "c");
 #else /* CONFIG_KTSAN */
-	return ktsan_bitop_test_and_set_bit((void *)addr, nr);
+	return ktsan_atomic_fetch_set_bit((void *)addr, nr,
+			ktsan_memory_order_acq_rel);
 #endif /* CONFIG_KTSAN */
 }
 
@@ -240,7 +241,8 @@ test_and_set_bit_lock(long nr, volatile unsigned long *addr)
 #ifndef CONFIG_KTSAN
 	return test_and_set_bit(nr, addr);
 #else /* CONFIG_KTSAN */
-	return ktsan_bitop_test_and_set_bit_lock((void *)addr, nr);
+	return ktsan_atomic_fetch_set_bit((void *)addr, nr,
+			ktsan_memory_order_acquire);
 #endif /* CONFIG_KTSAN */
 }
 
@@ -277,7 +279,8 @@ static inline int test_and_clear_bit(long nr, volatile unsigned long *addr)
 #ifndef CONFIG_KTSAN
 	GEN_BINARY_RMWcc(LOCK_PREFIX "btr", *addr, "Ir", nr, "%0", "c");
 #else /* CONFIG_KTSAN */
-	return ktsan_bitop_test_and_clear_bit((void *)addr, nr);
+	return ktsan_atomic_fetch_clear_bit((void *)addr, nr,
+			ktsan_memory_order_acq_rel);
 #endif /* CONFIG_KTSAN */
 }
 
@@ -334,7 +337,8 @@ static inline int test_and_change_bit(long nr, volatile unsigned long *addr)
 #ifndef CONFIG_KTSAN
 	GEN_BINARY_RMWcc(LOCK_PREFIX "btc", *addr, "Ir", nr, "%0", "c");
 #else /* CONFIG_KTSAN */
-	return ktsan_bitop_test_and_change_bit((void *)addr, nr);
+	return ktsan_atomic_fetch_change_bit((void *)addr, nr,
+			ktsan_memory_order_acq_rel);
 #endif /* CONFIG_KTSAN */
 }
 

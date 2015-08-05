@@ -388,6 +388,20 @@ u32 kt_atomic32_fetch_add(kt_thr_t *thr, uptr_t pc,
 u64 kt_atomic64_fetch_add(kt_thr_t *thr, uptr_t pc,
 		void *addr, u64 value, ktsan_memory_order_t mo);
 
+void kt_atomic_set_bit(kt_thr_t *thr, uptr_t pc,
+		void *addr, long nr, ktsan_memory_order_t mo);
+void kt_atomic_clear_bit(kt_thr_t *thr, uptr_t pc,
+		void *addr, long nr, ktsan_memory_order_t mo);
+void kt_atomic_change_bit(kt_thr_t *thr, uptr_t pc,
+		void *addr, long nr, ktsan_memory_order_t mo);
+
+int kt_atomic_fetch_set_bit(kt_thr_t *thr, uptr_t pc,
+		void *addr, long nr, ktsan_memory_order_t mo);
+int kt_atomic_fetch_clear_bit(kt_thr_t *thr, uptr_t pc,
+		void *addr, long nr, ktsan_memory_order_t mo);
+int kt_atomic_fetch_change_bit(kt_thr_t *thr, uptr_t pc,
+		void *addr, long nr, ktsan_memory_order_t mo);
+
 void kt_atomic8_store_no_ktsan(void *addr, u8 value);
 void kt_atomic16_store_no_ktsan(void *addr, u16 value);
 void kt_atomic32_store_no_ktsan(void *addr, u32 value);
@@ -413,31 +427,13 @@ u16 kt_atomic16_fetch_add_no_ktsan(void *addr, u16 value);
 u32 kt_atomic32_fetch_add_no_ktsan(void *addr, u32 value);
 u64 kt_atomic64_fetch_add_no_ktsan(void *addr, u64 value);
 
-/* FIXME(xairy). */
+void kt_atomic_set_bit_no_ktsan(void *addr, long nr);
+void kt_atomic_clear_bit_no_ktsan(void *addr, long nr);
+void kt_atomic_change_bit_no_ktsan(void *addr, long nr);
 
-void kt_bitop_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
-void kt_bitop_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
-void kt_bitop_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t addr, long nr);
-
-int kt_bitop_test_and_set_bit(kt_thr_t *thr, uptr_t pc, uptr_t a, long nr);
-int kt_bitop_test_and_clear_bit(kt_thr_t *thr, uptr_t pc, uptr_t a, long nr);
-int kt_bitop_test_and_change_bit(kt_thr_t *thr, uptr_t pc, uptr_t a, long nr);
-
-int kt_bitop_test_and_set_bit_lock(kt_thr_t *thr, uptr_t pc, uptr_t a, long nr);
-void kt_bitop_clear_bit_unlock(kt_thr_t *thr, uptr_t pc, uptr_t a, long nr);
-
-void kt_bitop_set_bit_no_ktsan(void *addr, long nr);
-void kt_bitop_clear_bit_no_ktsan(void *addr, long nr);
-void kt_bitop_change_bit_no_ktsan(void *addr, long nr);
-
-int kt_bitop_test_and_set_bit_no_ktsan(void *addr, long nr);
-int kt_bitop_test_and_clear_bit_no_ktsan(void *addr, long nr);
-int kt_bitop_test_and_change_bit_no_ktsan(void *addr, long nr);
-
-int kt_bitop_test_and_set_bit_lock_no_ktsan(void *addr, long nr);
-void kt_bitop_clear_bit_unlock_no_ktsan(void *addr, long nr);
-
-/* FIXME(xairy): ^^ */
+int kt_atomic_fetch_set_bit_no_ktsan(void *addr, long nr);
+int kt_atomic_fetch_clear_bit_no_ktsan(void *addr, long nr);
+int kt_atomic_fetch_change_bit_no_ktsan(void *addr, long nr);
 
 /* Per-cpu synchronization. */
 

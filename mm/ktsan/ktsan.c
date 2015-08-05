@@ -572,105 +572,80 @@ u64 ktsan_atomic64_fetch_add(void *addr, u64 value, ktsan_memory_order_t mo)
 }
 EXPORT_SYMBOL(ktsan_atomic64_fetch_add);
 
-void ktsan_bitop_set_bit(void *addr, long nr)
+void ktsan_atomic_set_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
 	ENTER(false);
-	kt_bitop_set_bit(thr, pc, (uptr_t)addr, nr);
+	kt_atomic_set_bit(thr, pc, addr, nr, mo);
 	LEAVE();
 
 	if (!event_handled)
-		kt_bitop_set_bit_no_ktsan(addr, nr);
+		kt_atomic_set_bit_no_ktsan(addr, nr);
 }
-EXPORT_SYMBOL(ktsan_bitop_set_bit);
+EXPORT_SYMBOL(ktsan_atomic_set_bit);
 
-void ktsan_bitop_clear_bit(void *addr, long nr)
+void ktsan_atomic_clear_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
 	ENTER(false);
-	kt_bitop_clear_bit(thr, pc, (uptr_t)addr, nr);
+	kt_atomic_clear_bit(thr, pc, addr, nr, mo);
 	LEAVE();
 
 	if (!event_handled)
-		kt_bitop_clear_bit_no_ktsan(addr, nr);
+		kt_atomic_clear_bit_no_ktsan(addr, nr);
 }
-EXPORT_SYMBOL(ktsan_bitop_clear_bit);
+EXPORT_SYMBOL(ktsan_atomic_clear_bit);
 
-void ktsan_bitop_change_bit(void *addr, long nr)
+void ktsan_atomic_change_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
 	ENTER(false);
-	kt_bitop_change_bit(thr, pc, (uptr_t)addr, nr);
+	kt_atomic_change_bit(thr, pc, addr, nr, mo);
 	LEAVE();
 
 	if (!event_handled)
-		kt_bitop_change_bit_no_ktsan(addr, nr);
+		kt_atomic_change_bit_no_ktsan(addr, nr);
 }
-EXPORT_SYMBOL(ktsan_bitop_change_bit);
+EXPORT_SYMBOL(ktsan_atomic_change_bit);
 
-int ktsan_bitop_test_and_set_bit(void *addr, long nr)
-{
-	int rv;
-
-	ENTER(false);
-	rv = kt_bitop_test_and_set_bit(thr, pc, (uptr_t)addr, nr);
-	LEAVE();
-
-	if (!event_handled)
-		return kt_bitop_test_and_set_bit_no_ktsan(addr, nr);
-	return rv;
-}
-EXPORT_SYMBOL(ktsan_bitop_test_and_set_bit);
-
-int ktsan_bitop_test_and_clear_bit(void *addr, long nr)
+int ktsan_atomic_fetch_set_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
 	int rv;
 
 	ENTER(false);
-	rv = kt_bitop_test_and_clear_bit(thr, pc, (uptr_t)addr, nr);
+	rv = kt_atomic_fetch_set_bit(thr, pc, addr, nr, mo);
 	LEAVE();
 
 	if (!event_handled)
-		return kt_bitop_test_and_clear_bit_no_ktsan(addr, nr);
+		return kt_atomic_fetch_set_bit_no_ktsan(addr, nr);
 	return rv;
 }
-EXPORT_SYMBOL(ktsan_bitop_test_and_clear_bit);
+EXPORT_SYMBOL(ktsan_atomic_fetch_set_bit);
 
-int ktsan_bitop_test_and_change_bit(void *addr, long nr)
+int ktsan_atomic_fetch_clear_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
 	int rv;
 
 	ENTER(false);
-	rv = kt_bitop_test_and_change_bit(thr, pc, (uptr_t)addr, nr);
+	rv = kt_atomic_fetch_clear_bit(thr, pc, addr, nr, mo);
 	LEAVE();
 
 	if (!event_handled)
-		return kt_bitop_test_and_change_bit_no_ktsan(addr, nr);
+		return kt_atomic_fetch_clear_bit_no_ktsan(addr, nr);
 	return rv;
 }
-EXPORT_SYMBOL(ktsan_bitop_test_and_change_bit);
+EXPORT_SYMBOL(ktsan_atomic_fetch_clear_bit);
 
-int ktsan_bitop_test_and_set_bit_lock(void *addr, long nr)
+int ktsan_atomic_fetch_change_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
 	int rv;
 
 	ENTER(false);
-	rv = kt_bitop_test_and_set_bit_lock(thr, pc, (uptr_t)addr, nr);
+	rv = kt_atomic_fetch_change_bit(thr, pc, addr, nr, mo);
 	LEAVE();
 
 	if (!event_handled)
-		return kt_bitop_test_and_set_bit_lock_no_ktsan(addr, nr);
+		return kt_atomic_fetch_change_bit_no_ktsan(addr, nr);
 	return rv;
 }
-EXPORT_SYMBOL(ktsan_bitop_test_and_set_bit_lock);
-
-void ktsan_bitop_clear_bit_unlock(void *addr, long nr)
-{
-	ENTER(false);
-	kt_bitop_clear_bit_unlock(thr, pc, (uptr_t)addr, nr);
-	LEAVE();
-
-	if (!event_handled)
-		kt_bitop_clear_bit_unlock_no_ktsan(addr, nr);
-}
-EXPORT_SYMBOL(ktsan_bitop_clear_bit_unlock);
+EXPORT_SYMBOL(ktsan_atomic_fetch_change_bit);
 
 void ktsan_preempt_add(int value)
 {
