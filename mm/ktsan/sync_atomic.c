@@ -9,18 +9,17 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 	    mo == ktsan_memory_order_acq_rel) {
 		kt_clk_acquire(&thr->clk, &thr->acquire_clk);
 
-		/* FIXME: rename? */
 		kt_trace_add_event(thr, kt_event_type_membar_acquire, pc);
 		kt_clk_tick(&thr->clk, thr->id);
 	}
 
-	/* TODO: membar here. */
+	/* Do full fence despite the actual memory order. */
+	kt_thread_fence_no_ktsan();
 
 	if (mo == ktsan_memory_order_release ||
 	    mo == ktsan_memory_order_acq_rel) {
 		kt_clk_acquire(&thr->release_clk, &thr->clk);
 
-		/* FIXME: rename? */
 		kt_trace_add_event(thr, kt_event_type_membar_release, pc);
 		kt_clk_tick(&thr->clk, thr->id);
 	}
