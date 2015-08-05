@@ -3,6 +3,13 @@
 #include <linux/atomic.h>
 #include <linux/bitops.h>
 
+#include <asm/barrier.h>
+
+void kt_thread_fence_no_ktsan(void)
+{
+	mb();
+}
+
 u8 kt_atomic8_load_no_ktsan(void *addr)
 {
 	return *(volatile u8 *)addr;
