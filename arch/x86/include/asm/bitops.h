@@ -166,7 +166,11 @@ static inline void __clear_bit(long nr, volatile unsigned long *addr)
  */
 static inline void __clear_bit_unlock(long nr, volatile unsigned long *addr)
 {
+#ifndef CONFIG_KTSAN
 	barrier();
+#else /* CONFIG_KTSAN */
+	ktsan_thread_fence(ktsan_memory_order_release);
+#endif /* CONFIG_KTSAN */
 	__clear_bit(nr, addr);
 }
 
