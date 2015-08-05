@@ -339,9 +339,7 @@ void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
-void kt_membar_acquire(kt_thr_t *thr, uptr_t pc);
-void kt_membar_release(kt_thr_t *thr, uptr_t pc);
-void kt_membar_acq_rel(kt_thr_t *thr, uptr_t pc);
+void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo);
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,
 		void *addr, u8 value, ktsan_memory_order_t mo);

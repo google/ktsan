@@ -29,17 +29,17 @@
 #define mb()								\
 ({									\
 	asm volatile("mfence":::"memory");				\
-	ktsan_membar_acq_rel();						\
+	ktsan_thread_fence(ktsan_memory_order_acq_rel);			\
 })
 #define rmb()								\
 ({									\
 	asm volatile("lfence":::"memory");				\
-	ktsan_membar_acquire();						\
+	ktsan_thread_fence(ktsan_memory_order_acquire);			\
 })
 #define wmb()								\
 ({									\
 	asm volatile("sfence":::"memory");				\
-	ktsan_membar_release();						\
+	ktsan_thread_fence(ktsan_memory_order_release);			\
 })
 #endif
 #endif
@@ -60,12 +60,12 @@
 #define smp_rmb()							\
 ({									\
 	dma_rmb();							\
-	ktsan_membar_acquire();						\
+	ktsan_thread_fence(ktsan_memory_order_acquire);			\
 })
 #define smp_wmb()							\
 ({									\
 	barrier();							\
-	ktsan_membar_release();						\
+	ktsan_thread_fence(ktsan_memory_order_release);			\
 })
 #endif
 #define smp_store_mb(var, value) do { (void)xchg(&var, value); } while (0)
@@ -80,8 +80,10 @@
 #define read_barrier_depends()		do { } while (0)
 #define smp_read_barrier_depends()	do { } while (0)
 #else /* CONFIG_KTSAN */
-#define read_barrier_depends()		ktsan_membar_acquire()
-#define smp_read_barrier_depends()	ktsan_membar_acquire()
+#define read_barrier_depends()		\
+	ktsan_thread_fence(ktsan_memory_order_acquire)
+#define smp_read_barrier_depends()	\
+	ktsan_thread_fence(ktsan_memory_order_acquire)
 #endif
 
 #ifndef CONFIG_KTSAN
@@ -155,8 +157,8 @@ do {									\
 #define smp_mb__before_atomic()	barrier()
 #define smp_mb__after_atomic()	barrier()
 #else /* CONFIG_KTSAN */
-#define smp_mb__before_atomic()	ktsan_membar_release()
-#define smp_mb__after_atomic()	ktsan_membar_acquire()
+#define smp_mb__before_atomic()	ktsan_thread_fence(ktsan_memory_order_release)
+#define smp_mb__after_atomic()	ktsan_thread_fence(ktsan_memory_order_acquire)
 #endif
 
 /*

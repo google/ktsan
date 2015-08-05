@@ -62,9 +62,7 @@ void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
 void ktsan_mtx_post_lock(void *addr, bool write, bool try);
 void ktsan_mtx_pre_unlock(void *addr, bool write);
 
-void ktsan_membar_acquire(void);
-void ktsan_membar_release(void);
-void ktsan_membar_acq_rel(void);
+void ktsan_thread_fence(ktsan_memory_order_t mo);
 
 void ktsan_atomic8_store(void *addr, u8 value, ktsan_memory_order_t mo);
 void ktsan_atomic16_store(void *addr, u16 value, ktsan_memory_order_t mo);
