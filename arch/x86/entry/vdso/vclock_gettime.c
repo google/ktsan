@@ -11,6 +11,9 @@
  * Check with readelf after changing.
  */
 
+/* Disable annotations in userspace code. */
+#undef CONFIG_KTSAN
+
 #include <uapi/linux/time.h>
 #include <asm/vgtod.h>
 #include <asm/hpet.h>

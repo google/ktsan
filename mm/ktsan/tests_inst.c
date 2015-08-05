@@ -478,9 +478,26 @@ static int rcu_write_under_lock(void *arg)
 	return 0;
 }
 
+static int rcu_init_ptr(void *arg)
+{
+	*((int *)arg + 4) = 1;
+	*(int **)arg = (int *)arg + 4;
+
+	return 0;
+}
+
 static int rcu_assign_ptr(void *arg)
 {
-	rcu_assign_pointer(*(int **)arg, NULL);
+	*((int *)arg + 8) = 4242;
+	rcu_assign_pointer(*(int **)arg, (int *)arg + 8);
+
+	return 0;
+}
+
+static int rcu_deref_ptr(void *arg)
+{
+	int *ptr = rcu_dereference(*(int **)arg);
+	*ptr = 42;
 
 	return 0;
 }
@@ -500,6 +517,9 @@ static void kt_test_rcu(void)
 
 	kt_test(kt_nop, rcu_read_under_lock, rcu_assign_ptr,
 		"rcu-read-assign", "no race expected");
+
+	kt_test(rcu_init_ptr, rcu_deref_ptr, rcu_assign_ptr,
+		"rcu-deref-assign", "no race expected");
 }
 
 /* Instrumented tests. */

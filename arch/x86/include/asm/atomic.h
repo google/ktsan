@@ -28,7 +28,7 @@ static __always_inline int atomic_read(const atomic_t *v)
 #ifndef CONFIG_KTSAN
 	return ACCESS_ONCE((v)->counter);
 #else
-	return ktsan_atomic32_read(v);
+	return ktsan_atomic32_load((void *)v, ktsan_memory_order_relaxed);
 #endif
 }
 
@@ -44,7 +44,7 @@ static __always_inline void atomic_set(atomic_t *v, int i)
 #ifndef CONFIG_KTSAN
 	v->counter = i;
 #else
-	ktsan_atomic32_set(v, i);
+	ktsan_atomic32_store((void *)v, i, ktsan_memory_order_relaxed);
 #endif
 }
 
@@ -62,7 +62,7 @@ static __always_inline void atomic_add(int i, atomic_t *v)
 		     : "+m" (v->counter)
 		     : "ir" (i));
 #else
-	ktsan_atomic32_add(v, i);
+	ktsan_atomic32_fetch_add((void *)v, i, ktsan_memory_order_relaxed);
 #endif
 }
 
@@ -80,7 +80,7 @@ static __always_inline void atomic_sub(int i, atomic_t *v)
 		     : "+m" (v->counter)
 		     : "ir" (i));
 #else
-	ktsan_atomic32_sub(v, i);
+	ktsan_atomic32_fetch_add((void *)v, -i, ktsan_memory_order_relaxed);
 #endif
 }
 
@@ -98,7 +98,8 @@ static __always_inline int atomic_sub_and_test(int i, atomic_t *v)
 #ifndef CONFIG_KTSAN
 	GEN_BINARY_RMWcc(LOCK_PREFIX "subl", v->counter, "er", i, "%0", "e");
 #else
-	return ktsan_atomic32_sub_and_test(v, i);
+	return (ktsan_atomic32_fetch_add((void *)v, -i,
+			ktsan_memory_order_acq_rel) - i) == 0;
 #endif
 }
 
@@ -114,7 +115,7 @@ static __always_inline void atomic_inc(atomic_t *v)
 	asm volatile(LOCK_PREFIX "incl %0"
 		     : "+m" (v->counter));
 #else
-	ktsan_atomic32_inc(v);
+	ktsan_atomic32_fetch_add((void *)v, 1, ktsan_memory_order_relaxed);
 #endif
 }
 
@@ -130,7 +131,7 @@ static __always_inline void atomic_dec(atomic_t *v)
 	asm volatile(LOCK_PREFIX "decl %0"
 		     : "+m" (v->counter));
 #else
-	ktsan_atomic32_dec(v);
+	ktsan_atomic32_fetch_add((void *)v, -1, ktsan_memory_order_relaxed);
 #endif
 }
 
@@ -147,7 +148,8 @@ static __always_inline int atomic_dec_and_test(atomic_t *v)
 #ifndef CONFIG_KTSAN
 	GEN_UNARY_RMWcc(LOCK_PREFIX "decl", v->counter, "%0", "e");
 #else
-	return ktsan_atomic32_dec_and_test(v);
+	return (ktsan_atomic32_fetch_add((void *)v, -1,
+			ktsan_memory_order_acq_rel) - 1) == 0;
 #endif
 }
 
@@ -164,7 +166,8 @@ static __always_inline int atomic_inc_and_test(atomic_t *v)
 #ifndef CONFIG_KTSAN
 	GEN_UNARY_RMWcc(LOCK_PREFIX "incl", v->counter, "%0", "e");
 #else
-	return ktsan_atomic32_inc_and_test(v);
+	return (ktsan_atomic32_fetch_add((void *)v, 1,
+			ktsan_memory_order_acq_rel) + 1) == 0;
 #endif
 }
 
@@ -182,7 +185,8 @@ static __always_inline int atomic_add_negative(int i, atomic_t *v)
 #ifndef CONFIG_KTSAN
 	GEN_BINARY_RMWcc(LOCK_PREFIX "addl", v->counter, "er", i, "%0", "s");
 #else
-	return ktsan_atomic32_add_negative(v, i);
+	return (ktsan_atomic32_fetch_add((void *)v, i,
+			ktsan_memory_order_acq_rel) + i) < 0;
 #endif
 }
 

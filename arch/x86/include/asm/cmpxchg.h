@@ -81,28 +81,34 @@ extern void __add_wrong_size(void)
 #define xchg(ptr, v)							\
 ({									\
 	__typeof__(*(ptr)) ret;						\
-	s64 ret64;							\
-	s32 ret32;							\
-	s16 ret16;							\
+	u64 ret64;							\
+	u32 ret32;							\
+	u16 ret16;							\
+	u8 ret8;							\
 									\
 	__typeof__(*(ptr)) lv = (v);					\
 									\
 	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
 		     sizeof(*(ptr)) != 4 &&				\
-	             sizeof(*(ptr)) != 2);				\
+		     sizeof(*(ptr)) != 2 &&				\
+	             sizeof(*(ptr)) != 1);				\
 									\
 	if (sizeof(*(ptr)) == 8) {					\
-		ret64 = ktsan_atomic64_xchg((void *)(ptr),		\
-					    *((s64 *)(&lv)));		\
+		ret64 = ktsan_atomic64_exchange((void *)(ptr),		\
+			*((u64 *)(&lv)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret64));			\
 	} else if (sizeof(*(ptr)) == 4) {				\
-		ret32 = ktsan_atomic32_xchg((void *)(ptr),		\
-					    *((s32 *)(&lv)));		\
+		ret32 = ktsan_atomic32_exchange((void *)(ptr),		\
+			*((u32 *)(&lv)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret32));			\
 	} else if (sizeof(*(ptr)) == 2) {				\
-		ret16 = ktsan_atomic16_xchg((void *)(ptr),		\
-					    *((s16 *)(&lv)));		\
+		ret16 = ktsan_atomic16_exchange((void *)(ptr),		\
+			*((u16 *)(&lv)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret16));			\
+	} else if (sizeof(*(ptr)) == 1) {				\
+		ret16 = ktsan_atomic8_exchange((void *)(ptr),		\
+			*((u8 *)(&lv)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret8));			\
 	}								\
 									\
 	ret;								\
@@ -184,10 +190,10 @@ extern void __add_wrong_size(void)
 #define cmpxchg(ptr, old, new)						\
 ({									\
 	__typeof__(*(ptr)) ret;						\
-	s64 ret64;							\
-	s32 ret32;							\
-	s16 ret16;							\
-	s8 ret8;							\
+	u64 ret64;							\
+	u32 ret32;							\
+	u16 ret16;							\
+	u8 ret8;							\
 									\
 	__typeof__(*(ptr)) lo = (old);					\
 	__typeof__(*(ptr)) ln = (new);					\
@@ -198,20 +204,24 @@ extern void __add_wrong_size(void)
 		     sizeof(*(ptr)) != 1);				\
 									\
 	if (sizeof(*(ptr)) == 8) {					\
-		ret64 = ktsan_atomic64_cmpxchg((void *)(ptr),		\
-				*((s64 *)(&lo)), *((s64 *)(&ln)));	\
+		ret64 = ktsan_atomic64_compare_exchange((void *)(ptr),	\
+				*((u64 *)(&lo)), *((u64 *)(&ln)),	\
+				ktsan_memory_order_acq_rel);		\
 		ret = *((__typeof__(ptr))(&ret64));			\
 	} else if (sizeof(*(ptr)) == 4) {				\
-		ret32 = ktsan_atomic32_cmpxchg((void *)(ptr),		\
-				*((s32 *)(&lo)), *((s32 *)(&ln)));	\
+		ret32 = ktsan_atomic32_compare_exchange((void *)(ptr),	\
+				*((u32 *)(&lo)), *((u32 *)(&ln)),	\
+				ktsan_memory_order_acq_rel);		\
 		ret = *((__typeof__(ptr))(&ret32));			\
 	} else if (sizeof(*(ptr)) == 2) {				\
-		ret16 = ktsan_atomic16_cmpxchg((void *)(ptr),		\
-				*((s16 *)(&lo)), *((s16 *)(&ln)));	\
+		ret16 = ktsan_atomic16_compare_exchange((void *)(ptr),	\
+				*((u16 *)(&lo)), *((u16 *)(&ln)),	\
+				ktsan_memory_order_acq_rel);		\
 		ret = *((__typeof__(ptr))(&ret16));			\
 	} else if (sizeof(*(ptr)) == 1) {				\
-		ret8 = ktsan_atomic8_cmpxchg((void *)(ptr),		\
-				*((s8 *)(&lo)), *((s8 *)(&ln)));	\
+		ret8 = ktsan_atomic8_compare_exchange((void *)(ptr),	\
+				*((u8 *)(&lo)), *((u8 *)(&ln)),		\
+				ktsan_memory_order_acq_rel);		\
 		ret = *((__typeof__(ptr))(&ret8));			\
 	}								\
 									\
@@ -244,28 +254,34 @@ extern void __add_wrong_size(void)
 #define xadd(ptr, inc)							\
 ({									\
 	__typeof__(*(ptr)) ret;						\
-	s64 ret64;							\
-	s32 ret32;							\
-	s16 ret16;							\
+	u64 ret64;							\
+	u32 ret32;							\
+	u16 ret16;							\
+	u8 ret8;							\
 									\
 	__typeof__(*(ptr)) li = (inc);					\
 									\
 	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
 		     sizeof(*(ptr)) != 4 &&				\
-		     sizeof(*(ptr)) != 2);				\
+		     sizeof(*(ptr)) != 2 &&				\
+		     sizeof(*(ptr)) != 1);				\
 									\
 	if (sizeof(*(ptr)) == 8) {					\
-		ret64 = ktsan_atomic64_xadd((void *)(ptr),		\
-					    *((s64 *)(&li)));		\
+		ret64 = ktsan_atomic64_fetch_add((void *)(ptr),		\
+			*((u64 *)(&li)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret64));			\
 	} else if (sizeof(*(ptr)) == 4) {				\
-		ret32 = ktsan_atomic32_xadd((void *)(ptr),		\
-					    *((s32 *)(&li)));		\
+		ret32 = ktsan_atomic32_fetch_add((void *)(ptr),		\
+			*((u32 *)(&li)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret32));			\
 	} else if (sizeof(*(ptr)) == 2) {				\
-		ret16 = ktsan_atomic16_xadd((void *)(ptr),		\
-					    *((s16 *)(&li)));		\
+		ret16 = ktsan_atomic16_fetch_add((void *)(ptr),		\
+			*((u16 *)(&li)), ktsan_memory_order_acq_rel);	\
 		ret = *((__typeof__(ptr))(&ret16));			\
+	} else if (sizeof(*(ptr)) == 1) {				\
+		ret8 = ktsan_atomic8_fetch_add((void *)(ptr),		\
+			*((u8 *)(&li)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret8));			\
 	}								\
 									\
 	ret;								\

@@ -3,182 +3,139 @@
 #include <linux/atomic.h>
 #include <linux/bitops.h>
 
-int kt_atomic32_read_no_ktsan(const void *addr)
+#include <asm/barrier.h>
+
+void kt_thread_fence_no_ktsan(void)
 {
-	return atomic_read((const atomic_t *)addr);
+	mb();
 }
 
-void kt_atomic32_set_no_ktsan(void *addr, int value)
+u8 kt_atomic8_load_no_ktsan(void *addr)
 {
-	atomic_set((atomic_t *)addr, value);
+	return *(volatile u8 *)addr;
 }
 
-void kt_atomic32_add_no_ktsan(void *addr, int value)
+u16 kt_atomic16_load_no_ktsan(void *addr)
 {
-	atomic_add(value, (atomic_t *)addr);
+	return *(volatile u16 *)addr;
 }
 
-void kt_atomic32_sub_no_ktsan(void *addr, int value)
+u32 kt_atomic32_load_no_ktsan(void *addr)
 {
-	atomic_sub(value, (atomic_t *)addr);
+	return *(volatile u32 *)addr;
 }
 
-int kt_atomic32_sub_and_test_no_ktsan(void *addr, int value)
+u64 kt_atomic64_load_no_ktsan(void *addr)
 {
-	return atomic_sub_and_test(value, (atomic_t *)addr);
+	return *(volatile u64 *)addr;
 }
 
-int kt_atomic32_add_negative_no_ktsan(void *addr, int value)
+void kt_atomic8_store_no_ktsan(void *addr, u8 value)
 {
-	return atomic_add_negative(value, (atomic_t *)addr);
+	*(volatile u8 *)addr = value;
 }
 
-void kt_atomic32_inc_no_ktsan(void *addr)
+void kt_atomic16_store_no_ktsan(void *addr, u16 value)
 {
-	atomic_inc((atomic_t *)addr);
+	*(volatile u16 *)addr = value;
 }
 
-void kt_atomic32_dec_no_ktsan(void *addr)
+void kt_atomic32_store_no_ktsan(void *addr, u32 value)
 {
-	atomic_dec((atomic_t *)addr);
+	*(volatile u32 *)addr = value;
 }
 
-int kt_atomic32_inc_and_test_no_ktsan(void *addr)
+void kt_atomic64_store_no_ktsan(void *addr, u64 value)
 {
-	return atomic_inc_and_test((atomic_t *)addr);
+	*(volatile u64 *)addr = value;
 }
 
-int kt_atomic32_dec_and_test_no_ktsan(void *addr)
+u8 kt_atomic8_exchange_no_ktsan(void *addr, u8 value)
 {
-	return atomic_dec_and_test((atomic_t *)addr);
+	return xchg((u8 *)addr, value);
 }
 
-long kt_atomic64_read_no_ktsan(const void *addr)
+u16 kt_atomic16_exchange_no_ktsan(void *addr, u16 value)
 {
-	return atomic64_read((const atomic64_t *)addr);
+	return xchg((u16 *)addr, value);
 }
 
-void kt_atomic64_set_no_ktsan(void *addr, long value)
+u32 kt_atomic32_exchange_no_ktsan(void *addr, u32 value)
 {
-	atomic64_set((atomic64_t *)addr, value);
+	return xchg((u32 *)addr, value);
 }
 
-void kt_atomic64_add_no_ktsan(void *addr, long value)
+u64 kt_atomic64_exchange_no_ktsan(void *addr, u64 value)
 {
-	atomic64_add(value, (atomic64_t *)addr);
+	return xchg((u64 *)addr, value);
 }
 
-void kt_atomic64_sub_no_ktsan(void *addr, long value)
+u8 kt_atomic8_compare_exchange_no_ktsan(void *addr, u8 old, u8 new)
 {
-	atomic64_sub(value, (atomic64_t *)addr);
+	return cmpxchg((u8 *)addr, old, new);
 }
 
-int kt_atomic64_sub_and_test_no_ktsan(void *addr, long value)
+u16 kt_atomic16_compare_exchange_no_ktsan(void *addr, u16 old, u16 new)
 {
-	return atomic64_sub_and_test(value, (atomic64_t *)addr);
+	return cmpxchg((u16 *)addr, old, new);
 }
 
-int kt_atomic64_add_negative_no_ktsan(void *addr, long value)
+u32 kt_atomic32_compare_exchange_no_ktsan(void *addr, u32 old, u32 new)
 {
-	return atomic64_add_negative(value, (atomic64_t *)addr);
+	return cmpxchg((u32 *)addr, old, new);
 }
 
-void kt_atomic64_inc_no_ktsan(void *addr)
+u64 kt_atomic64_compare_exchange_no_ktsan(void *addr, u64 old, u64 new)
 {
-	atomic64_inc((atomic64_t *)addr);
+	return cmpxchg((u64 *)addr, old, new);
 }
 
-void kt_atomic64_dec_no_ktsan(void *addr)
+u8 kt_atomic8_fetch_add_no_ktsan(void *addr, u8 value)
 {
-	atomic64_dec((atomic64_t *)addr);
+	return xadd((u8 *)addr, value);
 }
 
-int kt_atomic64_inc_and_test_no_ktsan(void *addr)
+u16 kt_atomic16_fetch_add_no_ktsan(void *addr, u16 value)
 {
-	return atomic64_inc_and_test((atomic64_t *)addr);
+	return xadd((u16 *)addr, value);
 }
 
-int kt_atomic64_dec_and_test_no_ktsan(void *addr)
+u32 kt_atomic32_fetch_add_no_ktsan(void *addr, u32 value)
 {
-	return atomic64_dec_and_test((atomic64_t *)addr);
+	return xadd((u32 *)addr, value);
 }
 
-s64 kt_atomic64_xchg_no_ktsan(void *addr, s64 value)
+u64 kt_atomic64_fetch_add_no_ktsan(void *addr, u64 value)
 {
-	return xchg((s64 *)addr, value);
+	return xadd((u64 *)addr, value);
 }
 
-s32 kt_atomic32_xchg_no_ktsan(void *addr, s32 value)
-{
-	return xchg((s32 *)addr, value);
-}
-
-s16 kt_atomic16_xchg_no_ktsan(void *addr, s16 value)
-{
-	return xchg((s16 *)addr, value);
-}
-
-s64 kt_atomic64_cmpxchg_no_ktsan(void *addr, s64 old, s64 new)
-{
-	return cmpxchg((s64 *)addr, old, new);
-}
-
-s32 kt_atomic32_cmpxchg_no_ktsan(void *addr, s32 old, s32 new)
-{
-	return cmpxchg((s32 *)addr, old, new);
-}
-
-s16 kt_atomic16_cmpxchg_no_ktsan(void *addr, s16 old, s16 new)
-{
-	return cmpxchg((s16 *)addr, old, new);
-}
-
-s8 kt_atomic8_cmpxchg_no_ktsan(void *addr, s8 old, s8 new)
-{
-	return cmpxchg((s8 *)addr, old, new);
-}
-
-s64 kt_atomic64_xadd_no_ktsan(void *addr, s64 value)
-{
-	return xadd((s64 *)addr, value);
-}
-
-s32 kt_atomic32_xadd_no_ktsan(void *addr, s32 value)
-{
-	return xadd((s32 *)addr, value);
-}
-
-s16 kt_atomic16_xadd_no_ktsan(void *addr, s16 value)
-{
-	return xadd((s16 *)addr, value);
-}
-
-void kt_bitop_set_bit_no_ktsan(void *addr, long nr)
+void kt_atomic_set_bit_no_ktsan(void *addr, long nr)
 {
 	set_bit(nr, addr);
 }
 
-void kt_bitop_clear_bit_no_ktsan(void *addr, long nr)
+void kt_atomic_clear_bit_no_ktsan(void *addr, long nr)
 {
 	clear_bit(nr, addr);
 }
 
-void kt_bitop_change_bit_no_ktsan(void *addr, long nr)
+void kt_atomic_change_bit_no_ktsan(void *addr, long nr)
 {
 	change_bit(nr, addr);
 }
 
-int kt_bitop_test_and_set_bit_no_ktsan(void *addr, long nr)
+int kt_atomic_fetch_set_bit_no_ktsan(void *addr, long nr)
 {
 	return test_and_set_bit(nr, addr);
 }
 
-int kt_bitop_test_and_clear_bit_no_ktsan(void *addr, long nr)
+int kt_atomic_fetch_clear_bit_no_ktsan(void *addr, long nr)
 {
 	return test_and_clear_bit(nr, addr);
 }
 
-int kt_bitop_test_and_change_bit_no_ktsan(void *addr, long nr)
+int kt_atomic_fetch_change_bit_no_ktsan(void *addr, long nr)
 {
 	return test_and_change_bit(nr, addr);
 }
