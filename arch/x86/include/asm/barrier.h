@@ -112,25 +112,38 @@ do {									\
 
 #else /* CONFIG_KTSAN */
 
-/* TODO(xairy): use ktsan_atomic_store. */
 #define smp_store_release(p, v)						\
 do {									\
 	typeof(p) ___p1 = (p);						\
+	typeof(v) ___v1 = (v);						\
+									\
 	compiletime_assert_atomic_type(*___p1);				\
-	ktsan_sync_release((void *)___p1);				\
-	asm volatile("mfence":::"memory");				\
-	ACCESS_ONCE(*___p1) = (v);					\
+									\
+	switch (sizeof(*___p1)) {					\
+	case 1: ktsan_atomic8_store(___p1, *((u8 *)&___v1), ktsan_memory_order_release); break;	\
+	case 2: ktsan_atomic16_store(___p1, *((u16 *)&___v1), ktsan_memory_order_release); break;	\
+	case 4: ktsan_atomic32_store(___p1, *((u32 *)&___v1), ktsan_memory_order_release); break;	\
+	case 8: ktsan_atomic64_store(___p1, *((u64 *)&___v1), ktsan_memory_order_release); break;	\
+	default: BUG(); break;						\
+	}								\
 } while (0)
 
-/* TODO(xairy): use ktsan_atomic_store. */
 #define smp_load_acquire(p)						\
 ({									\
 	typeof(p) ___p1 = (p);						\
-	typeof(*p) ___p2 = ACCESS_ONCE(*___p1);				\
+	typeof(*p) ___r;						\
+									\
 	compiletime_assert_atomic_type(*___p1);				\
-	asm volatile("mfence":::"memory");				\
-	ktsan_sync_acquire((void *)___p1);				\
-	___p2;								\
+									\
+	switch (sizeof(*___p1)) {					\
+	case 1: ___r = ktsan_atomic8_load(___p1, ktsan_memory_order_release); break;	\
+	case 2: ___r = ktsan_atomic16_load(___p1, ktsan_memory_order_release); break;	\
+	case 4: ___r = ktsan_atomic32_load(___p1, ktsan_memory_order_release); break;	\
+	case 8: ___r = ktsan_atomic64_load(___p1, ktsan_memory_order_release); break;	\
+	default: BUG(); break;						\
+	}								\
+									\
+	___r;								\
 })
 
 #endif /* CONFIG_KTSAN */
