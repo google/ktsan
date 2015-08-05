@@ -3,26 +3,27 @@
 #include <linux/atomic.h>
 #include <linux/spinlock.h>
 
-void kt_membar_acquire(kt_thr_t *thr, uptr_t pc)
+void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 {
-	kt_clk_acquire(&thr->clk, &thr->acquire_clk);
+	if (mo == ktsan_memory_order_acquire ||
+	    mo == ktsan_memory_order_acq_rel) {
+		kt_clk_acquire(&thr->clk, &thr->acquire_clk);
 
-	kt_trace_add_event(thr, kt_event_type_membar_acquire, pc);
-	kt_clk_tick(&thr->clk, thr->id);
-}
+		/* FIXME: rename? */
+		kt_trace_add_event(thr, kt_event_type_membar_acquire, pc);
+		kt_clk_tick(&thr->clk, thr->id);
+	}
 
-void kt_membar_release(kt_thr_t *thr, uptr_t pc)
-{
-	kt_clk_acquire(&thr->release_clk, &thr->clk);
+	/* TODO: membar here. */
 
-	kt_trace_add_event(thr, kt_event_type_membar_release, pc);
-	kt_clk_tick(&thr->clk, thr->id);
-}
+	if (mo == ktsan_memory_order_release ||
+	    mo == ktsan_memory_order_acq_rel) {
+		kt_clk_acquire(&thr->release_clk, &thr->clk);
 
-void kt_membar_acq_rel(kt_thr_t *thr, uptr_t pc)
-{
-	kt_membar_acquire(thr, pc);
-	kt_membar_release(thr, pc);
+		/* FIXME: rename? */
+		kt_trace_add_event(thr, kt_event_type_membar_release, pc);
+		kt_clk_tick(&thr->clk, thr->id);
+	}
 }
 
 #define KT_ATOMIC_OP(op, ad, mo, read, write)				\

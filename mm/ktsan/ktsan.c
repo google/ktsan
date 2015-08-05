@@ -276,29 +276,13 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
-void ktsan_membar_acquire(void)
+void ktsan_thread_fence(ktsan_memory_order_t mo)
 {
 	ENTER(false);
-	kt_membar_acquire(thr, pc);
+	kt_thread_fence(thr, pc, mo);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_membar_acquire);
-
-void ktsan_membar_release(void)
-{
-	ENTER(false);
-	kt_membar_release(thr, pc);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_membar_release);
-
-void ktsan_membar_acq_rel(void)
-{
-	ENTER(false);
-	kt_membar_acq_rel(thr, pc);
-	LEAVE();
-}
-EXPORT_SYMBOL(ktsan_membar_acq_rel);
+EXPORT_SYMBOL(ktsan_thread_fence);
 
 void ktsan_atomic8_store(void *addr, u8 value, ktsan_memory_order_t mo)
 {
