@@ -9,10 +9,6 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
-typedef signed char s8;
-typedef signed short s16;
-typedef signed int s32;
-typedef signed long long s64;
 typedef _Bool bool;
 typedef unsigned gfp_t;
 struct page;
@@ -99,20 +95,13 @@ u16 ktsan_atomic16_fetch_add(void *addr, u16 value, ktsan_memory_order_t mo);
 u32 ktsan_atomic32_fetch_add(void *addr, u32 value, ktsan_memory_order_t mo);
 u64 ktsan_atomic64_fetch_add(void *addr, u64 value, ktsan_memory_order_t mo);
 
-/* FIXME(xairy): make annotations standard. */
+void ktsan_atomic_set_bit(void *addr, long nr, ktsan_memory_order_t mo);
+void ktsan_atomic_clear_bit(void *addr, long nr, ktsan_memory_order_t mo);
+void ktsan_atomic_change_bit(void *addr, long nr, ktsan_memory_order_t mo);
 
-void ktsan_bitop_set_bit(void *addr, long nr);
-void ktsan_bitop_clear_bit(void *addr, long nr);
-void ktsan_bitop_change_bit(void *addr, long nr);
-
-int ktsan_bitop_test_and_set_bit(void *addr, long nr);
-int ktsan_bitop_test_and_clear_bit(void *addr, long nr);
-int ktsan_bitop_test_and_change_bit(void *addr, long nr);
-
-int ktsan_bitop_test_and_set_bit_lock(void *addr, long nr);
-void ktsan_bitop_clear_bit_unlock(void *addr, long nr);
-
-/* FIXME(xairy): ^^^ */
+int ktsan_atomic_fetch_set_bit(void *addr, long nr, ktsan_memory_order_t mo);
+int ktsan_atomic_fetch_clear_bit(void *addr, long nr, ktsan_memory_order_t mo);
+int ktsan_atomic_fetch_change_bit(void *addr, long nr, ktsan_memory_order_t mo);
 
 void ktsan_preempt_add(int value);
 void ktsan_preempt_sub(int value);

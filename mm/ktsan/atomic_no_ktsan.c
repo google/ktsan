@@ -103,44 +103,32 @@ u64 kt_atomic64_fetch_add_no_ktsan(void *addr, u64 value)
 	return xadd((u64 *)addr, value);
 }
 
-/* FIXME(xairy). */
-
-void kt_bitop_set_bit_no_ktsan(void *addr, long nr)
+void kt_atomic_set_bit_no_ktsan(void *addr, long nr)
 {
 	set_bit(nr, addr);
 }
 
-void kt_bitop_clear_bit_no_ktsan(void *addr, long nr)
+void kt_atomic_clear_bit_no_ktsan(void *addr, long nr)
 {
 	clear_bit(nr, addr);
 }
 
-void kt_bitop_change_bit_no_ktsan(void *addr, long nr)
+void kt_atomic_change_bit_no_ktsan(void *addr, long nr)
 {
 	change_bit(nr, addr);
 }
 
-int kt_bitop_test_and_set_bit_no_ktsan(void *addr, long nr)
+int kt_atomic_fetch_set_bit_no_ktsan(void *addr, long nr)
 {
 	return test_and_set_bit(nr, addr);
 }
 
-int kt_bitop_test_and_clear_bit_no_ktsan(void *addr, long nr)
+int kt_atomic_fetch_clear_bit_no_ktsan(void *addr, long nr)
 {
 	return test_and_clear_bit(nr, addr);
 }
 
-int kt_bitop_test_and_change_bit_no_ktsan(void *addr, long nr)
+int kt_atomic_fetch_change_bit_no_ktsan(void *addr, long nr)
 {
 	return test_and_change_bit(nr, addr);
-}
-
-int kt_bitop_test_and_set_bit_lock_no_ktsan(void *addr, long nr)
-{
-	return test_and_set_bit_lock(nr, addr);
-}
-
-void kt_bitop_clear_bit_unlock_no_ktsan(void *addr, long nr)
-{
-	clear_bit_unlock(nr, addr);
 }
