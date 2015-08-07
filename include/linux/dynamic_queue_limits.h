@@ -73,7 +73,7 @@ static inline void dql_queued(struct dql *dql, unsigned int count)
 {
 	BUG_ON(count > DQL_MAX_OBJECT);
 
-	dql->last_obj_cnt = count;
+	WRITE_ONCE(dql->last_obj_cnt, count);
 
 	/* We want to force a write first, so that cpu do not attempt
 	 * to get cache line containing last_obj_cnt, num_queued, adj_limit
