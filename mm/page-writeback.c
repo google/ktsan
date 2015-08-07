@@ -2785,7 +2785,14 @@ EXPORT_SYMBOL(__test_set_page_writeback);
  */
 int mapping_tagged(struct address_space *mapping, int tag)
 {
-	return radix_tree_tagged(&mapping->page_tree, tag);
+	int rv;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mapping->tree_lock, flags);
+	rv = radix_tree_tagged(&mapping->page_tree, tag);
+	spin_unlock_irqrestore(&mapping->tree_lock, flags);
+
+	return rv;
 }
 EXPORT_SYMBOL(mapping_tagged);
 
