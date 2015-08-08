@@ -2788,6 +2788,10 @@ int mapping_tagged(struct address_space *mapping, int tag)
 	int rv;
 	unsigned long flags;
 
+	/* The spinlock is an overkill here, since we're just checking
+	   a flag and adding READ_ONCE/WRITE_ONCE is enough, but the racy
+	   access happens in radix_tree_tagged and radix tree is documented
+	   to have no explicit locking. */
 	spin_lock_irqsave(&mapping->tree_lock, flags);
 	rv = radix_tree_tagged(&mapping->page_tree, tag);
 	spin_unlock_irqrestore(&mapping->tree_lock, flags);
