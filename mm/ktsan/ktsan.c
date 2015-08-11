@@ -136,6 +136,14 @@ void ktsan_init(void)
 		 KT_MAX_MEMBLOCK_COUNT * sizeof(kt_tab_memblock_t) +
 		 KT_MAX_PERCPU_SYNC_COUNT * sizeof(kt_percpu_sync_t) +
 		 KT_MAX_THREAD_COUNT * sizeof(kt_thr_t)) >> 30);
+	pr_err("             syncs: %lu MB\n",
+		(KT_MAX_SYNC_COUNT * sizeof(kt_tab_sync_t)) >> 20);
+	pr_err("          memblock: %lu MB\n",
+		(KT_MAX_MEMBLOCK_COUNT * sizeof(kt_tab_memblock_t)) >> 20);
+	pr_err("      percpu syncs: %lu MB\n",
+		(KT_MAX_PERCPU_SYNC_COUNT * sizeof(kt_percpu_sync_t)) >> 20);
+	pr_err("              thrs: %lu MB\n",
+		(KT_MAX_THREAD_COUNT * sizeof(kt_thr_t)) >> 20);
 }
 
 void ktsan_print_diagnostics(void)
