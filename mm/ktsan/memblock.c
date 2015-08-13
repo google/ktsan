@@ -23,14 +23,14 @@ uptr_t kt_memblock_addr(uptr_t addr)
 	   sync objects when a slab object is freed. */
 	if (PageSlab(page)) {
 		cache = page->slab_cache;
+		BUG_ON(addr < (uptr_t)page->s_mem);
 		offset = addr - (uptr_t)page->s_mem;
 		idx = reciprocal_divide(offset, cache->reciprocal_buffer_size);
 		obj_addr = (uptr_t)(page->s_mem + cache->size * idx);
 		return obj_addr;
 	}
 
-	/* Add 1 to avoid collisions with the first object on a slab page. */
-	return (uptr_t)page_address(page) + 1;
+	return (uptr_t)page_address(page);
 }
 
 static kt_tab_memblock_t *kt_memblock_ensure_created(kt_thr_t *thr, uptr_t addr)
