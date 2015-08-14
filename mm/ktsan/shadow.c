@@ -34,6 +34,8 @@ void ktsan_free_page(struct page *page, unsigned int order)
 	int pages = 1 << order;
 	int i;
 
+	ktsan_memblock_free(page_address(page), PAGE_SIZE << order);
+
 	if (!page[0].shadow)
 		return;
 

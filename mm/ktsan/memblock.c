@@ -2,6 +2,7 @@
 
 #include <linux/list.h>
 #include <linux/mm.h>
+#include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/slab_def.h>
 #include <linux/spinlock.h>
@@ -17,14 +18,19 @@ uptr_t kt_memblock_addr(uptr_t addr)
 	if (!virt_addr_valid(addr))
 		return 0;
 	page = virt_to_head_page((void *)addr);
-	if (!PageSlab(page))
-		return 0;
-	cache = page->slab_cache;
-	offset = addr - (uptr_t)page->s_mem;
-	idx = reciprocal_divide(offset, cache->reciprocal_buffer_size);
-	obj_addr = (uptr_t)(page->s_mem + cache->size * idx);
 
-	return obj_addr;
+	/* If the page is a slab page, we want to delete
+	   sync objects when a slab object is freed. */
+	if (PageSlab(page)) {
+		cache = page->slab_cache;
+		BUG_ON(addr < (uptr_t)page->s_mem);
+		offset = addr - (uptr_t)page->s_mem;
+		idx = reciprocal_divide(offset, cache->reciprocal_buffer_size);
+		obj_addr = (uptr_t)(page->s_mem + cache->size * idx);
+		return obj_addr;
+	}
+
+	return (uptr_t)page_address(page);
 }
 
 static kt_tab_memblock_t *kt_memblock_ensure_created(kt_thr_t *thr, uptr_t addr)
