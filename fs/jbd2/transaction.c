@@ -277,7 +277,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
 		rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
 
 alloc_transaction:
-	if (!journal->j_running_transaction) {
+	if (!READ_ONCE(journal->j_running_transaction)) {
 		/*
 		 * If __GFP_FS is not present, then we may be being called from
 		 * inside the fs writeback layer, so we MUST NOT fail.
@@ -1349,7 +1349,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
 	if (jh->b_transaction == transaction && jh->b_jlist == BJ_Metadata) {
 		JBUFFER_TRACE(jh, "fastpath");
 		if (unlikely(jh->b_transaction !=
-			     journal->j_running_transaction)) {
+			     READ_ONCE(journal->j_running_transaction))) {
 			printk(KERN_ERR "JBD2: %s: "
 			       "jh->b_transaction (%llu, %p, %u) != "
 			       "journal->j_running_transaction (%p, %u)\n",
