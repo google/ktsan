@@ -148,27 +148,63 @@ void ktsan_init(void)
 
 void ktsan_print_diagnostics(void)
 {
+	kt_time_t clk;
+
 	ENTER(false);
+
+	pr_err("# # # # # # # # # # ktsan diagnostics # # # # # # # # # #\n");
+
+	pr_err("\n");
+
+	if (thr != NULL) {
+		clk = kt_clk_get(&thr->clk, thr->id);
+		kt_trace_dump(&thr->trace, (clk - 512) % KT_TRACE_SIZE, clk);
+		pr_err("\n");
+	}
+
 	LEAVE();
 
-	pr_err("#! ktsan runtime is %s!\n",
-		event_handled ? "active" : "not active");
+	pr_err("Runtime:\n");
+	pr_err(" runtime active:     %s\n", event_handled ? "+" : "-");
 	if (!event_handled) {
-		pr_err("  kt_ctx.enabled:      %s\n",
+		pr_err(" kt_ctx.enabled:     %s\n",
 			(kt_ctx.enabled) ? "+" : "-");
-		pr_err("  !IN_INTERRUPT():     %s\n",
+		pr_err(" !IN_INTERRUPT():    %s\n",
 			(!IN_INTERRUPT()) ? "+" : "-");
-		pr_err("  current:             %s\n",
+		pr_err(" current:            %s\n",
 			(current) ? "+" : "-");
-		pr_err("  current->ktsan.thr : %s\n",
+		pr_err(" current->ktsan.thr: %s\n",
 			(current->ktsan.thr) ? "+" : "-");
-		pr_err("  thr->cpu != NULL:    %s\n",
-			(thr->cpu != NULL) ? "+" : "-");
-		pr_err("  kt_inside_was == 0:  %s\n",\
+		if (thr != NULL) {
+			pr_err(" thr->cpu != NULL:   %s\n",
+				(thr->cpu != NULL) ? "+" : "-");
+		}
+		pr_err(" kt_inside_was == 0: %s\n",
 			(kt_inside_was == 0) ? "+" : "-");
-		pr_err("Stack trace:\n");
-		kt_stack_print_current(_RET_IP_);
 	}
+
+	pr_err("\n");
+
+	if (thr != NULL) {
+		pr_err("Thread:\n");
+		pr_err(" thr->id:            %d\n", thr->id);
+		pr_err(" thr->kid:           %d\n", thr->kid);
+		pr_err(" thr->inside:        %d\n",
+			kt_atomic32_load_no_ktsan((void *)&thr->inside));
+		pr_err(" thr->call_depth:    %d\n", thr->call_depth);
+		pr_err(" thr->report_depth:  %d\n", thr->report_depth);
+		pr_err(" thr->preempt_depth: %d\n", thr->preempt_depth);
+		pr_err(" thr->irqs_disabled: %s\n",
+			thr->irqs_disabled ? "+" : "-");
+		pr_err("\n");
+	}
+
+	pr_err("Stack trace:\n");
+	kt_stack_print_current(_RET_IP_);
+
+	pr_err("\n");
+
+	pr_err("# # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n");
 }
 
 /* FIXME(xairy): not sure if this is the best place for this
