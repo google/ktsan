@@ -300,6 +300,14 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 
+void ktsan_mtx_post_unlock(void *addr, bool write)
+{
+	ENTER(false);
+	kt_mtx_post_unlock(thr, pc, (uptr_t)addr, write);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_mtx_post_unlock);
+
 void ktsan_thread_fence(ktsan_memory_order_t mo)
 {
 	ENTER(false);
