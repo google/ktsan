@@ -39,3 +39,8 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 	sync->lock_tid = -1;
 	spin_unlock(&sync->tab.lock);
 }
+
+void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
+{
+	/* TODO. */
+}

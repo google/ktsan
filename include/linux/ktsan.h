@@ -64,6 +64,7 @@ void ktsan_sync_release(void *addr);
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
 void ktsan_mtx_post_lock(void *addr, bool write, bool try);
 void ktsan_mtx_pre_unlock(void *addr, bool write);
+void ktsan_mtx_post_unlock(void *addr, bool write);
 
 void ktsan_thread_fence(ktsan_memory_order_t mo);
 
