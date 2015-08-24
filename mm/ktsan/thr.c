@@ -100,6 +100,10 @@ void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 	kt_clk_tick(&thr->clk, thr->id);
 
 	thr->cpu = this_cpu_ptr(kt_ctx.cpus);
+
+#if KT_DEBUG
+	kt_stack_save_current(&thr->start_stack, _RET_IP_);
+#endif
 }
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
