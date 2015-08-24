@@ -258,21 +258,21 @@ void ktsan_thr_stop(void)
 	LEAVE();
 }
 
-void ktsan_event_disable(void)
+void ktsan_thr_event_disable(void)
 {
 	ENTER(false, true);
-	kt_event_disable(thr);
+	kt_thr_event_disable(thr);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_event_disable);
+EXPORT_SYMBOL(ktsan_thr_event_disable);
 
-void ktsan_event_enable(void)
+void ktsan_thr_event_enable(void)
 {
 	ENTER(false, true);
-	kt_event_enable(thr);
+	kt_thr_event_enable(thr);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_event_enable);
+EXPORT_SYMBOL(ktsan_thr_event_enable);
 
 void ktsan_report_disable(void)
 {

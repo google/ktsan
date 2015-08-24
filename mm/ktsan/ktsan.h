@@ -333,6 +333,9 @@ kt_thr_t *kt_thr_get(int id);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
+void kt_thr_event_disable(kt_thr_t *thr);
+void kt_thr_event_enable(kt_thr_t *thr);
+
 /* Synchronization. */
 
 kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr);
@@ -476,11 +479,6 @@ void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 
 void kt_func_entry(kt_thr_t *thr, uptr_t pc);
 void kt_func_exit(kt_thr_t *thr);
-
-/* Events (memory accesses, sync events, etc). */
-
-void kt_event_disable(kt_thr_t *thr);
-void kt_event_enable(kt_thr_t *thr);
 
 /* Reports. */
 

@@ -96,7 +96,7 @@ static inline int __raw_spin_trylock(raw_spinlock_t *lock)
 		ktsan_mtx_post_lock(lock, true, true);
 		return 1;
 	}
-	ktsan_event_enable();
+	ktsan_thr_event_enable();
 	preempt_enable();
 	return 0;
 }
@@ -208,7 +208,7 @@ static inline int __raw_spin_trylock_bh(raw_spinlock_t *lock)
 		ktsan_mtx_post_lock(lock, true, true);
 		return 1;
 	}
-	ktsan_event_enable();
+	ktsan_thr_event_enable();
 	__local_bh_enable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
 	return 0;
 }
