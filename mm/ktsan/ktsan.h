@@ -199,6 +199,7 @@ struct kt_thr_s {
 	kt_trace_t		trace;
 	int			call_depth;
 	struct list_head	quarantine_list;
+	int			event_depth;
 	int			report_depth;
 	int			preempt_depth;
 	bool			irqs_disabled;
@@ -469,6 +470,11 @@ void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 
 void kt_func_entry(kt_thr_t *thr, uptr_t pc);
 void kt_func_exit(kt_thr_t *thr);
+
+/* Events (memory accesses, sync events, etc). */
+
+void kt_event_disable(kt_thr_t *thr);
+void kt_event_enable(kt_thr_t *thr);
 
 /* Reports. */
 

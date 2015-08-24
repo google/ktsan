@@ -44,6 +44,9 @@ void ktsan_init(void);
 
 void ktsan_print_diagnostics(void);
 
+void ktsan_event_disable(void);
+void ktsan_event_enable(void);
+
 void ktsan_report_disable(void);
 void ktsan_report_enable(void);
 
