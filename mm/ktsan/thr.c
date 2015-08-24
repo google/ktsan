@@ -49,6 +49,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
 	INIT_LIST_HEAD(&new->quarantine_list);
+	new->event_depth = 0;
 	new->report_depth = 0;
 	new->preempt_depth = 0;
 	new->irqs_disabled = false;

@@ -1,6 +1,7 @@
 obj-y := access.o 		\
 	 alloc.o 		\
 	 clk.o 			\
+	 event.o 		\
 	 func.o 		\
 	 ktsan.o 		\
 	 memblock.o 		\
@@ -24,6 +25,7 @@ CFLAGS_REMOVE_access.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_alloc.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_built-in.o		= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_clk.o			= -pg -O0 -O1 -O2
+CFLAGS_REMOVE_event.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_func.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_ktsan.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_memblock.o		= -pg -O0 -O1 -O2
@@ -47,6 +49,7 @@ CFLAGS_access.o			= -O3
 CFLAGS_alloc.o			= -O3
 CFLAGS_built-in.o		= -O3
 CFLAGS_clk.o			= -O3
+CFLAGS_event.o			= -O3
 CFLAGS_func.o			= -O3
 CFLAGS_ktsan.o			= -O3
 CFLAGS_memblock.o		= -O3
