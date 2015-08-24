@@ -124,3 +124,14 @@ void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
 {
 	kt_clk_acquire(&other->clk, &thr->clk);
 }
+
+void kt_thr_event_disable(kt_thr_t *thr)
+{
+	thr->event_depth++;
+}
+
+void kt_thr_event_enable(kt_thr_t *thr)
+{
+	thr->event_depth--;
+	BUG_ON(thr->event_depth < 0);
+}

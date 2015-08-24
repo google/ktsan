@@ -921,7 +921,7 @@ int __sched mutex_trylock(struct mutex *lock)
 		mutex_set_owner(lock);
 		ktsan_mtx_post_lock(lock, true, true);
 	} else {
-		ktsan_event_enable();
+		ktsan_thr_event_enable();
 	}
 
 	return ret;

@@ -125,7 +125,7 @@ static inline int __raw_read_trylock(rwlock_t *lock)
 		ktsan_mtx_post_lock(lock, false, true);
 		return 1;
 	}
-	ktsan_event_enable();
+	ktsan_thr_event_enable();
 	preempt_enable();
 	return 0;
 }
@@ -139,7 +139,7 @@ static inline int __raw_write_trylock(rwlock_t *lock)
 		ktsan_mtx_post_lock(lock, true, true);
 		return 1;
 	}
-	ktsan_event_enable();
+	ktsan_thr_event_enable();
 	preempt_enable();
 	return 0;
 }
