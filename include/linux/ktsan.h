@@ -130,6 +130,9 @@ struct ktsan_thr_s {
 static inline void ktsan_init_early(void) {}
 static inline void ktsan_init(void) {}
 
+static inline void ktsan_event_disable(void) {}
+static inline void ktsan_event_enable(void) {}
+
 static inline void ktsan_report_disable(void) {}
 static inline void ktsan_report_enable(void) {}
 
@@ -147,6 +150,7 @@ static inline void ktsan_sync_release(void *addr) {}
 static inline void ktsan_mtx_pre_lock(void *addr, bool write, bool try) {}
 static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try) {}
 static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
+static inline void ktsan_mtx_post_unlock(void *addr, bool write) {}
 
 static inline void ktsan_membar_acquire(void) {}
 static inline void ktsan_membar_release(void) {}
