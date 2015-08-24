@@ -32,6 +32,8 @@
 
 #define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
+#define KT_DEBUG 0
+
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
 
@@ -204,6 +206,9 @@ struct kt_thr_s {
 	int			preempt_depth;
 	bool			irqs_disabled;
 	struct list_head	percpu_list;
+#if KT_DEBUG
+	kt_stack_t		start_stack;
+#endif
 };
 
 struct kt_thr_pool_s {
