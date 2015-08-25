@@ -17,7 +17,7 @@ void kt_percpu_release(kt_thr_t *thr, uptr_t pc)
 
 static void kt_percpu_try_release(kt_thr_t *thr, uptr_t pc)
 {
-	if (thr->preempt_depth > 0 || thr->irqs_disabled)
+	if (thr->preempt_disable_depth > 0 || thr->irqs_disabled)
 		return;
 
 	kt_percpu_release(thr, pc);
@@ -35,7 +35,7 @@ void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	/* This BUG_ON is failing since a pointer to a per-cpu structure
 	   may be acquired via &__get_cpu_var(...) before disabling
 	   irqs/preemption without actually accessing the structure itself. */
-	/* BUG_ON(thr->preempt_depth == 0 && !thr->irqs_disabled); */
+	/* BUG_ON(thr->preempt_disable_depth == 0 && !thr->irqs_disabled); */
 
 	kt_trace_add_event(thr, kt_event_type_acquire, pc);
 	kt_clk_tick(&thr->clk, thr->id);
@@ -69,7 +69,7 @@ void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value)
 	kt_trace_add_event(thr, kt_event_type_preempt_disable, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 
-	thr->preempt_depth += value;
+	thr->preempt_disable_depth += value;
 }
 
 void kt_preempt_sub(kt_thr_t *thr, uptr_t pc, int value)
@@ -77,8 +77,8 @@ void kt_preempt_sub(kt_thr_t *thr, uptr_t pc, int value)
 	kt_trace_add_event(thr, kt_event_type_preempt_enable, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 
-	thr->preempt_depth -= value;
-	BUG_ON(thr->preempt_depth < 0);
+	thr->preempt_disable_depth -= value;
+	BUG_ON(thr->preempt_disable_depth < 0);
 	kt_percpu_try_release(thr, pc);
 }
 

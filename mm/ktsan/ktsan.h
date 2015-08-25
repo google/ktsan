@@ -201,9 +201,9 @@ struct kt_thr_s {
 	kt_trace_t		trace;
 	int			call_depth;
 	struct list_head	quarantine_list;
-	int			event_depth;
-	int			report_depth;
-	int			preempt_depth;
+	int			event_disable_depth;
+	int			report_disable_depth;
+	int			preempt_disable_depth;
 	bool			irqs_disabled;
 	struct list_head	percpu_list;
 #if KT_DEBUG
