@@ -48,10 +48,11 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_clk_init(&new->release_clk);
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
-	INIT_LIST_HEAD(&new->quarantine_list);
-	new->report_depth = 0;
-	new->preempt_depth = 0;
+	new->event_disable_depth = 0;
+	new->report_disable_depth = 0;
+	new->preempt_disable_depth = 0;
 	new->irqs_disabled = false;
+	INIT_LIST_HEAD(&new->quarantine_list);
 	INIT_LIST_HEAD(&new->percpu_list);
 
 	/* thr == NULL when thread #0 is being initialized. */
@@ -69,6 +70,8 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old)
 {
 	kt_thr_pool_t *pool = &kt_ctx.thr_pool;
+
+	BUG_ON(old->event_disable_depth != 0);
 
 	spin_lock(&pool->lock);
 	list_add_tail(&old->quarantine_list, &pool->quarantine);
@@ -99,6 +102,10 @@ void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 	kt_clk_tick(&thr->clk, thr->id);
 
 	thr->cpu = this_cpu_ptr(kt_ctx.cpus);
+
+#if KT_DEBUG
+	kt_stack_save_current(&thr->start_stack, _RET_IP_);
+#endif
 }
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
@@ -118,4 +125,19 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
 {
 	kt_clk_acquire(&other->clk, &thr->clk);
+}
+
+/* Returns true if events were enabled before the call. */
+bool kt_thr_event_disable(kt_thr_t *thr)
+{
+	thr->event_disable_depth++;
+	return (thr->event_disable_depth - 1 == 0);
+}
+
+/* Returns true if events became enabled after the call. */
+bool kt_thr_event_enable(kt_thr_t *thr)
+{
+	thr->event_disable_depth--;
+	BUG_ON(thr->event_disable_depth < 0);
+	return (thr->event_disable_depth == 0);
 }

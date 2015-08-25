@@ -25,7 +25,7 @@ void __sched down_read(struct rw_semaphore *sem)
 	rwsem_acquire_read(&sem->dep_map, 0, 0, _RET_IP_);
 
 	LOCK_CONTENDED(sem, __down_read_trylock, __down_read);
-	ktsan_mtx_post_lock(sem, false, false);
+	ktsan_mtx_post_lock(sem, false, false, true);
 }
 
 EXPORT_SYMBOL(down_read);
@@ -40,10 +40,9 @@ int down_read_trylock(struct rw_semaphore *sem)
 	ktsan_mtx_pre_lock(sem, false, true);
 	ret = __down_read_trylock(sem);
 
-	if (ret == 1) {
+	if (ret == 1)
 		rwsem_acquire_read(&sem->dep_map, 0, 1, _RET_IP_);
-		ktsan_mtx_post_lock(sem, false, true);
-	}
+	ktsan_mtx_post_lock(sem, false, true, ret == 1);
 	return ret;
 }
 
@@ -59,8 +58,8 @@ void __sched down_write(struct rw_semaphore *sem)
 	rwsem_acquire(&sem->dep_map, 0, 0, _RET_IP_);
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
-	ktsan_mtx_post_lock(sem, true, false);
 	rwsem_set_owner(sem);
+	ktsan_mtx_post_lock(sem, true, false, true);
 }
 
 EXPORT_SYMBOL(down_write);
@@ -78,8 +77,8 @@ int down_write_trylock(struct rw_semaphore *sem)
 	if (ret == 1) {
 		rwsem_acquire(&sem->dep_map, 0, 1, _RET_IP_);
 		rwsem_set_owner(sem);
-		ktsan_mtx_post_lock(sem, true, true);
 	}
+	ktsan_mtx_post_lock(sem, true, true, ret == 1);
 
 	return ret;
 }
@@ -91,10 +90,11 @@ EXPORT_SYMBOL(down_write_trylock);
  */
 void up_read(struct rw_semaphore *sem)
 {
+	ktsan_mtx_pre_unlock(sem, false);
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 
-	ktsan_mtx_pre_unlock(sem, false);
 	__up_read(sem);
+	ktsan_mtx_post_unlock(sem, false);
 }
 
 EXPORT_SYMBOL(up_read);
@@ -104,11 +104,12 @@ EXPORT_SYMBOL(up_read);
  */
 void up_write(struct rw_semaphore *sem)
 {
+	ktsan_mtx_pre_unlock(sem, true);
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 
 	rwsem_clear_owner(sem);
-	ktsan_mtx_pre_unlock(sem, true);
 	__up_write(sem);
+	ktsan_mtx_post_unlock(sem, true);
 }
 
 EXPORT_SYMBOL(up_write);
@@ -137,7 +138,7 @@ void down_read_nested(struct rw_semaphore *sem, int subclass)
 	rwsem_acquire_read(&sem->dep_map, subclass, 0, _RET_IP_);
 
 	LOCK_CONTENDED(sem, __down_read_trylock, __down_read);
-	ktsan_mtx_post_lock(sem, false, false);
+	ktsan_mtx_post_lock(sem, false, false, true);
 }
 
 EXPORT_SYMBOL(down_read_nested);
@@ -150,7 +151,7 @@ void _down_write_nest_lock(struct rw_semaphore *sem, struct lockdep_map *nest)
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
 	rwsem_set_owner(sem);
-	ktsan_mtx_post_lock(sem, true, false);
+	ktsan_mtx_post_lock(sem, true, false, true);
 }
 
 EXPORT_SYMBOL(_down_write_nest_lock);
@@ -161,7 +162,7 @@ void down_read_non_owner(struct rw_semaphore *sem)
 	might_sleep();
 
 	__down_read(sem);
-	ktsan_mtx_post_lock(sem, false, false);
+	ktsan_mtx_post_lock(sem, false, false, true);
 }
 
 EXPORT_SYMBOL(down_read_non_owner);
@@ -174,7 +175,7 @@ void down_write_nested(struct rw_semaphore *sem, int subclass)
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
 	rwsem_set_owner(sem);
-	ktsan_mtx_post_lock(sem, true, false);
+	ktsan_mtx_post_lock(sem, true, false, true);
 }
 
 EXPORT_SYMBOL(down_write_nested);
@@ -183,6 +184,7 @@ void up_read_non_owner(struct rw_semaphore *sem)
 {
 	ktsan_mtx_pre_unlock(sem, false);
 	__up_read(sem);
+	ktsan_mtx_post_unlock(sem, false);
 }
 
 EXPORT_SYMBOL(up_read_non_owner);

@@ -51,6 +51,8 @@ void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
 void ktsan_thr_destroy(struct ktsan_thr_s *old);
 void ktsan_thr_start(void);
 void ktsan_thr_stop(void);
+void ktsan_thr_event_disable(void);
+void ktsan_thr_event_enable(void);
 
 void ktsan_memblock_alloc(void *addr, unsigned long size);
 void ktsan_memblock_free(void *addr, unsigned long size);
@@ -59,8 +61,9 @@ void ktsan_sync_acquire(void *addr);
 void ktsan_sync_release(void *addr);
 
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
-void ktsan_mtx_post_lock(void *addr, bool write, bool try);
+void ktsan_mtx_post_lock(void *addr, bool write, bool try, bool success);
 void ktsan_mtx_pre_unlock(void *addr, bool write);
+void ktsan_mtx_post_unlock(void *addr, bool write);
 
 void ktsan_thread_fence(ktsan_memory_order_t mo);
 
@@ -133,6 +136,8 @@ static inline void ktsan_thr_create(struct ktsan_thr_s *new, int tid) {}
 static inline void ktsan_thr_destroy(struct ktsan_thr_s *old) {}
 static inline void ktsan_thr_start(void) {}
 static inline void ktsan_thr_stop(void) {}
+static inline void ktsan_thr_event_disable(void) {}
+static inline void ktsan_thr_event_enable(void) {}
 
 static inline void ktsan_memblock_alloc(void *addr, unsigned long size) {}
 static inline void ktsan_memblock_free(void *addr, unsigned long size) {}
@@ -141,8 +146,10 @@ static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
 
 static inline void ktsan_mtx_pre_lock(void *addr, bool write, bool try) {}
-static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try) {}
+static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try,
+				       bool success) {}
 static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
+static inline void ktsan_mtx_post_unlock(void *addr, bool write) {}
 
 static inline void ktsan_membar_acquire(void) {}
 static inline void ktsan_membar_release(void) {}

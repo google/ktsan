@@ -118,26 +118,28 @@ _raw_write_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
 
 static inline int __raw_read_trylock(rwlock_t *lock)
 {
-	ktsan_mtx_pre_lock(lock, false, true);
 	preempt_disable();
+	ktsan_mtx_pre_lock(lock, false, true);
 	if (do_raw_read_trylock(lock)) {
 		rwlock_acquire_read(&lock->dep_map, 0, 1, _RET_IP_);
-		ktsan_mtx_post_lock(lock, false, true);
+		ktsan_mtx_post_lock(lock, false, true, true);
 		return 1;
 	}
+	ktsan_mtx_post_lock(lock, false, true, false);
 	preempt_enable();
 	return 0;
 }
 
 static inline int __raw_write_trylock(rwlock_t *lock)
 {
-	ktsan_mtx_pre_lock(lock, true, true);
 	preempt_disable();
+	ktsan_mtx_pre_lock(lock, true, true);
 	if (do_raw_write_trylock(lock)) {
 		rwlock_acquire(&lock->dep_map, 0, 1, _RET_IP_);
-		ktsan_mtx_post_lock(lock, true, true);
+		ktsan_mtx_post_lock(lock, true, true, true);
 		return 1;
 	}
+	ktsan_mtx_post_lock(lock, true, true, false);
 	preempt_enable();
 	return 0;
 }
@@ -155,82 +157,82 @@ static inline void __raw_read_lock(rwlock_t *lock)
 	preempt_disable();
 	rwlock_acquire_read(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_read_trylock, do_raw_read_lock);
-	ktsan_mtx_post_lock(lock, false, false);
+	ktsan_mtx_post_lock(lock, false, false, true);
 }
 
 static inline unsigned long __raw_read_lock_irqsave(rwlock_t *lock)
 {
 	unsigned long flags;
 
-	ktsan_mtx_pre_lock(lock, false, false);
 	local_irq_save(flags);
 	preempt_disable();
+	ktsan_mtx_pre_lock(lock, false, false);
 	rwlock_acquire_read(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED_FLAGS(lock, do_raw_read_trylock, do_raw_read_lock,
 			     do_raw_read_lock_flags, &flags);
-	ktsan_mtx_post_lock(lock, false, false);
+	ktsan_mtx_post_lock(lock, false, false, true);
 	return flags;
 }
 
 static inline void __raw_read_lock_irq(rwlock_t *lock)
 {
-	ktsan_mtx_pre_lock(lock, false, false);
 	local_irq_disable();
 	preempt_disable();
+	ktsan_mtx_pre_lock(lock, false, false);
 	rwlock_acquire_read(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_read_trylock, do_raw_read_lock);
-	ktsan_mtx_post_lock(lock, false, false);
+	ktsan_mtx_post_lock(lock, false, false, true);
 }
 
 static inline void __raw_read_lock_bh(rwlock_t *lock)
 {
-	ktsan_mtx_pre_lock(lock, false, false);
 	__local_bh_disable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
+	ktsan_mtx_pre_lock(lock, false, false);
 	rwlock_acquire_read(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_read_trylock, do_raw_read_lock);
-	ktsan_mtx_post_lock(lock, false, false);
+	ktsan_mtx_post_lock(lock, false, false, true);
 }
 
 static inline unsigned long __raw_write_lock_irqsave(rwlock_t *lock)
 {
 	unsigned long flags;
 
-	ktsan_mtx_pre_lock(lock, true, false);
 	local_irq_save(flags);
 	preempt_disable();
+	ktsan_mtx_pre_lock(lock, true, false);
 	rwlock_acquire(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED_FLAGS(lock, do_raw_write_trylock, do_raw_write_lock,
 			     do_raw_write_lock_flags, &flags);
-	ktsan_mtx_post_lock(lock, true, false);
+	ktsan_mtx_post_lock(lock, true, false, true);
 	return flags;
 }
 
 static inline void __raw_write_lock_irq(rwlock_t *lock)
 {
-	ktsan_mtx_pre_lock(lock, true, false);
 	local_irq_disable();
 	preempt_disable();
+	ktsan_mtx_pre_lock(lock, true, false);
 	rwlock_acquire(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_write_trylock, do_raw_write_lock);
-	ktsan_mtx_post_lock(lock, true, false);
+	ktsan_mtx_post_lock(lock, true, false, true);
 }
 
 static inline void __raw_write_lock_bh(rwlock_t *lock)
 {
-	ktsan_mtx_pre_lock(lock, true, false);
 	__local_bh_disable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
+	ktsan_mtx_pre_lock(lock, true, false);
 	rwlock_acquire(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_write_trylock, do_raw_write_lock);
-	ktsan_mtx_post_lock(lock, true, false);
+	ktsan_mtx_post_lock(lock, true, false, true);
 }
 
 static inline void __raw_write_lock(rwlock_t *lock)
 {
-	ktsan_mtx_pre_lock(lock, true, false);
 	preempt_disable();
+	ktsan_mtx_pre_lock(lock, true, false);
 	rwlock_acquire(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_write_trylock, do_raw_write_lock);
-	ktsan_mtx_post_lock(lock, true, false);
+	ktsan_mtx_post_lock(lock, true, false, true);
 }
 
 #endif /* CONFIG_PREEMPT */
@@ -240,6 +242,7 @@ static inline void __raw_write_unlock(rwlock_t *lock)
 	ktsan_mtx_pre_unlock(lock, true);
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
 	do_raw_write_unlock(lock);
+	ktsan_mtx_post_unlock(lock, true);
 	preempt_enable();
 }
 
@@ -248,6 +251,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
 	ktsan_mtx_pre_unlock(lock, false);
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
 	do_raw_read_unlock(lock);
+	ktsan_mtx_post_unlock(lock, false);
 	preempt_enable();
 }
 
@@ -257,6 +261,7 @@ __raw_read_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
 	ktsan_mtx_pre_unlock(lock, false);
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
 	do_raw_read_unlock(lock);
+	ktsan_mtx_post_unlock(lock, false);
 	local_irq_restore(flags);
 	preempt_enable();
 }
@@ -266,6 +271,7 @@ static inline void __raw_read_unlock_irq(rwlock_t *lock)
 	ktsan_mtx_pre_unlock(lock, false);
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
 	do_raw_read_unlock(lock);
+	ktsan_mtx_post_unlock(lock, false);
 	local_irq_enable();
 	preempt_enable();
 }
@@ -275,6 +281,7 @@ static inline void __raw_read_unlock_bh(rwlock_t *lock)
 	ktsan_mtx_pre_unlock(lock, false);
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
 	do_raw_read_unlock(lock);
+	ktsan_mtx_post_unlock(lock, false);
 	__local_bh_enable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
 }
 
@@ -284,6 +291,7 @@ static inline void __raw_write_unlock_irqrestore(rwlock_t *lock,
 	ktsan_mtx_pre_unlock(lock, true);
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
 	do_raw_write_unlock(lock);
+	ktsan_mtx_post_unlock(lock, true);
 	local_irq_restore(flags);
 	preempt_enable();
 }
@@ -293,6 +301,7 @@ static inline void __raw_write_unlock_irq(rwlock_t *lock)
 	ktsan_mtx_pre_unlock(lock, true);
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
 	do_raw_write_unlock(lock);
+	ktsan_mtx_post_unlock(lock, true);
 	local_irq_enable();
 	preempt_enable();
 }
@@ -302,6 +311,7 @@ static inline void __raw_write_unlock_bh(rwlock_t *lock)
 	ktsan_mtx_pre_unlock(lock, true);
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
 	do_raw_write_unlock(lock);
+	ktsan_mtx_post_unlock(lock, true);
 	__local_bh_enable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
 }
 

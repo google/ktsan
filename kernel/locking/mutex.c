@@ -102,8 +102,8 @@ void __sched mutex_lock(struct mutex *lock)
 	 * 'unlocked' into 'locked' state.
 	 */
 	__mutex_fastpath_lock(&lock->count, __mutex_lock_slowpath);
-	ktsan_mtx_post_lock(lock, true, false);
 	mutex_set_owner(lock);
+	ktsan_mtx_post_lock(lock, true, false, true);
 }
 
 EXPORT_SYMBOL(mutex_lock);
@@ -425,6 +425,7 @@ void __sched __mutex_unlock_slowpath(atomic_t *lock_count);
  */
 void __sched mutex_unlock(struct mutex *lock)
 {
+	ktsan_mtx_pre_unlock(lock, true);
 	/*
 	 * The unlocking fastpath is the 0->1 transition from 'locked'
 	 * into 'unlocked' state:
@@ -437,8 +438,8 @@ void __sched mutex_unlock(struct mutex *lock)
 	 */
 	mutex_clear_owner(lock);
 #endif
-	ktsan_mtx_pre_unlock(lock, true);
 	__mutex_fastpath_unlock(&lock->count, __mutex_unlock_slowpath);
+	ktsan_mtx_post_unlock(lock, true);
 }
 
 EXPORT_SYMBOL(mutex_unlock);
@@ -795,11 +796,11 @@ int __sched mutex_lock_interruptible(struct mutex *lock)
 	ret =  __mutex_fastpath_lock_retval(&lock->count);
 	if (likely(!ret)) {
 		mutex_set_owner(lock);
-		ktsan_mtx_post_lock(lock, true, false);
+		ktsan_mtx_post_lock(lock, true, false, true);
 		return 0;
 	} else {
 		ret = __mutex_lock_interruptible_slowpath(lock);
-		ktsan_mtx_post_lock(lock, true, false);
+		ktsan_mtx_post_lock(lock, true, false, true);
 		return ret;
 	}
 }
@@ -815,11 +816,11 @@ int __sched mutex_lock_killable(struct mutex *lock)
 	ret = __mutex_fastpath_lock_retval(&lock->count);
 	if (likely(!ret)) {
 		mutex_set_owner(lock);
-		ktsan_mtx_post_lock(lock, true, false);
+		ktsan_mtx_post_lock(lock, true, false, true);
 		return 0;
 	} else {
 		ret = __mutex_lock_killable_slowpath(lock);
-		ktsan_mtx_post_lock(lock, true, false);
+		ktsan_mtx_post_lock(lock, true, false, true);
 		return ret;
 	}
 }
@@ -916,10 +917,9 @@ int __sched mutex_trylock(struct mutex *lock)
 
 	ktsan_mtx_pre_lock(lock, true, true);
 	ret = __mutex_fastpath_trylock(&lock->count, __mutex_trylock_slowpath);
-	if (ret) {
+	if (ret)
 		mutex_set_owner(lock);
-		ktsan_mtx_post_lock(lock, true, true);
-	}
+	ktsan_mtx_post_lock(lock, true, true, ret == 1);
 
 	return ret;
 }
