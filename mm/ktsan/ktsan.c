@@ -233,14 +233,14 @@ void kt_tests_run(void)
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int kid)
 {
-	ENTER(true, false);
+	ENTER(true, true);
 	new->thr = kt_thr_create(thr, kid);
 	LEAVE();
 }
 
 void ktsan_thr_destroy(struct ktsan_thr_s *old)
 {
-	ENTER(true, false);
+	ENTER(true, true);
 	kt_thr_destroy(thr, old->thr);
 	old->thr = NULL;
 	LEAVE();
@@ -314,14 +314,14 @@ EXPORT_SYMBOL(ktsan_sync_release);
 
 void ktsan_memblock_alloc(void *addr, unsigned long size)
 {
-	ENTER(false, false);
+	ENTER(false, true);
 	kt_memblock_alloc(thr, pc, (uptr_t)addr, (size_t)size);
 	LEAVE();
 }
 
 void ktsan_memblock_free(void *addr, unsigned long size)
 {
-	ENTER(false, false);
+	ENTER(false, true);
 	kt_memblock_free(thr, pc, (uptr_t)addr, (size_t)size);
 	LEAVE();
 }
