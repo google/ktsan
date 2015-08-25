@@ -334,10 +334,10 @@ void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_lock);
 
-void ktsan_mtx_post_lock(void *addr, bool write, bool try)
+void ktsan_mtx_post_lock(void *addr, bool write, bool try, bool success)
 {
 	ENTER(false, true);
-	kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try);
+	kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try, success);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_post_lock);
