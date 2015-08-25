@@ -3,7 +3,7 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 
-kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
+kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
 	bool created;
@@ -16,6 +16,7 @@ kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr)
 		kt_clk_init(&sync->clk);
 		sync->lock_tid = -1;
 		INIT_LIST_HEAD(&sync->list);
+		sync->pc = pc;
 
 		memblock_addr = kt_memblock_addr(addr);
 		kt_memblock_add_sync(thr, memblock_addr, sync);
@@ -45,7 +46,7 @@ void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
 
-	sync = kt_sync_ensure_created(thr, addr);
+	sync = kt_sync_ensure_created(thr, pc, addr);
 	kt_clk_acquire(&thr->clk, &sync->clk);
 	spin_unlock(&sync->tab.lock);
 }
@@ -54,7 +55,7 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
 
-	sync = kt_sync_ensure_created(thr, addr);
+	sync = kt_sync_ensure_created(thr, pc, addr);
 	kt_clk_acquire(&sync->clk, &thr->clk);
 	spin_unlock(&sync->tab.lock);
 }

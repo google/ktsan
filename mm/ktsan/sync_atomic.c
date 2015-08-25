@@ -29,7 +29,7 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 do {									\
 	kt_tab_sync_t *sync;						\
 									\
-	sync = kt_sync_ensure_created(thr, (ad));			\
+	sync = kt_sync_ensure_created(thr, pc, (ad));			\
 									\
 	if ((mo) == ktsan_memory_order_acquire ||			\
 	    (mo) == ktsan_memory_order_acq_rel) {			\
