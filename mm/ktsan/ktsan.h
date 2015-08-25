@@ -15,7 +15,7 @@
 #define KT_THREAD_ID_BITS 13
 #define KT_CLOCK_BITS 42
 
-#define KT_MAX_SYNC_COUNT (1200 * 1000)
+#define KT_MAX_SYNC_COUNT (1000 * 1000)
 #define KT_MAX_MEMBLOCK_COUNT (200 * 1000)
 #define KT_MAX_PERCPU_SYNC_COUNT (30 * 1000)
 #define KT_MAX_THREAD_COUNT 1024
@@ -169,6 +169,7 @@ struct kt_tab_sync_s {
 	kt_clk_t		clk;
 	int			lock_tid; /* id of thread that locked mutex */
 	struct list_head	list;
+	uptr_t			pc;
 };
 
 struct kt_tab_lock_s {
@@ -338,7 +339,7 @@ bool kt_thr_event_enable(kt_thr_t *thr);
 
 /* Synchronization. */
 
-kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t addr);
+kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_destroy(kt_thr_t *thr, uptr_t addr);
 
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
