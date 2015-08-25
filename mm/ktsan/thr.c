@@ -49,9 +49,9 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
 	INIT_LIST_HEAD(&new->quarantine_list);
-	new->event_depth = 0;
-	new->report_depth = 0;
-	new->preempt_depth = 0;
+	new->event_disable_depth = 0;
+	new->report_disable_depth = 0;
+	new->preempt_disable_depth = 0;
 	new->irqs_disabled = false;
 	INIT_LIST_HEAD(&new->percpu_list);
 
@@ -127,11 +127,11 @@ void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
 
 void kt_thr_event_disable(kt_thr_t *thr)
 {
-	thr->event_depth++;
+	thr->event_disable_depth++;
 }
 
 void kt_thr_event_enable(kt_thr_t *thr)
 {
-	thr->event_depth--;
-	BUG_ON(thr->event_depth < 0);
+	thr->event_disable_depth--;
+	BUG_ON(thr->event_disable_depth < 0);
 }
