@@ -71,6 +71,8 @@ void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old)
 {
 	kt_thr_pool_t *pool = &kt_ctx.thr_pool;
 
+	BUG_ON(old->event_disable_depth != 0);
+
 	spin_lock(&pool->lock);
 	list_add_tail(&old->quarantine_list, &pool->quarantine);
 	pool->quarantine_size++;
