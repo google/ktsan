@@ -200,12 +200,12 @@ struct kt_thr_s {
 	kt_clk_t		release_clk;
 	kt_trace_t		trace;
 	int			call_depth;
-	struct list_head	quarantine_list;
 	int			event_disable_depth;
 	int			report_disable_depth;
 	int			preempt_disable_depth;
 	bool			irqs_disabled;
-	struct list_head	percpu_list;
+	struct list_head	quarantine_list; /* list entry */
+	struct list_head	percpu_list; /* list head */
 #if KT_DEBUG
 	kt_stack_t		start_stack;
 #endif
@@ -333,8 +333,8 @@ kt_thr_t *kt_thr_get(int id);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
-void kt_thr_event_disable(kt_thr_t *thr);
-void kt_thr_event_enable(kt_thr_t *thr);
+bool kt_thr_event_disable(kt_thr_t *thr);
+bool kt_thr_event_enable(kt_thr_t *thr);
 
 /* Synchronization. */
 
@@ -345,7 +345,8 @@ void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
-void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
+void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
+		      bool success);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 

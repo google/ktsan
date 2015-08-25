@@ -4,15 +4,25 @@
 
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 {
-	kt_thr_event_disable(thr);
+	if (!kt_thr_event_disable(thr))
+		return;
 
 	/* Will be used for deadlock detection.
 	   We can also put sleeps for random time here. */
 }
 
-void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
+void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
+		      bool success)
 {
 	kt_tab_sync_t *sync;
+
+	BUG_ON(!try && !success);
+
+	if (!kt_thr_event_enable(thr))
+		return;
+
+	if (!success)
+		return;
 
 	kt_trace_add_event(thr, kt_event_type_lock, pc);
 	kt_clk_tick(&thr->clk, thr->id);
@@ -23,15 +33,14 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 	BUG_ON(sync == NULL);
 	sync->lock_tid = thr->id;
 	spin_unlock(&sync->tab.lock);
-
-	kt_thr_event_enable(thr);
 }
 
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
 	kt_tab_sync_t *sync;
 
-	kt_thr_event_disable(thr);
+	if (!kt_thr_event_disable(thr))
+		return;
 
 	kt_trace_add_event(thr, kt_event_type_unlock, pc);
 	kt_clk_tick(&thr->clk, thr->id);
@@ -48,5 +57,6 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 
 void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
-	kt_thr_event_enable(thr);
+	if (!kt_thr_event_enable(thr))
+		return;
 }

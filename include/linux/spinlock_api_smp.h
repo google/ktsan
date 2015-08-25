@@ -93,10 +93,10 @@ static inline int __raw_spin_trylock(raw_spinlock_t *lock)
 	ktsan_mtx_pre_lock(lock, true, true);
 	if (do_raw_spin_trylock(lock)) {
 		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);
-		ktsan_mtx_post_lock(lock, true, true);
+		ktsan_mtx_post_lock(lock, true, true, true);
 		return 1;
 	}
-	ktsan_thr_event_enable();
+	ktsan_mtx_post_lock(lock, true, true, false);
 	preempt_enable();
 	return 0;
 }
@@ -126,7 +126,7 @@ static inline unsigned long __raw_spin_lock_irqsave(raw_spinlock_t *lock)
 #else
 	do_raw_spin_lock_flags(lock, &flags);
 #endif
-	ktsan_mtx_post_lock(lock, true, false);
+	ktsan_mtx_post_lock(lock, true, false, true);
 	return flags;
 }
 
@@ -137,7 +137,7 @@ static inline void __raw_spin_lock_irq(raw_spinlock_t *lock)
 	ktsan_mtx_pre_lock(lock, true, false);
 	spin_acquire(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_spin_trylock, do_raw_spin_lock);
-	ktsan_mtx_post_lock(lock, true, false);
+	ktsan_mtx_post_lock(lock, true, false, true);
 }
 
 static inline void __raw_spin_lock_bh(raw_spinlock_t *lock)
@@ -146,7 +146,7 @@ static inline void __raw_spin_lock_bh(raw_spinlock_t *lock)
 	ktsan_mtx_pre_lock(lock, true, false);
 	spin_acquire(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_spin_trylock, do_raw_spin_lock);
-	ktsan_mtx_post_lock(lock, true, false);
+	ktsan_mtx_post_lock(lock, true, false, true);
 }
 
 static inline void __raw_spin_lock(raw_spinlock_t *lock)
@@ -155,7 +155,7 @@ static inline void __raw_spin_lock(raw_spinlock_t *lock)
 	ktsan_mtx_pre_lock(lock, true, false);
 	spin_acquire(&lock->dep_map, 0, 0, _RET_IP_);
 	LOCK_CONTENDED(lock, do_raw_spin_trylock, do_raw_spin_lock);
-	ktsan_mtx_post_lock(lock, true, false);
+	ktsan_mtx_post_lock(lock, true, false, true);
 }
 
 #endif /* !CONFIG_GENERIC_LOCKBREAK || CONFIG_DEBUG_LOCK_ALLOC */
@@ -205,10 +205,10 @@ static inline int __raw_spin_trylock_bh(raw_spinlock_t *lock)
 	ktsan_mtx_pre_lock(lock, true, true);
 	if (do_raw_spin_trylock(lock)) {
 		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);
-		ktsan_mtx_post_lock(lock, true, true);
+		ktsan_mtx_post_lock(lock, true, true, true);
 		return 1;
 	}
-	ktsan_thr_event_enable();
+	ktsan_mtx_post_lock(lock, true, true, false);
 	__local_bh_enable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
 	return 0;
 }
