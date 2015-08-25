@@ -358,7 +358,7 @@ EXPORT_SYMBOL(ktsan_mtx_post_unlock);
 
 void ktsan_thread_fence(ktsan_memory_order_t mo)
 {
-	ENTER(false, true);
+	ENTER(false, false);
 	kt_thread_fence(thr, pc, mo);
 	LEAVE();
 }
