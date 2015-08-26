@@ -870,8 +870,7 @@ EXPORT_SYMBOL(ktsan_write_range);
 void ktsan_func_entry(void *call_pc)
 {
 	ENTER(false, false);
-	pc = (uptr_t)__builtin_return_address(1);
-	kt_func_entry(thr, pc);
+	kt_func_entry(thr, (uptr_t)call_pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_func_entry);
