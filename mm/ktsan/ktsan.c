@@ -810,6 +810,14 @@ void ktsan_read16(void *addr)
 }
 EXPORT_SYMBOL(ktsan_read16);
 
+void ktsan_read_range(void *addr, size_t sz)
+{
+	ENTER(false, false);
+	kt_access_range(thr, pc, (uptr_t)addr, sz, true);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_read_range);
+
 void ktsan_write1(void *addr)
 {
 	ENTER(false, false);
@@ -851,6 +859,14 @@ void ktsan_write16(void *addr)
 }
 EXPORT_SYMBOL(ktsan_write16);
 
+void ktsan_write_range(void *addr, size_t sz)
+{
+	ENTER(false, false);
+	kt_access_range(thr, pc, (uptr_t)addr, sz, false);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_write_range);
+
 void ktsan_func_entry(void *call_pc)
 {
 	ENTER(false, false);
@@ -883,6 +899,10 @@ EXPORT_SYMBOL(__tsan_read8);
 void __tsan_read16(unsigned long addr) __attribute__ ((alias("ktsan_read16")));
 EXPORT_SYMBOL(__tsan_read16);
 
+void __tsan_read_range(unsigned long addr, unsigned long size)
+	__attribute__ ((alias("ktsan_read_range")));
+EXPORT_SYMBOL(__tsan_read_range);
+
 void __tsan_write1(unsigned long addr) __attribute__ ((alias("ktsan_write1")));
 EXPORT_SYMBOL(__tsan_write1);
 
@@ -897,6 +917,10 @@ EXPORT_SYMBOL(__tsan_write8);
 
 void __tsan_write16(unsigned long addr) __attribute__ ((alias("ktsan_write16")));
 EXPORT_SYMBOL(__tsan_write16);
+
+void __tsan_write_range(unsigned long addr, unsigned long size)
+	__attribute__ ((alias("ktsan_write_range")));
+EXPORT_SYMBOL(__tsan_write_range);
 
 void __tsan_func_entry(unsigned long addr) __attribute__ ((alias("ktsan_func_entry")));
 EXPORT_SYMBOL(__tsan_func_entry);
