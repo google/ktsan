@@ -19,6 +19,7 @@
 #include <linux/cpuidle.h>
 #include <trace/events/power.h>
 #include <linux/hw_breakpoint.h>
+#include <linux/ktsan.h>
 #include <asm/cpu.h>
 #include <asm/apic.h>
 #include <asm/syscalls.h>
@@ -81,7 +82,10 @@ EXPORT_SYMBOL_GPL(idle_notifier_unregister);
  */
 int arch_dup_task_struct(struct task_struct *dst, struct task_struct *src)
 {
+	/* src is concurrently mutated which causes data races */
+	ktsan_thr_event_disable();
 	memcpy(dst, src, arch_task_struct_size);
+	ktsan_thr_event_enable();
 
 	return fpu__copy(&dst->thread.fpu, &src->thread.fpu);
 }
