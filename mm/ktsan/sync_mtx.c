@@ -4,9 +4,6 @@
 
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try)
 {
-	if (!kt_thr_event_disable(thr))
-		return;
-
 	/* Will be used for deadlock detection.
 	   We can also put sleeps for random time here. */
 }
@@ -16,10 +13,10 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 {
 	kt_tab_sync_t *sync;
 
-	BUG_ON(!try && !success);
-
-	if (!kt_thr_event_enable(thr))
-		return;
+	/* Sometimes even locks that are not trylocks might fail.
+	   For example a thread calling mutex_lock might be rescheduled.
+	   In that case we call mtx_post_lock(try = false, success = false). */
+	/* BUG_ON(!try && !success); */
 
 	if (!success)
 		return;
@@ -39,9 +36,6 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
 	kt_tab_sync_t *sync;
 
-	if (!kt_thr_event_disable(thr))
-		return;
-
 	kt_trace_add_event(thr, kt_event_type_unlock, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 	kt_sync_release(thr, pc, addr);
@@ -57,6 +51,4 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 
 void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
-	if (!kt_thr_event_enable(thr))
-		return;
 }

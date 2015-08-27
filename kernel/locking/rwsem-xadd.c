@@ -242,6 +242,7 @@ struct rw_semaphore __sched *rwsem_down_read_failed(struct rw_semaphore *sem)
 
 	raw_spin_unlock_irq(&sem->wait_lock);
 
+	ktsan_mtx_post_lock(sem, false, false, false);
 	/* wait to be given the lock */
 	while (true) {
 		set_task_state(tsk, TASK_UNINTERRUPTIBLE);
@@ -249,6 +250,7 @@ struct rw_semaphore __sched *rwsem_down_read_failed(struct rw_semaphore *sem)
 			break;
 		schedule();
 	}
+	ktsan_mtx_pre_lock(sem, false, false);
 
 	__set_task_state(tsk, TASK_RUNNING);
 	return sem;
@@ -483,11 +485,13 @@ struct rw_semaphore __sched *rwsem_down_write_failed(struct rw_semaphore *sem)
 			break;
 		raw_spin_unlock_irq(&sem->wait_lock);
 
+		ktsan_mtx_post_lock(sem, true, false, false);
 		/* Block until there are no active lockers. */
 		do {
 			schedule();
 			set_current_state(TASK_UNINTERRUPTIBLE);
 		} while ((count = sem->count) & RWSEM_ACTIVE_MASK);
+		ktsan_mtx_pre_lock(sem, true, false);
 
 		raw_spin_lock_irq(&sem->wait_lock);
 	}

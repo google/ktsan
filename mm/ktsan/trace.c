@@ -179,6 +179,14 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 			pc = kt_pc_decompress(event->pc);
 			pr_err(" i: %lu, mb rel , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_event_enable) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err(" i: %lu, evt on , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_event_disable) {
+			pc = kt_pc_decompress(event->pc);
+			pr_err(" i: %lu, evt off, pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
 		} /*else if (event->type == kt_event_type_mop) {
 			pc = kt_pc_decompress(event->pc);
 			pr_err(" i: %lu, mop, pc: %p\n",
