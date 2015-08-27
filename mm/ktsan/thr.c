@@ -110,6 +110,8 @@ void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
+	BUG_ON(thr->event_disable_depth != 0);
+
 	kt_trace_add_event(thr, kt_event_type_thr_stop, pc);
 	kt_clk_tick(&thr->clk, thr->id);
 
@@ -128,15 +130,28 @@ void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
 }
 
 /* Returns true if events were enabled before the call. */
-bool kt_thr_event_disable(kt_thr_t *thr)
+bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc)
 {
+	kt_trace_add_event(thr, kt_event_type_event_disable, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+#if KT_DEBUG
+	if (thr->event_disable_depth == 0)
+		thr->last_event_disable_time = kt_clk_get(&thr->clk, thr->id);
+#endif
 	thr->event_disable_depth++;
+	BUG_ON(thr->event_disable_depth >= 3);
 	return (thr->event_disable_depth - 1 == 0);
 }
 
 /* Returns true if events became enabled after the call. */
-bool kt_thr_event_enable(kt_thr_t *thr)
+bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc)
 {
+	kt_trace_add_event(thr, kt_event_type_event_enable, pc);
+	kt_clk_tick(&thr->clk, thr->id);
+#if KT_DEBUG
+	if (thr->event_disable_depth - 1 == 0)
+		thr->last_event_enable_time = kt_clk_get(&thr->clk, thr->id);
+#endif
 	thr->event_disable_depth--;
 	BUG_ON(thr->event_disable_depth < 0);
 	return (thr->event_disable_depth == 0);
