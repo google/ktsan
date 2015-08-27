@@ -3073,13 +3073,8 @@ static void __sched __schedule(void)
 		rq->nr_switches++;
 		rq->curr = next;
 		++*switch_count;
-
-		ktsan_thr_stop();
-
 		rq = context_switch(rq, prev, next); /* unlocks the rq */
 		cpu = cpu_of(rq);
-
-		ktsan_thr_start();
 	} else {
 		lockdep_unpin_lock(&rq->lock);
 		raw_spin_unlock_irq(&rq->lock);
