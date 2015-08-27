@@ -88,6 +88,8 @@ kt_ctx_t kt_ctx;
 	}								\
 									\
 exit:									\
+	if (thr && event_handled)					\
+		BUG_ON(kt_atomic32_load_no_ktsan(&thr->inside) != 0);	\
 	ENABLE_INTERRUPTS(kt_flags);					\
 /**/
 
@@ -366,6 +368,7 @@ void ktsan_mtx_post_lock(void *addr, bool write, bool try, bool success)
 	if (kt_thr_event_enable(thr, pc)) {
 		kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try, success);
 
+		BUG_ON(!arch_irqs_disabled());
 		kt_flags = thr->irq_flags_before_mtx;
 	}
 
@@ -396,6 +399,7 @@ void ktsan_mtx_post_unlock(void *addr, bool write)
 	if (kt_thr_event_enable(thr, pc)) {
 		kt_mtx_post_unlock(thr, pc, (uptr_t)addr, write);
 
+		BUG_ON(!arch_irqs_disabled());
 		kt_flags = thr->irq_flags_before_mtx;
 	}
 
