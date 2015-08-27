@@ -350,6 +350,9 @@ void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
 	ENTER(false, true);
 
 	if (kt_thr_event_disable(thr, pc)) {
+		/* Disable interrupts while inside of mutex_lock and
+		   similar functions. Otherwise all events in interrupts
+		   that happen during that time will be ignored. */
 		thr->irq_flags_before_mtx = kt_flags;
 		/* Set all disabled in kt_flags. */
 		kt_flags = arch_local_irq_save();
@@ -381,6 +384,9 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 	ENTER(false, true);
 
 	if (kt_thr_event_disable(thr, pc)) {
+		/* Disable interrupts while inside of mutex_unlock and
+		   similar functions. Otherwise all events in interrupts
+		   that happen during that time will be ignored. */
 		thr->irq_flags_before_mtx = kt_flags;
 		/* Set all disabled in kt_flags. */
 		kt_flags = arch_local_irq_save();
