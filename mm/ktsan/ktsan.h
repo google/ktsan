@@ -204,6 +204,7 @@ struct kt_thr_s {
 	kt_clk_t		release_clk;
 	kt_trace_t		trace;
 	int			call_depth;
+	int			read_disable_depth;
 	int			event_disable_depth;
 	int			report_disable_depth;
 	int			preempt_disable_depth;
@@ -211,6 +212,12 @@ struct kt_thr_s {
 	unsigned long		irq_flags_before_mtx;
 	struct list_head	quarantine_list; /* list entry */
 	struct list_head	percpu_list; /* list head */
+	/* List of currently "acquired" for reading seqcounts. */
+	uptr_t			seqcount[4];
+	/* Where the seqcounts were acquired (for debugging). */
+	uptr_t			seqcount_pc[4];
+	/* Ignore of all seqcount-related events. */
+	int			seqcount_ignore;
 #if KT_DEBUG
 	kt_stack_t		start_stack;
 	kt_time_t		last_event_disable_time;
@@ -356,6 +363,12 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 		      bool success);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
+
+void kt_seqcount_begin(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_seqcount_end(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_seqcount_ignore_begin(kt_thr_t *thr, uptr_t pc);
+void kt_seqcount_ignore_end(kt_thr_t *thr, uptr_t pc);
+void kt_seqcount_bug(kt_thr_t *thr, uptr_t addr, const char *what);
 
 void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo);
 void kt_thread_fence_no_ktsan(void);
