@@ -153,19 +153,20 @@ void ktsan_init(void)
 
 void ktsan_print_diagnostics(void)
 {
-	kt_time_t clk;
-
-	ENTER(false, false);
+	ENTER(false, true);
 	LEAVE();
 
 	pr_err("# # # # # # # # # # ktsan diagnostics # # # # # # # # # #\n");
 	pr_err("\n");
 
+#if KT_DEBUG_TRACE
 	if (thr != NULL) {
-		clk = kt_clk_get(&thr->clk, thr->id);
-		kt_trace_dump(&thr->trace, (clk - 512) % KT_TRACE_SIZE, clk);
+		kt_time_t time;
+		time = kt_clk_get(&thr->clk, thr->id);
+		kt_trace_dump(&thr->trace, (time - 512) % KT_TRACE_SIZE, time);
 		pr_err("\n");
 	}
+#endif /* KT_DEBUG_TRACE */
 
 	pr_err("Runtime:\n");
 	pr_err(" runtime active:                %s\n", event_handled ? "+" : "-");
@@ -201,7 +202,9 @@ void ktsan_print_diagnostics(void)
 			thr->report_disable_depth);
 		pr_err(" thr->preempt_disable_depth: %d\n",
 			thr->preempt_disable_depth);
-		pr_err(" thr->irqs_disabled: %s\n",
+		pr_err(" thr->event_disable_depth:   %d\n",
+			thr->event_disable_depth);
+		pr_err(" thr->irqs_disabled:         %s\n",
 			thr->irqs_disabled ? "+" : "-");
 		pr_err("\n");
 	}
@@ -212,11 +215,25 @@ void ktsan_print_diagnostics(void)
 
 #if KT_DEBUG
 	if (thr != NULL) {
-		pr_err("Thread start stack trace:\n");
+		kt_stack_t stack;
+
+		pr_err("Last event disable:\n");
+		kt_trace_restore_stack(thr,
+				thr->last_event_disable_time, &stack);
+		kt_stack_print(&stack);
+		pr_err("\n");
+
+		pr_err("Last event enable:\n");
+		kt_trace_restore_stack(thr,
+				thr->last_event_enable_time, &stack);
+		kt_stack_print(&stack);
+		pr_err("\n");
+
+		pr_err("Thread start:\n");
 		kt_stack_print(&thr->start_stack);
 		pr_err("\n");
 	}
-#endif
+#endif /* KT_DEBUG */
 
 	pr_err("# # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n");
 }
@@ -263,7 +280,7 @@ void ktsan_thr_stop(void)
 void ktsan_thr_event_disable(void)
 {
 	ENTER(false, true);
-	kt_thr_event_disable(thr);
+	kt_thr_event_disable(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_thr_event_disable);
@@ -271,7 +288,7 @@ EXPORT_SYMBOL(ktsan_thr_event_disable);
 void ktsan_thr_event_enable(void)
 {
 	ENTER(false, true);
-	kt_thr_event_enable(thr);
+	kt_thr_event_enable(thr, pc);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_thr_event_enable);
@@ -329,7 +346,15 @@ void ktsan_memblock_free(void *addr, unsigned long size)
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
 {
 	ENTER(false, true);
-	kt_mtx_pre_lock(thr, pc, (uptr_t)addr, write, try);
+
+	if (kt_thr_event_disable(thr, pc)) {
+		thr->irq_flags_before_mtx = kt_flags;
+		/* Set all disabled in kt_flags. */
+		kt_flags = arch_local_irq_save();
+
+		kt_mtx_pre_lock(thr, pc, (uptr_t)addr, write, try);
+	}
+
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_lock);
@@ -337,7 +362,13 @@ EXPORT_SYMBOL(ktsan_mtx_pre_lock);
 void ktsan_mtx_post_lock(void *addr, bool write, bool try, bool success)
 {
 	ENTER(false, true);
-	kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try, success);
+
+	if (kt_thr_event_enable(thr, pc)) {
+		kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try, success);
+
+		kt_flags = thr->irq_flags_before_mtx;
+	}
+
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_post_lock);
@@ -345,7 +376,15 @@ EXPORT_SYMBOL(ktsan_mtx_post_lock);
 void ktsan_mtx_pre_unlock(void *addr, bool write)
 {
 	ENTER(false, true);
-	kt_mtx_pre_unlock(thr, pc, (uptr_t)addr, write);
+
+	if (kt_thr_event_disable(thr, pc)) {
+		thr->irq_flags_before_mtx = kt_flags;
+		/* Set all disabled in kt_flags. */
+		kt_flags = arch_local_irq_save();
+
+		kt_mtx_pre_unlock(thr, pc, (uptr_t)addr, write);
+	}
+
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
@@ -353,7 +392,13 @@ EXPORT_SYMBOL(ktsan_mtx_pre_unlock);
 void ktsan_mtx_post_unlock(void *addr, bool write)
 {
 	ENTER(false, true);
-	kt_mtx_post_unlock(thr, pc, (uptr_t)addr, write);
+
+	if (kt_thr_event_enable(thr, pc)) {
+		kt_mtx_post_unlock(thr, pc, (uptr_t)addr, write);
+
+		kt_flags = thr->irq_flags_before_mtx;
+	}
+
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_post_unlock);
@@ -869,7 +914,7 @@ EXPORT_SYMBOL(ktsan_write_range);
 
 void ktsan_func_entry(void *call_pc)
 {
-	ENTER(false, false);
+	ENTER(false, true);
 	kt_func_entry(thr, (uptr_t)call_pc);
 	LEAVE();
 }
@@ -877,7 +922,7 @@ EXPORT_SYMBOL(ktsan_func_entry);
 
 void ktsan_func_exit(void)
 {
-	ENTER(false, false);
+	ENTER(false, true);
 	kt_func_exit(thr);
 	LEAVE();
 }

@@ -32,7 +32,8 @@
 
 #define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
-#define KT_DEBUG 0
+#define KT_DEBUG 1
+#define KT_DEBUG_TRACE 0
 
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
@@ -90,6 +91,8 @@ enum kt_event_type_e {
 	kt_event_type_preempt_disable,
 	kt_event_type_irq_enable,
 	kt_event_type_irq_disable,
+	kt_event_type_event_disable,
+	kt_event_type_event_enable,
 };
 
 struct kt_event_s {
@@ -205,10 +208,13 @@ struct kt_thr_s {
 	int			report_disable_depth;
 	int			preempt_disable_depth;
 	bool			irqs_disabled;
+	unsigned long		irq_flags_before_mtx;
 	struct list_head	quarantine_list; /* list entry */
 	struct list_head	percpu_list; /* list head */
 #if KT_DEBUG
 	kt_stack_t		start_stack;
+	kt_time_t		last_event_disable_time;
+	kt_time_t		last_event_enable_time;
 #endif
 };
 
@@ -334,8 +340,8 @@ kt_thr_t *kt_thr_get(int id);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
-bool kt_thr_event_disable(kt_thr_t *thr);
-bool kt_thr_event_enable(kt_thr_t *thr);
+bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc);
+bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc);
 
 /* Synchronization. */
 

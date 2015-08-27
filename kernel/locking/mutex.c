@@ -95,12 +95,12 @@ __visible void __sched __mutex_lock_slowpath(atomic_t *lock_count);
  */
 void __sched mutex_lock(struct mutex *lock)
 {
-	ktsan_mtx_pre_lock(lock, true, false);
 	might_sleep();
 	/*
 	 * The locking fastpath is the 1->0 transition from
 	 * 'unlocked' into 'locked' state.
 	 */
+	ktsan_mtx_pre_lock(lock, true, false);
 	__mutex_fastpath_lock(&lock->count, __mutex_lock_slowpath);
 	mutex_set_owner(lock);
 	ktsan_mtx_post_lock(lock, true, false, true);
@@ -396,7 +396,9 @@ done:
 		 * we do not, make it so, otherwise we might get stuck.
 		 */
 		__set_current_state(TASK_RUNNING);
+		ktsan_mtx_post_lock(lock, true, false, false);
 		schedule_preempt_disabled();
+		ktsan_mtx_pre_lock(lock, true, false);
 	}
 
 	return false;
@@ -580,7 +582,9 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
 
 		/* didn't get the lock, go to sleep: */
 		spin_unlock_mutex(&lock->wait_lock, flags);
+		ktsan_mtx_post_lock(lock, true, false, false);
 		schedule_preempt_disabled();
+		ktsan_mtx_pre_lock(lock, true, false);
 		spin_lock_mutex(&lock->wait_lock, flags);
 	}
 	__set_task_state(task, TASK_RUNNING);
@@ -791,8 +795,8 @@ int __sched mutex_lock_interruptible(struct mutex *lock)
 {
 	int ret;
 
-	ktsan_mtx_pre_lock(lock, true, false);
 	might_sleep();
+	ktsan_mtx_pre_lock(lock, true, false);
 	ret =  __mutex_fastpath_lock_retval(&lock->count);
 	if (likely(!ret)) {
 		mutex_set_owner(lock);
@@ -811,8 +815,8 @@ int __sched mutex_lock_killable(struct mutex *lock)
 {
 	int ret;
 
-	ktsan_mtx_pre_lock(lock, true, false);
 	might_sleep();
+	ktsan_mtx_pre_lock(lock, true, false);
 	ret = __mutex_fastpath_lock_retval(&lock->count);
 	if (likely(!ret)) {
 		mutex_set_owner(lock);
