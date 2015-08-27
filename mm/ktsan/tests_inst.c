@@ -1,5 +1,6 @@
 #include "ktsan.h"
 
+#include <linux/bitops.h>
 #include <linux/completion.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
@@ -28,9 +29,7 @@ int thr_func(void *arg)
 {
 	thr_arg_t *thr_arg = (thr_arg_t *)arg;
 
-	kt_report_enable(current->ktsan.thr);
 	thr_arg->func(thr_arg->value);
-	kt_report_disable(current->ktsan.thr);
 	complete(thr_arg->completion);
 
 	return 0;
@@ -522,6 +521,46 @@ static void kt_test_rcu(void)
 		"rcu-deref-assign", "no race expected");
 }
 
+struct wait_on_bit_arg
+{
+	unsigned long bit;
+	unsigned long data;
+};
+
+static int wait_on_bit_main(void *p)
+{
+	struct wait_on_bit_arg *arg = p;
+
+	arg->bit = 1;
+	return 0;
+}
+
+static int wait_on_bit_thr1(void *p)
+{
+	struct wait_on_bit_arg *arg = p;
+
+	arg->data = 1;
+	clear_bit_unlock(0, &arg->bit);
+	wake_up_bit(&arg->bit, 0);
+	return 0;
+}
+
+static int wait_on_bit_thr2(void *p)
+{
+	struct wait_on_bit_arg *arg = p;
+
+	wait_on_bit(&arg->bit, 0, TASK_UNINTERRUPTIBLE);
+	if (arg->data != 1)
+		BUG_ON(1);
+	return 0;
+}
+
+static void kt_test_wait_on_bit(void)
+{
+	kt_test(wait_on_bit_main, wait_on_bit_thr1, wait_on_bit_thr2,
+		"wait_on_bit", "no race expected");
+}
+
 /* Instrumented tests. */
 
 void kt_tests_run_inst(void)
@@ -552,5 +591,7 @@ void kt_tests_run_inst(void)
 	kt_test_percpu();
 	pr_err("\n");
 	kt_test_rcu();
+	pr_err("\n");
+	kt_test_wait_on_bit();
 	pr_err("\n");
 }
