@@ -918,7 +918,13 @@ EXPORT_SYMBOL(ktsan_write_range);
 
 void ktsan_func_entry(void *call_pc)
 {
+#if KT_DEBUG
+	/* mutex_lock calls mutex_lock_slowpath, and it might be useful
+	   to see these frames in trace when debugging. Same in func_exit. */
 	ENTER(false, true);
+#else
+	ENTER(false, false);
+#endif
 	kt_func_entry(thr, (uptr_t)call_pc);
 	LEAVE();
 }
@@ -926,7 +932,11 @@ EXPORT_SYMBOL(ktsan_func_entry);
 
 void ktsan_func_exit(void)
 {
+#if KT_DEBUG
 	ENTER(false, true);
+#else
+	ENTER(false, false);
+#endif
 	kt_func_exit(thr);
 	LEAVE();
 }
