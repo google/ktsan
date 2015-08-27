@@ -75,6 +75,7 @@
 #include <linux/aio.h>
 #include <linux/compiler.h>
 #include <linux/sysctl.h>
+#include <linux/ktsan.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -441,7 +442,10 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 		tmp = kmem_cache_alloc(vm_area_cachep, GFP_KERNEL);
 		if (!tmp)
 			goto fail_nomem;
+		/* mpnt is concurrently mutated which causes data races */
+		ktsan_thr_event_disable();
 		*tmp = *mpnt;
+		ktsan_thr_event_enable();
 		INIT_LIST_HEAD(&tmp->anon_vma_chain);
 		retval = vma_dup_policy(mpnt, tmp);
 		if (retval)

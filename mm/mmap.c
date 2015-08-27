@@ -41,6 +41,7 @@
 #include <linux/notifier.h>
 #include <linux/memory.h>
 #include <linux/printk.h>
+#include <linux/ktsan.h>
 
 #include <asm/uaccess.h>
 #include <asm/cacheflush.h>
@@ -2453,7 +2454,10 @@ static int __split_vma(struct mm_struct *mm, struct vm_area_struct *vma,
 		goto out_err;
 
 	/* most fields are the same, copy all, and then fixup */
+	/* mpnt is concurrently mutated which causes data races */
+	ktsan_thr_event_disable();
 	*new = *vma;
+	ktsan_thr_event_enable();
 
 	INIT_LIST_HEAD(&new->anon_vma_chain);
 
