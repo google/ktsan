@@ -15,7 +15,7 @@
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 
-typedef int (*thr_func_t)(void *);
+typedef void (*thr_func_t)(void *);
 
 struct thr_arg_s {
 	void *value;
@@ -35,344 +35,307 @@ int thr_func(void *arg)
 	return 0;
 }
 
+static volatile int always_false;
+static noinline void use(int x)
+{
+	if (always_false)
+		always_false = x;
+}
+
 DECLARE_COMPLETION(thr_fst_compl);
 DECLARE_COMPLETION(thr_snd_compl);
 
 void kt_test(thr_func_t main, thr_func_t first, thr_func_t second,
-		const char *name, const char *result)
+		const char *name, bool has_race)
 {
 	struct task_struct *thr_fst, *thr_snd;
 	char thr_fst_name[] = "thr-fst";
 	char thr_snd_name[] = "thr-snd";
 	thr_arg_t thr_fst_arg, thr_snd_arg;
-	int *value;
+	int *value, i;
 
-	pr_err("ktsan: starting %s test, %s.\n", name, result);
+	pr_err("ktsan: starting %s test, %s.\n", name,
+		has_race ? "race expected" : "no race expected");
 
-	value = kmalloc(1024, GFP_KERNEL);
-	BUG_ON(!value);
+	// Run each test 10 times.
+	// Due to racy race detection algorithm tsan can miss races sometimes,
+	// so we require it to catch a race at least once in 10 runs.
+	// For tests without races, it would not be out of place to ensure
+	// that no runs result in false race reports.
+	for (i = 0; i < 10; i++) {
+		value = kmalloc(1024, GFP_KERNEL);
+		BUG_ON(!value);
 
-	main(value);
+		main(value);
 
-	reinit_completion(&thr_fst_compl);
-	reinit_completion(&thr_snd_compl);
+		reinit_completion(&thr_fst_compl);
+		reinit_completion(&thr_snd_compl);
 
-	thr_fst_arg.value = value;
-	thr_fst_arg.func = first;
-	thr_fst_arg.completion = &thr_fst_compl;
+		thr_fst_arg.value = value;
+		thr_fst_arg.func = first;
+		thr_fst_arg.completion = &thr_fst_compl;
 
-	thr_snd_arg.value = value;
-	thr_snd_arg.func = second;
-	thr_snd_arg.completion = &thr_snd_compl;
+		thr_snd_arg.value = value;
+		thr_snd_arg.func = second;
+		thr_snd_arg.completion = &thr_snd_compl;
 
-	thr_fst = kthread_create(thr_func, &thr_fst_arg, thr_fst_name);
-	thr_snd = kthread_create(thr_func, &thr_snd_arg, thr_snd_name);
+		thr_fst = kthread_create(thr_func, &thr_fst_arg, thr_fst_name);
+		thr_snd = kthread_create(thr_func, &thr_snd_arg, thr_snd_name);
 
-	if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
-		pr_err("ktsan: could not create kernel threads.\n");
-		return;
+		if (IS_ERR(thr_fst) || IS_ERR(thr_snd)) {
+			pr_err("ktsan: could not create kernel threads.\n");
+			return;
+		}
+
+		wake_up_process(thr_fst);
+		wake_up_process(thr_snd);
+
+		wait_for_completion(&thr_fst_compl);
+		wait_for_completion(&thr_snd_compl);
+
+		kfree(value);
 	}
-
-	wake_up_process(thr_fst);
-	wake_up_process(thr_snd);
-
-	wait_for_completion(&thr_fst_compl);
-	wait_for_completion(&thr_snd_compl);
-
-	kfree(value);
 
 	pr_err("ktsan: end of test.\n");
 }
 
-static int kt_nop(void *arg) { return 0; }
+static void kt_nop(void *arg) {}
 
 /* ktsan test: race. */
 
-static int race_first(void *arg)
+static void race_first(void *arg)
 {
-	int value = *((char *)arg);
-
-	return value;
+	use(*((char *)arg));
 }
 
-static int race_second(void *arg)
+static void race_second(void *arg)
 {
 	*((int *)arg) = 1;
-
-	return 0;
 }
 
 static void kt_test_race(void)
 {
-	kt_test(kt_nop, race_first, race_second, "race", "race expected");
+	kt_test(kt_nop, race_first, race_second, "race", true);
 }
 
 /* ktsan test: offset. */
 
-static int offset_first(void *arg)
+static void offset_first(void *arg)
 {
 	*((int *)arg) = 1;
-
-	return 0;
 }
 
-static int offset_second(void *arg)
+static void offset_second(void *arg)
 {
 	*((int *)arg + 1) = 1;
-
-	return 0;
 }
 
 static void kt_test_offset(void)
 {
 	kt_test(kt_nop, offset_first, offset_second,
-		"offset", "no race expected");
+		"offset", false);
 }
 
 /* ktsan test: spinlock. */
 
 DEFINE_SPINLOCK(spinlock_sync);
 
-static int spinlock_first(void *arg)
+static void spinlock_first(void *arg)
 {
-	int value;
-
 	spin_lock(&spinlock_sync);
-	value = *((char *)arg);
+	use(*((char *)arg));
 	spin_unlock(&spinlock_sync);
-
-	return value;
 }
 
-static int spinlock_second(void *arg)
+static void spinlock_second(void *arg)
 {
 	spin_lock(&spinlock_sync);
 	*((int *)arg) = 1;
 	spin_unlock(&spinlock_sync);
-
-	return 0;
 }
 
 static void kt_test_spinlock(void)
 {
 	kt_test(kt_nop, spinlock_first, spinlock_second,
-		"spinlock", "no race expected");
+		"spinlock", false);
 }
 
 /* ktsan test: atomic. */
 
-static int atomic_first(void *arg)
+static void atomic_first(void *arg)
 {
-	int value = atomic_read((atomic_t *)arg);
-
-	return value;
+	use(atomic_read((atomic_t *)arg));
 }
 
-static int atomic_second(void *arg)
+static void atomic_second(void *arg)
 {
 	atomic_set((atomic_t *)arg, 1);
-
-	return 0;
 }
 
-static int atomic64_first(void *arg)
+static void atomic64_first(void *arg)
 {
-	int value = atomic64_read((atomic64_t *)arg);
-
-	return value;
+	use(atomic64_read((atomic64_t *)arg));
 }
 
-static int atomic64_second(void *arg)
+static void atomic64_second(void *arg)
 {
 	atomic64_set((atomic64_t *)arg, 1);
-
-	return 0;
 }
 
-static int atomic_xchg_xadd_first(void *arg)
+static void atomic_xchg_xadd_first(void *arg)
 {
-	return xchg((int *)arg, 42);
+	xchg((int *)arg, 42);
 }
 
-static int atomic_xchg_xadd_second(void *arg)
+static void atomic_xchg_xadd_second(void *arg)
 {
-	return xadd((int *)arg, 42);
+	xadd((int *)arg, 42);
 }
 
 static void kt_test_atomic(void)
 {
 	kt_test(kt_nop, atomic_first, atomic_second,
-		"atomic", "no race expected");
+		"atomic", false);
 	kt_test(kt_nop, atomic64_first, atomic64_second,
-		"atomic64", "no race expected");
+		"atomic64", false);
 	kt_test(kt_nop, atomic_xchg_xadd_first, atomic_xchg_xadd_second,
-		"xchg & xadd", "no race expected");
+		"xchg & xadd", false);
 }
 
 /* ktsan test: completion. */
 
 DECLARE_COMPLETION(completion_sync);
 
-static int compl_first(void *arg)
+static void compl_first(void *arg)
 {
-	int value;
-
 	wait_for_completion(&completion_sync);
-	value = *((char *)arg);
-
-	return value;
+	use(*((char *)arg));
 }
 
-static int compl_second(void *arg)
+static void compl_second(void *arg)
 {
 	*((int *)arg) = 1;
 	complete(&completion_sync);
-
-	return 0;
 }
 
 static void kt_test_completion(void)
 {
 	kt_test(kt_nop, compl_first, compl_second,
-		"completion", "no race expected");
+		"completion", false);
 }
 
 /* ktsan test: mutex. */
 
 DEFINE_MUTEX(mutex_sync);
 
-static int mutex_first(void *arg)
+static void mutex_first(void *arg)
 {
-	int value;
-
 	mutex_lock(&mutex_sync);
-	value = *((char *)arg);
+	use(*((char *)arg));
 	mutex_unlock(&mutex_sync);
-
-	return value;
 }
 
-static int mutex_second(void *arg)
+static void mutex_second(void *arg)
 {
 	mutex_lock(&mutex_sync);
 	*((int *)arg) = 1;
 	mutex_unlock(&mutex_sync);
-
-	return 0;
 }
 
 static void kt_test_mutex(void)
 {
 	kt_test(kt_nop, mutex_first, mutex_second,
-		"mutex", "no race expected");
+		"mutex", false);
 }
 
 /* ktsan test: semaphore. */
 
 DEFINE_SEMAPHORE(sema_sync);
 
-static int sema_first(void *arg)
+static void sema_first(void *arg)
 {
-	int value;
-
 	down(&sema_sync);
-	value = *((char *)arg);
+	*((int *)arg) = 2;
 	up(&sema_sync);
-
-	return value;
 }
 
-static int sema_second(void *arg)
+static void sema_second(void *arg)
 {
 	down(&sema_sync);
 	*((int *)arg) = 1;
 	up(&sema_sync);
-
-	return 0;
 }
 
 static void kt_test_semaphore(void)
 {
 	kt_test(kt_nop, sema_first, sema_second,
-		"semaphore", "no race expected");
+		"semaphore", false);
 }
 
 /* ktsan test: rwlock. */
 
 DEFINE_RWLOCK(rwlock_sync);
 
-static int rwlock_first(void *arg)
+static void rwlock_first(void *arg)
 {
 	write_lock(&rwlock_sync);
 	*((int *)arg) = 1;
 	write_unlock(&rwlock_sync);
-
-	return 0;
 }
 
-static int rwlock_second(void *arg)
+static void rwlock_second(void *arg)
 {
 	write_lock(&rwlock_sync);
 	*((int *)arg) = 1;
 	write_unlock(&rwlock_sync);
-
-	return 0;
 }
 
 static void kt_test_rwlock(void)
 {
 	kt_test(kt_nop, rwlock_first, rwlock_second,
-		"rwlock", "no race expected");
+		"rwlock", false);
 }
 
 /* ktsan test: rwsem. */
 
 DECLARE_RWSEM(rwsem_sync);
 
-static int rwsem_first(void *arg)
+static void rwsem_first(void *arg)
 {
 	down_write(&rwsem_sync);
 	*((int *)arg) = 1;
 	up_write(&rwsem_sync);
-
-	return 0;
 }
 
-static int rwsem_second(void *arg)
+static void rwsem_second(void *arg)
 {
 	down_write(&rwsem_sync);
 	*((int *)arg) = 1;
 	up_write(&rwsem_sync);
-
-	return 0;
 }
 
 static void kt_test_rwsem(void)
 {
 	kt_test(kt_nop, rwsem_first, rwsem_second,
-		"rwsem", "no race expected");
+		"rwsem", false);
 }
 
 /* ktsan test: thread create. */
 
-static int thr_crt_main(void *arg)
+static void thr_crt_main(void *arg)
 {
 	*((int *)arg) = 1;
-
-	return 0;
 }
 
-static int thr_crt_first(void *arg)
+static void thr_crt_first(void *arg)
 {
 	*((int *)arg) = 1;
-
-	return 0;
 }
 
 static void kt_test_thread_create(void)
 {
 	kt_test(thr_crt_main, thr_crt_first, kt_nop,
-		"thread creation", "no race expected");
+		"thread creation", false);
 }
 
 /* ktsan tests: percpu. */
@@ -380,26 +343,22 @@ static void kt_test_thread_create(void)
 DEFINE_PER_CPU(int, percpu_var);
 DEFINE_PER_CPU(int, percpu_array[128]);
 
-static int percpu_get_put(void *arg)
+static void percpu_get_put(void *arg)
 {
 	get_cpu_var(percpu_var) = 0;
 	put_cpu_var(percpu_var);
-
-	return 0;
 }
 
-static int percpu_irq(void *arg)
+static void percpu_irq(void *arg)
 {
 	unsigned long flags;
 
 	local_irq_save(flags);
 	*this_cpu_ptr(&percpu_var) = 0;
 	local_irq_restore(flags);
-
-	return 0;
 }
 
-static int percpu_preempt_array(void *arg)
+static void percpu_preempt_array(void *arg)
 {
 	int i;
 
@@ -407,118 +366,98 @@ static int percpu_preempt_array(void *arg)
 	for (i = 0; i < 128; i++)
 		*this_cpu_ptr(&percpu_array[i]) = i;
 	preempt_enable();
-
-	return 0;
 }
 
 /* FIXME(xairy): this test doesn't produce report at all. */
-static int percpu_access_one(void *arg)
+static void percpu_access_one(void *arg)
 {
 	preempt_disable();
 	per_cpu(percpu_var, 0) = 0;
 	preempt_enable();
-
-	return 0;
 }
 
 /* FIXME(xairy): this test doesn't produce report sometimes. */
-static int percpu_race(void *arg)
+static void percpu_race(void *arg)
 {
 	*((int *)arg) = 1;
 
 	preempt_disable();
 	*this_cpu_ptr(&percpu_var) = 0;
 	preempt_enable();
-
-	return 0;
 }
 
 static void kt_test_percpu(void)
 {
 	kt_test(kt_nop, percpu_get_put, percpu_get_put,
-		"percpu preempt", "no race expected");
+		"percpu preempt", false);
 	kt_test(kt_nop, percpu_irq, percpu_irq,
-		"percpu irq", "no race expected");
+		"percpu irq", false);
 	kt_test(kt_nop, percpu_preempt_array, percpu_preempt_array,
-		"percpu array", "no race expected");
+		"percpu array", false);
 	kt_test(kt_nop, percpu_access_one, percpu_access_one,
-		"percpu access one", "race expected");
+		"percpu access one", true);
 	kt_test(kt_nop, percpu_race, percpu_race,
-		"percpu race", "race expected");
+		"percpu race", true);
 }
 
 /* ktsan test: rcu */
 
-static int rcu_read_under_lock(void *arg)
+static void rcu_read_under_lock(void *arg)
 {
-	int value;
-
 	rcu_read_lock();
-	value = *((int *)arg);
+	use(*((int *)arg));
 	rcu_read_unlock();
-
-	return value;
 }
 
-static int rcu_synchronize(void *arg)
+static void rcu_synchronize(void *arg)
 {
 	synchronize_rcu();
 	*((int *)arg) = 0;
-
-	return 0;
 }
 
-static int rcu_write_under_lock(void *arg)
+static void rcu_write_under_lock(void *arg)
 {
 	rcu_read_lock();
 	*((int *)arg) = 0;
 	rcu_read_unlock();
-
-	return 0;
 }
 
-static int rcu_init_ptr(void *arg)
+static void rcu_init_ptr(void *arg)
 {
 	*((int *)arg + 4) = 1;
 	*(int **)arg = (int *)arg + 4;
-
-	return 0;
 }
 
-static int rcu_assign_ptr(void *arg)
+static void rcu_assign_ptr(void *arg)
 {
 	*((int *)arg + 8) = 4242;
 	rcu_assign_pointer(*(int **)arg, (int *)arg + 8);
-
-	return 0;
 }
 
-static int rcu_deref_ptr(void *arg)
+static void rcu_deref_ptr(void *arg)
 {
 	int *ptr = rcu_dereference(*(int **)arg);
 	*ptr = 42;
-
-	return 0;
 }
 
 static void kt_test_rcu(void)
 {
 	kt_test(kt_nop, rcu_read_under_lock, rcu_synchronize,
-		"rcu-read-synchronize", "no race expected");
+		"rcu-read-synchronize", false);
 
 	/* FIXME(xairy): this test doesn't produce report. */
 	kt_test(kt_nop, rcu_write_under_lock, rcu_write_under_lock,
-		"rcu-write-write", "race expected");
+		"rcu-write-write", true);
 
 	/* FIXME(xairy): this test doesn't produce report. */
 	kt_test(kt_nop, rcu_read_under_lock, rcu_write_under_lock,
-		"rcu-read-write", "race expected");
+		"rcu-read-write", true);
 
 	kt_test(kt_nop, rcu_read_under_lock, rcu_assign_ptr,
-		"rcu-read-assign", "no race expected");
+		"rcu-read-assign", false);
 
 	kt_test(rcu_init_ptr, rcu_deref_ptr, rcu_assign_ptr,
-		"rcu-deref-assign", "no race expected");
+		"rcu-deref-assign", false);
 }
 
 struct wait_on_bit_arg
@@ -527,38 +466,35 @@ struct wait_on_bit_arg
 	unsigned long data;
 };
 
-static int wait_on_bit_main(void *p)
+static void wait_on_bit_main(void *p)
 {
 	struct wait_on_bit_arg *arg = p;
 
 	arg->bit = 1;
-	return 0;
 }
 
-static int wait_on_bit_thr1(void *p)
+static void wait_on_bit_thr1(void *p)
 {
 	struct wait_on_bit_arg *arg = p;
 
 	arg->data = 1;
 	clear_bit_unlock(0, &arg->bit);
 	wake_up_bit(&arg->bit, 0);
-	return 0;
 }
 
-static int wait_on_bit_thr2(void *p)
+static void wait_on_bit_thr2(void *p)
 {
 	struct wait_on_bit_arg *arg = p;
 
 	wait_on_bit(&arg->bit, 0, TASK_UNINTERRUPTIBLE);
 	if (arg->data != 1)
 		BUG_ON(1);
-	return 0;
 }
 
 static void kt_test_wait_on_bit(void)
 {
 	kt_test(wait_on_bit_main, wait_on_bit_thr1, wait_on_bit_thr2,
-		"wait_on_bit", "no race expected");
+		"wait_on_bit", false);
 }
 
 /* Instrumented tests. */
