@@ -3246,6 +3246,8 @@ out:
 	 */
 	if (unlikely(!page && read_mems_allowed_retry(cpuset_mems_cookie)))
 		goto retry_cpuset;
+	if (page)
+		read_mems_allowed_cancel();
 
 	return page;
 }

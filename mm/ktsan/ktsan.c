@@ -413,6 +413,40 @@ void ktsan_mtx_post_unlock(void *addr, bool write)
 }
 EXPORT_SYMBOL(ktsan_mtx_post_unlock);
 
+
+void ktsan_seqcount_begin(const void *s)
+{
+	ENTER(false, true);
+	kt_seqcount_begin(thr, pc, (uptr_t)s);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_seqcount_begin);
+
+void ktsan_seqcount_end(const void *s)
+{
+	ENTER(false, true);
+	kt_seqcount_end(thr, pc, (uptr_t)s);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_seqcount_end);
+
+
+void ktsan_seqcount_ignore_begin(void)
+{
+	ENTER(false, true);
+	kt_seqcount_ignore_begin(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_seqcount_ignore_begin);
+
+void ktsan_seqcount_ignore_end(void)
+{
+	ENTER(false, true);
+	kt_seqcount_ignore_end(thr, pc);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_seqcount_ignore_end);
+
 void ktsan_thread_fence(ktsan_memory_order_t mo)
 {
 	ENTER(false, false);

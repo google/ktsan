@@ -1264,6 +1264,7 @@ out_unlock:
 	return;
 
 rename_retry:
+	done_seqretry(&rename_lock, seq);
 	spin_unlock(&this_parent->d_lock);
 	rcu_read_unlock();
 	BUG_ON(seq & 1);
@@ -2246,8 +2247,10 @@ struct dentry *d_lookup(const struct dentry *parent, const struct qstr *name)
 	do {
 		seq = read_seqbegin(&rename_lock);
 		dentry = __d_lookup(parent, name);
-		if (dentry)
+		if (dentry) {
+			read_seqcount_cancel(&rename_lock.seqcount);
 			break;
+		}
 	} while (read_seqretry(&rename_lock, seq));
 	return dentry;
 }

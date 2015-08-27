@@ -118,6 +118,11 @@ static inline bool read_mems_allowed_retry(unsigned int seq)
 	return read_seqcount_retry(&current->mems_allowed_seq, seq);
 }
 
+static inline void read_mems_allowed_cancel(void)
+{
+	read_seqcount_cancel(&current->mems_allowed_seq);
+}
+
 static inline void set_mems_allowed(nodemask_t nodemask)
 {
 	unsigned long flags;
@@ -236,6 +241,8 @@ static inline bool read_mems_allowed_retry(unsigned int seq)
 {
 	return false;
 }
+
+static inline void read_mems_allowed_cancel(void) {}
 
 #endif /* !CONFIG_CPUSETS */
 

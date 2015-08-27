@@ -101,6 +101,9 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	kt_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
 	kt_stat_inc(thr, kt_stat_access_size1 + size);
 
+	if (read && thr->read_disable_depth)
+		return;
+
 	slots = kt_shadow_get(addr);
 
 	if (!slots)

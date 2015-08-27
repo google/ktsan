@@ -36,6 +36,7 @@
 #include <linux/preempt.h>
 #include <linux/lockdep.h>
 #include <linux/compiler.h>
+#include <linux/ktsan.h>
 #include <asm/processor.h>
 
 /*
@@ -108,6 +109,7 @@ static inline unsigned __read_seqcount_begin(const seqcount_t *s)
 {
 	unsigned ret;
 
+	ktsan_seqcount_begin(s);
 repeat:
 	ret = READ_ONCE(s->sequence);
 	if (unlikely(ret & 1)) {
@@ -128,7 +130,10 @@ repeat:
  */
 static inline unsigned raw_read_seqcount(const seqcount_t *s)
 {
-	unsigned ret = READ_ONCE(s->sequence);
+	unsigned ret;
+
+	ktsan_seqcount_begin(s);
+	ret = READ_ONCE(s->sequence);
 	smp_rmb();
 	return ret;
 }
@@ -180,7 +185,10 @@ static inline unsigned read_seqcount_begin(const seqcount_t *s)
  */
 static inline unsigned raw_seqcount_begin(const seqcount_t *s)
 {
-	unsigned ret = READ_ONCE(s->sequence);
+	unsigned ret;
+
+	ktsan_seqcount_begin(s);
+	ret = READ_ONCE(s->sequence);
 	smp_rmb();
 	return ret & ~1;
 }
@@ -201,7 +209,11 @@ static inline unsigned raw_seqcount_begin(const seqcount_t *s)
  */
 static inline int __read_seqcount_retry(const seqcount_t *s, unsigned start)
 {
-	return unlikely(s->sequence != start);
+	int ret;
+
+	ret = unlikely(s->sequence != start);
+	ktsan_seqcount_end(s);
+	return ret;
 }
 
 /**
@@ -220,6 +232,18 @@ static inline int read_seqcount_retry(const seqcount_t *s, unsigned start)
 	return __read_seqcount_retry(s, start);
 }
 
+/**
+ * read_seqcount_cancel - cancel a seq-read critical section
+ * @s: pointer to seqcount_t
+ *
+ * This is a no-op except for ktsan, it needs to know scopes of seq-read
+ * critical sections. The sections are denoted either by begin->retry or
+ * by begin->cancel.
+ */
+static inline void read_seqcount_cancel(const seqcount_t *s)
+{
+	ktsan_seqcount_end(s);
+}
 
 
 static inline void raw_write_seqcount_begin(seqcount_t *s)
@@ -277,6 +301,7 @@ static inline void raw_write_seqcount_barrier(seqcount_t *s)
 
 static inline int raw_read_seqcount_latch(seqcount_t *s)
 {
+	ktsan_seqcount_begin(s);
 	return lockless_dereference(s->sequence);
 }
 
@@ -530,13 +555,22 @@ static inline void read_seqbegin_or_lock(seqlock_t *lock, int *seq)
 
 static inline int need_seqretry(seqlock_t *lock, int seq)
 {
-	return !(seq & 1) && read_seqretry(lock, seq);
+	int ret;
+
+	if (seq & 1)
+		return 0;
+	ret = read_seqretry(lock, seq);
+	/* The critical section will end on done_seqretry. */
+	ktsan_seqcount_begin(&lock->seqcount);
+	return ret;
 }
 
 static inline void done_seqretry(seqlock_t *lock, int seq)
 {
 	if (seq & 1)
 		read_sequnlock_excl(lock);
+	else
+		ktsan_seqcount_end(&lock->seqcount);
 }
 
 static inline void read_seqlock_excl_bh(seqlock_t *sl)
@@ -594,5 +628,7 @@ done_seqretry_irqrestore(seqlock_t *lock, int seq, unsigned long flags)
 {
 	if (seq & 1)
 		read_sequnlock_excl_irqrestore(lock, flags);
+	else
+		ktsan_seqcount_end(&lock->seqcount);
 }
 #endif /* __LINUX_SEQLOCK_H */
