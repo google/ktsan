@@ -352,7 +352,8 @@ static inline void __this_cpu_preempt_check(const char *op) { }
 	VM_BUG_ON((unsigned long)(&(pcp1)) % (2 * sizeof(pcp1)));	\
 	VM_BUG_ON((unsigned long)(&(pcp2)) !=				\
 		  (unsigned long)(&(pcp1)) + sizeof(pcp1));		\
-	ktsan_percpu_acquire(&(variable));				\
+	ktsan_percpu_acquire(&(pcp1));					\
+	ktsan_percpu_acquire(&(pcp2));					\
 	switch(sizeof(pcp1)) {						\
 	case 1: pdcrb_ret__ = stem##1(pcp1, pcp2, __VA_ARGS__); break;	\
 	case 2: pdcrb_ret__ = stem##2(pcp1, pcp2, __VA_ARGS__); break;	\
