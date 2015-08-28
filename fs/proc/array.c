@@ -433,8 +433,8 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
 		if (whole) {
 			struct task_struct *t = task;
 			do {
-				min_flt += t->min_flt;
-				maj_flt += t->maj_flt;
+				min_flt += READ_ONCE(t->min_flt);
+				maj_flt += READ_ONCE(t->maj_flt);
 				gtime += task_gtime(t);
 			} while_each_thread(task, t);
 
