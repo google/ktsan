@@ -52,7 +52,21 @@ static kt_tab_memblock_t *kt_memblock_ensure_created(kt_thr_t *thr, uptr_t addr)
 	return memblock;
 }
 
-static void kt_memblock_destroy(kt_thr_t *thr, uptr_t addr)
+void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync)
+{
+	kt_tab_memblock_t *memblock;
+
+	memblock = kt_memblock_ensure_created(thr, addr);
+	list_add(&sync->list, &memblock->sync_list);
+	spin_unlock(&memblock->tab.lock);
+}
+
+void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
+{
+	kt_access_range_imitate(thr, pc, addr, size, false);
+}
+
+void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 {
 	kt_tab_memblock_t *memblock;
 	struct list_head *entry, *tmp;
@@ -74,24 +88,6 @@ static void kt_memblock_destroy(kt_thr_t *thr, uptr_t addr)
 
 	kt_stat_dec(thr, kt_stat_memblock_objects);
 	kt_stat_inc(thr, kt_stat_memblock_free);
-}
 
-void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync)
-{
-	kt_tab_memblock_t *memblock;
-
-	memblock = kt_memblock_ensure_created(thr, addr);
-	list_add(&sync->list, &memblock->sync_list);
-	spin_unlock(&memblock->tab.lock);
-}
-
-void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
-{
-	kt_access_range_imitate(thr, pc, addr, size, false);
-}
-
-void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
-{
-	kt_memblock_destroy(thr, addr);
 	kt_access_range(thr, pc, addr, size, false);
 }
