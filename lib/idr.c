@@ -870,10 +870,10 @@ static void free_bitmap(struct ida *ida, struct ida_bitmap *bitmap)
 {
 	unsigned long flags;
 
-	if (!ida->free_bitmap) {
+	if (!READ_ONCE(ida->free_bitmap)) {
 		spin_lock_irqsave(&ida->idr.lock, flags);
 		if (!ida->free_bitmap) {
-			ida->free_bitmap = bitmap;
+			WRITE_ONCE(ida->free_bitmap, bitmap);
 			bitmap = NULL;
 		}
 		spin_unlock_irqrestore(&ida->idr.lock, flags);
@@ -901,7 +901,7 @@ int ida_pre_get(struct ida *ida, gfp_t gfp_mask)
 		return 0;
 
 	/* allocate free_bitmap */
-	if (!ida->free_bitmap) {
+	if (!READ_ONCE(ida->free_bitmap)) {
 		struct ida_bitmap *bitmap;
 
 		bitmap = kmalloc(sizeof(struct ida_bitmap), gfp_mask);
@@ -957,7 +957,7 @@ int ida_get_new_above(struct ida *ida, int starting_id, int *p_id)
 	if (!bitmap) {
 		spin_lock_irqsave(&ida->idr.lock, flags);
 		bitmap = ida->free_bitmap;
-		ida->free_bitmap = NULL;
+		WRITE_ONCE(ida->free_bitmap, NULL);
 		spin_unlock_irqrestore(&ida->idr.lock, flags);
 
 		if (!bitmap)
@@ -993,7 +993,7 @@ int ida_get_new_above(struct ida *ida, int starting_id, int *p_id)
 	 * Throw away extra resources one by one after each successful
 	 * allocation.
 	 */
-	if (atomic_read(&ida->idr.id_free_cnt) || ida->free_bitmap) {
+	if (atomic_read(&ida->idr.id_free_cnt) || READ_ONCE(ida->free_bitmap)) {
 		struct idr_layer *p = get_from_free_list(&ida->idr);
 		if (p)
 			kmem_cache_free(idr_layer_cache, p);
