@@ -136,7 +136,7 @@ int scsi_host_set_state(struct Scsi_Host *shost, enum scsi_host_state state)
 		}
 		break;
 	}
-	shost->shost_state = state;
+	WRITE_ONCE(shost->shost_state, state);
 	return 0;
 
  illegal:
