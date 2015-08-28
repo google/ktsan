@@ -65,7 +65,7 @@ do {									\
 		kt_clk_tick(&thr->clk, thr->id);			\
 	}								\
 									\
-	spin_unlock(&sync->tab.lock);					\
+	kt_spin_unlock(&sync->tab.lock);					\
 } while (0)
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,
