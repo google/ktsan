@@ -6,15 +6,19 @@
 #include <linux/percpu.h>
 #include <linux/types.h>
 
-#define KT_SHADOW_SLOTS_LOG 2
-#define KT_SHADOW_SLOTS (1 << KT_SHADOW_SLOTS_LOG)
+#define KT_DEBUG 0
+#define KT_DEBUG_TRACE 0
+#define KT_COLLECT_STATS 1
 
 #define KT_GRAIN 8
+#define KT_SHADOW_SLOTS_LOG 2
+#define KT_SHADOW_SLOTS (1 << KT_SHADOW_SLOTS_LOG)
+#define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
 #define KT_THREAD_ID_BITS 13
 #define KT_CLOCK_BITS 42
 
-#define KT_MAX_SYNC_COUNT (1000 * 1000)
+#define KT_MAX_SYNC_COUNT (1200 * 1000)
 #define KT_MAX_MEMBLOCK_COUNT (200 * 1000)
 #define KT_MAX_PERCPU_SYNC_COUNT (30 * 1000)
 #define KT_MAX_THREAD_COUNT 1024
@@ -23,16 +27,9 @@
 
 #define KT_MAX_STACK_FRAMES 64
 
-#define KT_COLLECT_STATS 1
-
-#define KT_TRACE_PARTS 16
-#define KT_TRACE_PART_SIZE (64 * 1024)
+#define KT_TRACE_PARTS 8
+#define KT_TRACE_PART_SIZE (8 * 1024)
 #define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
-
-#define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
-
-#define KT_DEBUG 0
-#define KT_DEBUG_TRACE 0
 
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
@@ -83,6 +80,7 @@ enum kt_event_type_e {
 	kt_event_type_mop, /* memory operation */
 	kt_event_type_func_enter,
 	kt_event_type_func_exit,
+#if KT_DEBUG
 	kt_event_type_lock,
 	kt_event_type_unlock,
 	kt_event_type_acquire,
@@ -99,6 +97,7 @@ enum kt_event_type_e {
 	kt_event_type_irq_disable,
 	kt_event_type_event_disable,
 	kt_event_type_event_enable,
+#endif /* KT_DEBUG */
 };
 
 struct kt_event_s {

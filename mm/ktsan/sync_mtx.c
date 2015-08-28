@@ -21,8 +21,10 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 	if (!success)
 		return;
 
+#if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_type_lock, pc);
 	kt_clk_tick(&thr->clk, thr->id);
+#endif /* KT_DEBUG */
 	kt_sync_acquire(thr, pc, addr);
 
 	/* FIXME(xairy): double tab access. */
@@ -36,8 +38,10 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
 	kt_tab_sync_t *sync;
 
+#if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_type_unlock, pc);
 	kt_clk_tick(&thr->clk, thr->id);
+#endif /* KT_DEBUG */
 	kt_sync_release(thr, pc, addr);
 
 	/* FIXME(xairy): double tab access. */

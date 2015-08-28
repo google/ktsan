@@ -123,6 +123,7 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 			pc = kt_pc_decompress(event->pc);
 			pr_err(" i: %lu, exit   , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
+#if KT_DEBUG
 		} else if (event->type == kt_event_type_lock) {
 			pc = kt_pc_decompress(event->pc);
 			pr_err(" i: %lu, lock   , pc: [<%p>] %pS\n",
@@ -187,10 +188,7 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 			pc = kt_pc_decompress(event->pc);
 			pr_err(" i: %lu, evt off, pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
-		} /*else if (event->type == kt_event_type_mop) {
-			pc = kt_pc_decompress(event->pc);
-			pr_err(" i: %lu, mop, pc: %p\n",
-				i, (void *)pc);
-		} */
+#endif /* KT_DEBUG */
+		}
 	}
 }

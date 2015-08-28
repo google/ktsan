@@ -9,19 +9,62 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 	    mo == ktsan_memory_order_acq_rel) {
 		kt_clk_acquire(&thr->clk, &thr->acquire_clk);
 
+#if KT_DEBUG
 		kt_trace_add_event(thr, kt_event_type_membar_acquire, pc);
 		kt_clk_tick(&thr->clk, thr->id);
+#endif
 	}
 
-	/* Do full fence despite the actual memory order. */
 	kt_thread_fence_no_ktsan(mo);
 
 	if (mo == ktsan_memory_order_release ||
 	    mo == ktsan_memory_order_acq_rel) {
 		kt_clk_acquire(&thr->release_clk, &thr->clk);
 
+#if KT_DEBUG
 		kt_trace_add_event(thr, kt_event_type_membar_release, pc);
 		kt_clk_tick(&thr->clk, thr->id);
+#endif
+	}
+}
+
+static void kt_atomic_pre_op(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync,
+		ktsan_memory_order_t mo, bool read, bool write)
+{
+	if (mo == ktsan_memory_order_acquire ||
+	    mo == ktsan_memory_order_acq_rel) {
+		kt_clk_acquire(&thr->clk, &sync->clk);
+#if KT_DEBUG
+		kt_trace_add_event(thr, kt_event_type_acquire, pc);
+		kt_clk_tick(&thr->clk, thr->id);
+#endif /* KT_DEBUG */
+		kt_thread_fence_no_ktsan(ktsan_memory_order_acquire);
+	} else if (read) {
+		kt_clk_acquire(&thr->acquire_clk, &sync->clk);
+#if KT_DEBUG
+		kt_trace_add_event(thr, kt_event_type_nonmat_acquire, pc);
+		kt_clk_tick(&thr->clk, thr->id);
+#endif /* KT_DEBUG */
+	}
+}
+
+static void kt_atomic_post_op(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync,
+		ktsan_memory_order_t mo, bool read, bool write)
+{
+	if (mo == ktsan_memory_order_release ||
+	    mo == ktsan_memory_order_acq_rel) {
+		kt_thread_fence_no_ktsan(ktsan_memory_order_release);
+		kt_clk_acquire(&sync->clk, &thr->clk);
+#if KT_DEBUG
+		kt_trace_add_event(thr, kt_event_type_release, pc);
+		kt_clk_tick(&thr->clk, thr->id);
+#endif /* KT_DEBUG */
+	} else if (write) {
+		kt_clk_acquire(&sync->clk, &thr->release_clk);
+#if KT_DEBUG
+		kt_trace_add_event(thr, kt_event_type_nonmat_release, pc);
+		kt_clk_tick(&thr->clk, thr->id);
+#endif /* KT_DEBUG */
 	}
 }
 
@@ -31,41 +74,13 @@ do {									\
 									\
 	sync = kt_sync_ensure_created(thr, pc, (ad));			\
 									\
-	if ((mo) == ktsan_memory_order_acquire ||			\
-	    (mo) == ktsan_memory_order_acq_rel) {			\
-		kt_clk_acquire(&thr->clk, &sync->clk);			\
-		kt_trace_add_event(thr,					\
-			kt_event_type_acquire, pc);			\
-		kt_clk_tick(&thr->clk, thr->id);			\
-									\
-		/* Do full fence despite the actual memory order. */	\
-		kt_thread_fence_no_ktsan(ktsan_memory_order_acquire);	\
-	} else if (read) {						\
-		kt_clk_acquire(&thr->acquire_clk, &sync->clk);		\
-		kt_trace_add_event(thr,					\
-			kt_event_type_nonmat_acquire, pc);		\
-		kt_clk_tick(&thr->clk, thr->id);			\
-	}								\
+	kt_atomic_pre_op(thr, pc, sync, mo, read, write);		\
 									\
 	(op);								\
 									\
-	if ((mo) == ktsan_memory_order_release ||			\
-	    (mo) == ktsan_memory_order_acq_rel) {			\
-		/* Do full fence despite the actual memory order. */	\
-		kt_thread_fence_no_ktsan(ktsan_memory_order_release);	\
+	kt_atomic_post_op(thr, pc, sync, mo, read, write);		\
 									\
-		kt_clk_acquire(&sync->clk, &thr->clk);			\
-		kt_trace_add_event(thr,					\
-			kt_event_type_release, pc);			\
-		kt_clk_tick(&thr->clk, thr->id);			\
-	} else if (write) {						\
-		kt_clk_acquire(&sync->clk, &thr->release_clk);		\
-		kt_trace_add_event(thr,					\
-			kt_event_type_nonmat_release, pc);		\
-		kt_clk_tick(&thr->clk, thr->id);			\
-	}								\
-									\
-	kt_spin_unlock(&sync->tab.lock);					\
+	kt_spin_unlock(&sync->tab.lock);				\
 } while (0)
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,
