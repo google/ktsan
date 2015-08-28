@@ -2080,7 +2080,8 @@ __kmem_cache_alias(const char *name, size_t size, size_t align,
 		 * Adjust the object sizes so that we clear
 		 * the complete object on kzalloc.
 		 */
-		cachep->object_size = max_t(int, cachep->object_size, size);
+		WRITE_ONCE(cachep->object_size,
+			max_t(int, cachep->object_size, size));
 	}
 	return cachep;
 }

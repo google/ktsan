@@ -1269,10 +1269,10 @@ good_area:
 	 * returned VM_FAULT_MAJOR, we account it as a major fault.
 	 */
 	if (major) {
-		tsk->maj_flt++;
+		WRITE_ONCE(tsk->maj_flt, tsk->maj_flt + 1);
 		perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS_MAJ, 1, regs, address);
 	} else {
-		tsk->min_flt++;
+		WRITE_ONCE(tsk->min_flt, tsk->min_flt + 1);
 		perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS_MIN, 1, regs, address);
 	}
 

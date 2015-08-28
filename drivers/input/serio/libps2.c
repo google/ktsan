@@ -43,7 +43,7 @@ int ps2_sendbyte(struct ps2dev *ps2dev, unsigned char byte, int timeout)
 
 	if (serio_write(ps2dev->serio, byte) == 0)
 		wait_event_timeout(ps2dev->wait,
-				   !(ps2dev->flags & PS2_FLAG_ACK),
+				   !(READ_ONCE(ps2dev->flags) & PS2_FLAG_ACK),
 				   msecs_to_jiffies(timeout));
 
 	serio_pause_rx(ps2dev->serio);
@@ -225,13 +225,13 @@ int __ps2_command(struct ps2dev *ps2dev, unsigned char *param, int command)
 	timeout = msecs_to_jiffies(command == PS2_CMD_RESET_BAT ? 4000 : 500);
 
 	timeout = wait_event_timeout(ps2dev->wait,
-				     !(ps2dev->flags & PS2_FLAG_CMD1), timeout);
+				     !(READ_ONCE(ps2dev->flags) & PS2_FLAG_CMD1), timeout);
 
-	if (ps2dev->cmdcnt && !(ps2dev->flags & PS2_FLAG_CMD1)) {
-
+	if (smp_load_acquire(&ps2dev->cmdcnt) &&
+			!(smp_load_acquire(&ps2dev->flags) & PS2_FLAG_CMD1)) {
 		timeout = ps2_adjust_timeout(ps2dev, command, timeout);
 		wait_event_timeout(ps2dev->wait,
-				   !(ps2dev->flags & PS2_FLAG_CMD), timeout);
+				   !(smp_load_acquire(&ps2dev->flags) & PS2_FLAG_CMD), timeout);
 	}
 
 	if (param)
@@ -284,19 +284,21 @@ EXPORT_SYMBOL(ps2_init);
 
 int ps2_handle_ack(struct ps2dev *ps2dev, unsigned char data)
 {
+	unsigned long flags = ps2dev->flags;
+
 	switch (data) {
 		case PS2_RET_ACK:
 			ps2dev->nak = 0;
 			break;
 
 		case PS2_RET_NAK:
-			ps2dev->flags |= PS2_FLAG_NAK;
+			flags |= PS2_FLAG_NAK;
 			ps2dev->nak = PS2_RET_NAK;
 			break;
 
 		case PS2_RET_ERR:
-			if (ps2dev->flags & PS2_FLAG_NAK) {
-				ps2dev->flags &= ~PS2_FLAG_NAK;
+			if (flags & PS2_FLAG_NAK) {
+				flags &= ~PS2_FLAG_NAK;
 				ps2dev->nak = PS2_RET_ERR;
 				break;
 			}
@@ -308,7 +310,7 @@ int ps2_handle_ack(struct ps2dev *ps2dev, unsigned char data)
 		case 0x00:
 		case 0x03:
 		case 0x04:
-			if (ps2dev->flags & PS2_FLAG_WAITID) {
+			if (flags & PS2_FLAG_WAITID) {
 				ps2dev->nak = 0;
 				break;
 			}
@@ -319,12 +321,12 @@ int ps2_handle_ack(struct ps2dev *ps2dev, unsigned char data)
 
 
 	if (!ps2dev->nak) {
-		ps2dev->flags &= ~PS2_FLAG_NAK;
+		flags &= ~PS2_FLAG_NAK;
 		if (ps2dev->cmdcnt)
-			ps2dev->flags |= PS2_FLAG_CMD | PS2_FLAG_CMD1;
+			flags |= PS2_FLAG_CMD | PS2_FLAG_CMD1;
 	}
 
-	ps2dev->flags &= ~PS2_FLAG_ACK;
+	WRITE_ONCE(ps2dev->flags, flags & ~PS2_FLAG_ACK);
 	wake_up(&ps2dev->wait);
 
 	if (data != PS2_RET_ACK)
@@ -342,17 +344,21 @@ EXPORT_SYMBOL(ps2_handle_ack);
 
 int ps2_handle_response(struct ps2dev *ps2dev, unsigned char data)
 {
-	if (ps2dev->cmdcnt)
-		ps2dev->cmdbuf[--ps2dev->cmdcnt] = data;
+	if (ps2dev->cmdcnt) {
+		unsigned char cmdcnt = ps2dev->cmdcnt - 1;
+
+		ps2dev->cmdbuf[cmdcnt] = data;
+		smp_store_release(&ps2dev->cmdcnt, cmdcnt);
+	}
 
 	if (ps2dev->flags & PS2_FLAG_CMD1) {
-		ps2dev->flags &= ~PS2_FLAG_CMD1;
+		smp_store_release(&ps2dev->flags, ps2dev->flags & ~PS2_FLAG_CMD1);
 		if (ps2dev->cmdcnt)
 			wake_up(&ps2dev->wait);
 	}
 
 	if (!ps2dev->cmdcnt) {
-		ps2dev->flags &= ~PS2_FLAG_CMD;
+		smp_store_release(&ps2dev->flags, ps2dev->flags & ~PS2_FLAG_CMD);
 		wake_up(&ps2dev->wait);
 	}
 

@@ -770,10 +770,14 @@ static inline struct Scsi_Host *dev_to_shost(struct device *dev)
 
 static inline int scsi_host_in_recovery(struct Scsi_Host *shost)
 {
-	return shost->shost_state == SHOST_RECOVERY ||
-		shost->shost_state == SHOST_CANCEL_RECOVERY ||
-		shost->shost_state == SHOST_DEL_RECOVERY ||
-		shost->tmf_in_progress;
+	enum scsi_host_state state = READ_ONCE(shost->shost_state);
+	/* This read should also be atomic, but READ_ONCE does not work on bit-fields. */
+	unsigned tmf = shost->tmf_in_progress;
+
+	return state == SHOST_RECOVERY ||
+		state == SHOST_CANCEL_RECOVERY ||
+		state == SHOST_DEL_RECOVERY ||
+		tmf;
 }
 
 extern bool scsi_use_blk_mq;
