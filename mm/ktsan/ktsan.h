@@ -3,7 +3,6 @@
 
 #include <linux/ktsan.h>
 #include <linux/list.h>
-#include <linux/spinlock.h>
 #include <linux/percpu.h>
 #include <linux/types.h>
 
@@ -62,6 +61,13 @@ typedef struct kt_id_manager_s		kt_id_manager_t;
 typedef struct kt_thr_pool_s		kt_thr_pool_t;
 typedef struct kt_shadow_s		kt_shadow_t;
 typedef struct kt_percpu_sync_s		kt_percpu_sync_t;
+typedef struct kt_spinlock_s		kt_spinlock_t;
+
+/* Ktsan runtime internal, non-instrumented spinlock. */
+
+struct kt_spinlock_s {
+	u8			state;
+};
 
 /* Stack. */
 
@@ -109,7 +115,7 @@ struct kt_trace_s {
 	kt_part_header_t	headers[KT_TRACE_PARTS];
 	kt_event_t		events[KT_TRACE_SIZE];
 	unsigned long		position;
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 };
 
 /* Clocks. */
@@ -143,19 +149,19 @@ struct kt_cache_s {
 	unsigned long		base;
 	unsigned long		mem_size;
 	void			*head;
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 };
 
 /* Hash table. */
 
 struct kt_tab_obj_s {
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 	kt_tab_obj_t		*link;
 	uptr_t			key;
 };
 
 struct kt_tab_part_s {
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 	kt_tab_obj_t		*head;
 };
 
@@ -177,7 +183,7 @@ struct kt_tab_sync_s {
 
 struct kt_tab_lock_s {
 	kt_tab_obj_t		tab;
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 	struct list_head	list;
 };
 
@@ -231,7 +237,7 @@ struct kt_thr_pool_s {
 	int			new_id;
 	struct list_head	quarantine;
 	int			quarantine_size;
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 };
 
 /* Per-cpu synchronization. */
@@ -331,6 +337,13 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 	clk->time[tid]++;
 }
 
+/* Spinlock. */
+
+void kt_spin_init(kt_spinlock_t *l);
+void kt_spin_lock(kt_spinlock_t *l);
+void kt_spin_unlock(kt_spinlock_t *l);
+int kt_spin_is_locked(kt_spinlock_t *l);
+
 /* Shadow. */
 
 void *kt_shadow_get(uptr_t addr);
@@ -371,7 +384,7 @@ void kt_seqcount_ignore_end(kt_thr_t *thr, uptr_t pc);
 void kt_seqcount_bug(kt_thr_t *thr, uptr_t addr, const char *what);
 
 void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo);
-void kt_thread_fence_no_ktsan(void);
+void kt_thread_fence_no_ktsan(ktsan_memory_order_t mo);
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,
 		void *addr, u8 value, ktsan_memory_order_t mo);

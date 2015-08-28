@@ -18,7 +18,7 @@ void __init kt_tab_init(kt_tab_t *tab, unsigned size,
 
 	for (i = 0; i < size; i++) {
 		part = &tab->parts[i];
-		spin_lock_init(&part->lock);
+		kt_spin_init(&part->lock);
 		part->head = NULL;
 	}
 
@@ -46,7 +46,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 	/* Get object if exists. */
 	if (created == NULL && destroy == false) {
 		if (obj) {
-			spin_lock(&obj->lock);
+			kt_spin_lock(&obj->lock);
 			return obj;
 		}
 		return NULL;
@@ -60,7 +60,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 			else
 				prev->link = obj->link;
 
-			spin_lock(&obj->lock);
+			kt_spin_lock(&obj->lock);
 			return obj;
 		}
 		return NULL;
@@ -73,7 +73,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 			if (!obj)
 				return NULL;
 
-			spin_lock_init(&obj->lock);
+			kt_spin_init(&obj->lock);
 			obj->link = part->head;
 			part->head = obj;
 			obj->key = key;
@@ -83,7 +83,7 @@ static inline void *kt_part_access(kt_tab_t *tab, kt_tab_part_t *part,
 			*created = false;
 		}
 
-		spin_lock(&obj->lock);
+		kt_spin_lock(&obj->lock);
 		return obj;
 	}
 
@@ -116,7 +116,7 @@ void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy)
 	hash = key % tab->size;
 	part = &tab->parts[hash];
 
-	spin_lock(&part->lock);
+	kt_spin_lock(&part->lock);
 
 	for (obj = part->head; obj != NULL; obj = obj->link)
 		BUG_ON((uptr_t)obj < PAGE_OFFSET);
@@ -126,7 +126,7 @@ void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy)
 	for (obj = part->head; obj != NULL; obj = obj->link)
 		BUG_ON((uptr_t)obj < PAGE_OFFSET);
 
-	spin_unlock(&part->lock);
+	kt_spin_unlock(&part->lock);
 
 	return result;
 }

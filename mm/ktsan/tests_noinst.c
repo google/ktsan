@@ -27,54 +27,54 @@ void kt_test_hash_table(void)
 	obj = kt_tab_access(&ctx->test_tab, 7, &created, false);
 	BUG_ON(obj == NULL);
 	BUG_ON(created != true);
-	BUG_ON(!spin_is_locked(&obj->tab.lock));
-	spin_unlock(&obj->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj->tab.lock));
+	kt_spin_unlock(&obj->tab.lock);
 
 	obj1 = kt_tab_access(&ctx->test_tab, 7, &created, false);
 	BUG_ON(obj1 != obj);
 	BUG_ON(created != false);
-	BUG_ON(!spin_is_locked(&obj1->tab.lock));
-	spin_unlock(&obj1->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj1->tab.lock));
+	kt_spin_unlock(&obj1->tab.lock);
 
 	obj2 = kt_tab_access(&ctx->test_tab, 7 + 13, &created, false);
 	BUG_ON(obj2 == NULL);
 	BUG_ON(obj2 == obj1);
 	BUG_ON(created != true);
-	BUG_ON(!spin_is_locked(&obj2->tab.lock));
-	spin_unlock(&obj2->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj2->tab.lock));
+	kt_spin_unlock(&obj2->tab.lock);
 
 	obj3 = kt_tab_access(&ctx->test_tab, 7 + 13, NULL, false);
 	BUG_ON(obj3 != obj2);
-	BUG_ON(!spin_is_locked(&obj3->tab.lock));
-	spin_unlock(&obj3->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj3->tab.lock));
+	kt_spin_unlock(&obj3->tab.lock);
 
 	obj3 = kt_tab_access(&ctx->test_tab, 3, &created, false);
 	BUG_ON(obj3 == NULL);
 	BUG_ON(obj3 == obj1 || obj3 == obj2);
 	BUG_ON(created != true);
-	BUG_ON(!spin_is_locked(&obj3->tab.lock));
-	spin_unlock(&obj3->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj3->tab.lock));
+	kt_spin_unlock(&obj3->tab.lock);
 
 	/* Accessing. */
 
 	obj = kt_tab_access(&ctx->test_tab, 7, NULL, false);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj1);
-	BUG_ON(!spin_is_locked(&obj->tab.lock));
-	spin_unlock(&obj->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj->tab.lock));
+	kt_spin_unlock(&obj->tab.lock);
 
 	obj = kt_tab_access(&ctx->test_tab, 7 + 13, &created, false);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj2);
 	BUG_ON(created != false);
-	BUG_ON(!spin_is_locked(&obj->tab.lock));
-	spin_unlock(&obj->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj->tab.lock));
+	kt_spin_unlock(&obj->tab.lock);
 
 	obj = kt_tab_access(&ctx->test_tab, 3, NULL, false);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj3);
-	BUG_ON(!spin_is_locked(&obj->tab.lock));
-	spin_unlock(&obj->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj->tab.lock));
+	kt_spin_unlock(&obj->tab.lock);
 
 	obj = kt_tab_access(&ctx->test_tab, 4, NULL, false);
 	BUG_ON(obj != NULL);
@@ -84,22 +84,22 @@ void kt_test_hash_table(void)
 	obj = kt_tab_access(&ctx->test_tab, 3, NULL, true);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj3);
-	BUG_ON(!spin_is_locked(&obj3->tab.lock));
-	spin_unlock(&obj3->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj3->tab.lock));
+	kt_spin_unlock(&obj3->tab.lock);
 	kt_cache_free(&ctx->test_tab.obj_cache, obj3);
 
 	obj = kt_tab_access(&ctx->test_tab, 7 + 13, NULL, true);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj2);
-	BUG_ON(!spin_is_locked(&obj2->tab.lock));
-	spin_unlock(&obj2->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj2->tab.lock));
+	kt_spin_unlock(&obj2->tab.lock);
 	kt_cache_free(&ctx->test_tab.obj_cache, obj2);
 
 	obj = kt_tab_access(&ctx->test_tab, 7, NULL, true);
 	BUG_ON(obj == NULL);
 	BUG_ON(obj != obj1);
-	BUG_ON(!spin_is_locked(&obj1->tab.lock));
-	spin_unlock(&obj1->tab.lock);
+	BUG_ON(!kt_spin_is_locked(&obj1->tab.lock));
+	kt_spin_unlock(&obj1->tab.lock);
 	kt_cache_free(&ctx->test_tab.obj_cache, obj1);
 
 	pr_err("ktsan: end of test.\n");

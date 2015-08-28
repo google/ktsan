@@ -7,7 +7,7 @@
 
 #define MAX_FUNCTION_NAME_SIZE (128)
 
-DEFINE_SPINLOCK(kt_report_lock);
+static kt_spinlock_t kt_report_lock;
 
 unsigned long last;
 
@@ -120,10 +120,10 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 		}
 	}
 
-	spin_lock(&kt_report_lock);
+	kt_spin_lock(&kt_report_lock);
 
 	if (info->addr == last) {
-		spin_unlock(&kt_report_lock);
+		kt_spin_unlock(&kt_report_lock);
 		return;
 	}
 	last = info->addr;
@@ -187,5 +187,5 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 
 	kt_stat_inc(new, kt_stat_reports);
 
-	spin_unlock(&kt_report_lock);
+	kt_spin_unlock(&kt_report_lock);
 }
