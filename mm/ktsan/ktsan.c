@@ -97,9 +97,9 @@ void __init ktsan_init_early(void)
 {
 	kt_ctx_t *ctx = &kt_ctx;
 
-	kt_tab_init(&ctx->sync_tab, 10007,
+	kt_tab_init(&ctx->sync_tab, 196613,
 		    sizeof(kt_tab_sync_t), KT_MAX_SYNC_COUNT);
-	kt_tab_init(&ctx->memblock_tab, 10007,
+	kt_tab_init(&ctx->memblock_tab, 196613,
 		    sizeof(kt_tab_memblock_t), KT_MAX_MEMBLOCK_COUNT);
 	kt_cache_init(&ctx->percpu_sync_cache,
 		      sizeof(kt_percpu_sync_t), KT_MAX_PERCPU_SYNC_COUNT);
