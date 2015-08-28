@@ -97,9 +97,9 @@ void __init ktsan_init_early(void)
 {
 	kt_ctx_t *ctx = &kt_ctx;
 
-	kt_tab_init(&ctx->sync_tab, 196613,
+	kt_tab_init(&ctx->sync_tab, KT_SYNC_TAB_SIZE,
 		    sizeof(kt_tab_sync_t), KT_MAX_SYNC_COUNT);
-	kt_tab_init(&ctx->memblock_tab, 196613,
+	kt_tab_init(&ctx->memblock_tab, KT_MEMBLOCK_TAB_SIZE,
 		    sizeof(kt_tab_memblock_t), KT_MAX_MEMBLOCK_COUNT);
 	kt_cache_init(&ctx->percpu_sync_cache,
 		      sizeof(kt_percpu_sync_t), KT_MAX_PERCPU_SYNC_COUNT);
@@ -107,6 +107,33 @@ void __init ktsan_init_early(void)
 	kt_tab_init(&ctx->test_tab, 13, sizeof(kt_tab_test_t), 20);
 
 	kt_thr_pool_init();
+}
+
+static void ktsan_report_memory_usage(void)
+{
+	u64 sync_tab_mem = KT_SYNC_TAB_SIZE * sizeof(kt_tab_part_t);
+	u64 sync_cache_mem = KT_MAX_SYNC_COUNT * sizeof(kt_tab_sync_t);
+	u64 sync_total_mem = sync_tab_mem + sync_cache_mem;
+
+	u64 memblock_tab_mem = KT_MEMBLOCK_TAB_SIZE * sizeof(kt_tab_part_t);
+	u64 memblock_cache_mem = KT_MAX_MEMBLOCK_COUNT * sizeof(kt_tab_sync_t);
+	u64 memblock_total_mem = memblock_tab_mem + memblock_cache_mem;
+
+	u64 thr_cache_mem = KT_MAX_THREAD_COUNT * sizeof(kt_thr_t);
+
+	u64 percpu_sync_cache_mem = KT_MAX_PERCPU_SYNC_COUNT *
+		sizeof(kt_percpu_sync_t);
+
+	u64 total_mem = sync_total_mem + memblock_total_mem +
+		percpu_sync_cache_mem + thr_cache_mem;
+
+	pr_err("ktsan memory usage: %llu GB + shadow.\n", total_mem >> 20);
+	pr_err("             syncs: %llu MB + %llu MB\n",
+			sync_cache_mem >> 20, sync_tab_mem >> 20);
+	pr_err("          memblock: %llu MB + %llu MB\n",
+			memblock_cache_mem >> 20, memblock_tab_mem >> 20);
+	pr_err("              thrs: %llu MB\n", thr_cache_mem >> 20);
+	pr_err("      percpu syncs: %llu MB\n", percpu_sync_cache_mem >> 20);
 }
 
 void ktsan_init(void)
@@ -138,19 +165,7 @@ void ktsan_init(void)
 	ctx->enabled = 1;
 
 	pr_err("ktsan: enabled.\n");
-	pr_err("ktsan memory usage: %lu GB + shadow.\n",
-		(KT_MAX_SYNC_COUNT * sizeof(kt_tab_sync_t) +
-		 KT_MAX_MEMBLOCK_COUNT * sizeof(kt_tab_memblock_t) +
-		 KT_MAX_PERCPU_SYNC_COUNT * sizeof(kt_percpu_sync_t) +
-		 KT_MAX_THREAD_COUNT * sizeof(kt_thr_t)) >> 30);
-	pr_err("             syncs: %lu MB\n",
-		(KT_MAX_SYNC_COUNT * sizeof(kt_tab_sync_t)) >> 20);
-	pr_err("          memblock: %lu MB\n",
-		(KT_MAX_MEMBLOCK_COUNT * sizeof(kt_tab_memblock_t)) >> 20);
-	pr_err("      percpu syncs: %lu MB\n",
-		(KT_MAX_PERCPU_SYNC_COUNT * sizeof(kt_percpu_sync_t)) >> 20);
-	pr_err("              thrs: %lu MB\n",
-		(KT_MAX_THREAD_COUNT * sizeof(kt_thr_t)) >> 20);
+	ktsan_report_memory_usage();
 }
 
 void ktsan_print_diagnostics(void)
