@@ -5,6 +5,8 @@
 #include <linux/mm_types.h>
 #include <linux/mm.h>
 #include <linux/printk.h>
+#include <linux/slab.h>
+#include <linux/slab_def.h>
 
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node)
@@ -33,8 +35,19 @@ void ktsan_free_page(struct page *page, unsigned int order)
 	struct page *shadow;
 	int pages = 1 << order;
 	int i;
+	unsigned long page_addr, first_obj_addr, obj_addr;
+	struct kmem_cache *cache;
 
-	ktsan_memblock_free(page_address(page), PAGE_SIZE << order);
+	page_addr = (unsigned long)page_address(page);
+	first_obj_addr = (unsigned long)page->s_mem;
+	if (PageSlab(page)) {
+		cache = page->slab_cache;
+		for (obj_addr = first_obj_addr;
+		     obj_addr < page_addr + (PAGE_SIZE << order);
+		     obj_addr += cache->size)
+			ktsan_memblock_free((void *)obj_addr, cache->size);
+	}
+	ktsan_memblock_free((void *)page_addr, PAGE_SIZE << order);
 
 	if (!page[0].shadow)
 		return;
