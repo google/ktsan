@@ -5,9 +5,21 @@
 
 #include <asm/barrier.h>
 
-void kt_thread_fence_no_ktsan(void)
+void kt_thread_fence_no_ktsan(ktsan_memory_order_t mo)
 {
-	mb();
+	switch (mo) {
+	case ktsan_memory_order_acquire:
+		rmb();
+		break;
+	case ktsan_memory_order_release:
+		wmb();
+		break;
+	case ktsan_memory_order_acq_rel:
+		mb();
+		break;
+	default:
+		break;
+	}
 }
 
 u8 kt_atomic8_load_no_ktsan(void *addr)

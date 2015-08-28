@@ -28,7 +28,7 @@ static inline void kt_trace_switch(kt_trace_t *trace, kt_time_t clock)
 	kt_part_header_t *header, *prev_header;
 	unsigned long beg, end;
 
-	spin_lock(&trace->lock);
+	kt_spin_lock(&trace->lock);
 
 	part = trace->position / KT_TRACE_PART_SIZE;
 	header = &trace->headers[part];
@@ -42,13 +42,13 @@ static inline void kt_trace_switch(kt_trace_t *trace, kt_time_t clock)
 
 	header->clock = clock;
 
-	spin_unlock(&trace->lock);
+	kt_spin_unlock(&trace->lock);
 }
 
 void kt_trace_init(kt_trace_t *trace)
 {
 	memset(trace, 0, sizeof(*trace));
-	spin_lock_init(&trace->lock);
+	kt_spin_init(&trace->lock);
 }
 
 void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, uptr_t addr)
@@ -83,11 +83,11 @@ void kt_trace_restore_stack(kt_thr_t *thr, kt_time_t clock, kt_stack_t *stack)
 	part = (clock % KT_TRACE_SIZE) / KT_TRACE_PART_SIZE;
 	header = &trace->headers[part];
 
-	spin_lock(&trace->lock);
+	kt_spin_lock(&trace->lock);
 
 	if (header->clock > clock) {
 		stack->size = 0;
-		spin_unlock(&trace->lock);
+		kt_spin_unlock(&trace->lock);
 		return;
 	}
 
@@ -103,7 +103,7 @@ void kt_trace_restore_stack(kt_thr_t *thr, kt_time_t clock, kt_stack_t *stack)
 		stack->size++;
 	}
 
-	spin_unlock(&trace->lock);
+	kt_spin_unlock(&trace->lock);
 }
 
 void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)

@@ -3,7 +3,6 @@
 
 #include <linux/ktsan.h>
 #include <linux/list.h>
-#include <linux/spinlock.h>
 #include <linux/percpu.h>
 #include <linux/types.h>
 
@@ -32,7 +31,7 @@
 
 #define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
-#define KT_DEBUG 1
+#define KT_DEBUG 0
 #define KT_DEBUG_TRACE 0
 
 typedef unsigned long	uptr_t;
@@ -62,6 +61,13 @@ typedef struct kt_id_manager_s		kt_id_manager_t;
 typedef struct kt_thr_pool_s		kt_thr_pool_t;
 typedef struct kt_shadow_s		kt_shadow_t;
 typedef struct kt_percpu_sync_s		kt_percpu_sync_t;
+typedef struct kt_spinlock_s		kt_spinlock_t;
+
+/* Ktsan runtime internal, non-instrumented spinlock. */
+
+struct kt_spinlock_s {
+	u8			state;
+};
 
 /* Stack. */
 
@@ -109,7 +115,7 @@ struct kt_trace_s {
 	kt_part_header_t	headers[KT_TRACE_PARTS];
 	kt_event_t		events[KT_TRACE_SIZE];
 	unsigned long		position;
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 };
 
 /* Clocks. */
@@ -143,19 +149,19 @@ struct kt_cache_s {
 	unsigned long		base;
 	unsigned long		mem_size;
 	void			*head;
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 };
 
 /* Hash table. */
 
 struct kt_tab_obj_s {
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 	kt_tab_obj_t		*link;
 	uptr_t			key;
 };
 
 struct kt_tab_part_s {
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 	kt_tab_obj_t		*head;
 };
 
@@ -177,7 +183,7 @@ struct kt_tab_sync_s {
 
 struct kt_tab_lock_s {
 	kt_tab_obj_t		tab;
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 	struct list_head	list;
 };
 
@@ -204,6 +210,7 @@ struct kt_thr_s {
 	kt_clk_t		release_clk;
 	kt_trace_t		trace;
 	int			call_depth;
+	int			read_disable_depth;
 	int			event_disable_depth;
 	int			report_disable_depth;
 	int			preempt_disable_depth;
@@ -211,6 +218,12 @@ struct kt_thr_s {
 	unsigned long		irq_flags_before_mtx;
 	struct list_head	quarantine_list; /* list entry */
 	struct list_head	percpu_list; /* list head */
+	/* List of currently "acquired" for reading seqcounts. */
+	uptr_t			seqcount[4];
+	/* Where the seqcounts were acquired (for debugging). */
+	uptr_t			seqcount_pc[4];
+	/* Ignore of all seqcount-related events. */
+	int			seqcount_ignore;
 #if KT_DEBUG
 	kt_stack_t		start_stack;
 	kt_time_t		last_event_disable_time;
@@ -224,7 +237,7 @@ struct kt_thr_pool_s {
 	int			new_id;
 	struct list_head	quarantine;
 	int			quarantine_size;
-	spinlock_t		lock;
+	kt_spinlock_t		lock;
 };
 
 /* Per-cpu synchronization. */
@@ -324,6 +337,13 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 	clk->time[tid]++;
 }
 
+/* Spinlock. */
+
+void kt_spin_init(kt_spinlock_t *l);
+void kt_spin_lock(kt_spinlock_t *l);
+void kt_spin_unlock(kt_spinlock_t *l);
+int kt_spin_is_locked(kt_spinlock_t *l);
+
 /* Shadow. */
 
 void *kt_shadow_get(uptr_t addr);
@@ -357,8 +377,14 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
+void kt_seqcount_begin(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_seqcount_end(kt_thr_t *thr, uptr_t pc, uptr_t addr);
+void kt_seqcount_ignore_begin(kt_thr_t *thr, uptr_t pc);
+void kt_seqcount_ignore_end(kt_thr_t *thr, uptr_t pc);
+void kt_seqcount_bug(kt_thr_t *thr, uptr_t addr, const char *what);
+
 void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo);
-void kt_thread_fence_no_ktsan(void);
+void kt_thread_fence_no_ktsan(ktsan_memory_order_t mo);
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,
 		void *addr, u8 value, ktsan_memory_order_t mo);

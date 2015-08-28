@@ -143,8 +143,11 @@ again:
 		err = nfs4_open_delegation_recall(ctx, state, stateid);
 		if (!err)
 			err = nfs_delegation_claim_locks(ctx, state, stateid);
-		if (!err && read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
-			err = -EAGAIN;
+		if (!err) {
+			if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
+				err = -EAGAIN;
+		} else
+			read_seqcount_cancel(&sp->so_reclaim_seqcount);
 		mutex_unlock(&sp->so_delegreturn_mutex);
 		put_nfs_open_context(ctx);
 		if (err != 0)

@@ -14,7 +14,7 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 	}
 
 	/* Do full fence despite the actual memory order. */
-	kt_thread_fence_no_ktsan();
+	kt_thread_fence_no_ktsan(mo);
 
 	if (mo == ktsan_memory_order_release ||
 	    mo == ktsan_memory_order_acq_rel) {
@@ -39,7 +39,7 @@ do {									\
 		kt_clk_tick(&thr->clk, thr->id);			\
 									\
 		/* Do full fence despite the actual memory order. */	\
-		kt_thread_fence_no_ktsan();				\
+		kt_thread_fence_no_ktsan(ktsan_memory_order_acquire);	\
 	} else if (read) {						\
 		kt_clk_acquire(&thr->acquire_clk, &sync->clk);		\
 		kt_trace_add_event(thr,					\
@@ -52,7 +52,7 @@ do {									\
 	if ((mo) == ktsan_memory_order_release ||			\
 	    (mo) == ktsan_memory_order_acq_rel) {			\
 		/* Do full fence despite the actual memory order. */	\
-		kt_thread_fence_no_ktsan();				\
+		kt_thread_fence_no_ktsan(ktsan_memory_order_release);	\
 									\
 		kt_clk_acquire(&sync->clk, &thr->clk);			\
 		kt_trace_add_event(thr,					\

@@ -497,6 +497,183 @@ static void kt_test_wait_on_bit(void)
 		"wait_on_bit", false);
 }
 
+struct seqcount_arg
+{
+	seqcount_t seq[3];
+	int data[6];
+};
+
+static void seq_main(void *p)
+{
+	struct seqcount_arg *arg = p;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(arg->seq); i++)
+		seqcount_init(&arg->seq[i]);
+	for (i = 0; i < ARRAY_SIZE(arg->data); i++)
+		arg->data[i] = 0;
+}
+
+static void seq_write(void *p)
+{
+	struct seqcount_arg *arg = p;
+	int i;
+
+	for (i = 0; i < 1000; i++) {
+		write_seqcount_begin(&arg->seq[0]);
+		arg->data[0]++;
+		arg->data[1]++;
+		arg->data[2]++;
+		arg->data[3]++;
+		write_seqcount_end(&arg->seq[0]);
+	}
+}
+
+static void seq_read1(void *p)
+{
+	struct seqcount_arg *arg = p;
+	unsigned seq;
+	int sum, i;
+
+	for (i = 0; i < 1000; i++) {
+		do {
+			sum = 0;
+			seq = __read_seqcount_begin(&arg->seq[0]);
+			rmb();
+			sum = arg->data[0] + arg->data[1] +
+				arg->data[2] + arg->data[3];
+			rmb();
+		} while (__read_seqcount_retry(&arg->seq[0], seq));
+		BUG_ON((sum % 4) != 0);
+	}
+}
+
+static void seq_read2(void *p)
+{
+	struct seqcount_arg *arg = p;
+	unsigned seq;
+	int sum, i;
+
+	for (i = 0; i < 1000; i++) {
+		do {
+			sum = 0;
+			seq = read_seqcount_begin(&arg->seq[0]);
+			sum = arg->data[0] + arg->data[1] +
+				arg->data[2] + arg->data[3];
+		} while (read_seqcount_retry(&arg->seq[0], seq));
+		BUG_ON((sum % 4) != 0);
+	}
+}
+
+static void seq_read3(void *p)
+{
+	struct seqcount_arg *arg = p;
+	unsigned seq;
+	int sum, i;
+
+	for (i = 0; i < 1000; i++) {
+		do {
+			sum = 0;
+			seq = raw_read_seqcount_latch(&arg->seq[0]);
+			sum = arg->data[0] + arg->data[1] +
+				arg->data[2] + arg->data[3];
+		} while (read_seqcount_retry(&arg->seq[0], seq));
+		/* don't BUG_ON, we use latch incorrectly */
+		use((sum % 4) != 0);
+	}
+}
+
+static void seq_write4(void *p)
+{
+	struct seqcount_arg *arg = p;
+	int i;
+
+	for (i = 0; i < 1000; i++) {
+		write_seqcount_begin(&arg->seq[0]);
+		arg->data[0]++;
+		arg->data[1]++;
+		write_seqcount_end(&arg->seq[0]);
+
+		write_seqcount_begin(&arg->seq[1]);
+		arg->data[2]++;
+		arg->data[3]++;
+		write_seqcount_end(&arg->seq[1]);
+
+		write_seqcount_begin(&arg->seq[2]);
+		arg->data[4]++;
+		arg->data[5]++;
+		write_seqcount_end(&arg->seq[2]);
+	}
+}
+
+static void seq_read4(void *p)
+{
+	struct seqcount_arg *arg = p;
+	unsigned seq[3];
+	int sum, i;
+
+	for (i = 0; i < 1000; i++) {
+		/*
+		 * A crazy mix of nested and overlapping read critical sections.
+		 * fs/namei.c:path_init actually does this.
+		 */
+		for (;;) {
+			seq[0] = read_seqcount_begin(&arg->seq[0]);
+			for (;;) {
+				sum = 0;
+				seq[1] = read_seqcount_begin(&arg->seq[1]);
+				sum = arg->data[2] + arg->data[3];
+				seq[2] = read_seqcount_begin(&arg->seq[2]);
+				if (read_seqcount_retry(&arg->seq[1], seq[1])) {
+					read_seqcount_cancel(&arg->seq[2]);
+					continue;
+				}
+				break;
+			}
+			sum += arg->data[4] + arg->data[5];
+			if (read_seqcount_retry(&arg->seq[2], seq[2])) {
+				read_seqcount_cancel(&arg->seq[0]);
+				continue;
+			}
+			sum += arg->data[0] + arg->data[1];
+			if (read_seqcount_retry(&arg->seq[0], seq[0]))
+				continue;
+			break;
+		}
+		use(sum);
+	}
+}
+
+static void seq_read_cancel(void *p)
+{
+	struct seqcount_arg *arg = p;
+	unsigned seq;
+	int sum, i;
+
+	for (i = 0; i < 1000; i++) {
+		do {
+			sum = 0;
+			seq = read_seqcount_begin(&arg->seq[0]);
+			sum = arg->data[0] + arg->data[1] +
+				arg->data[2] + arg->data[3];
+			if (sum != 0) {
+				read_seqcount_cancel(&arg->seq[0]);
+				break;
+			}
+		} while (read_seqcount_retry(&arg->seq[0], seq));
+		use(sum);
+	}
+}
+
+static void kt_test_seqcount(void)
+{
+	kt_test(seq_main, seq_write, seq_read1, "seqcount1", false);
+	kt_test(seq_main, seq_write, seq_read2, "seqcount2", false);
+	kt_test(seq_main, seq_write, seq_read3, "seqcount3", false);
+	kt_test(seq_main, seq_write4, seq_read4, "seqcount4", false);
+	kt_test(seq_main, seq_write, seq_read_cancel, "seqcount_cancel", false);
+}
+
 /* Instrumented tests. */
 
 void kt_tests_run_inst(void)
@@ -529,5 +706,7 @@ void kt_tests_run_inst(void)
 	kt_test_rcu();
 	pr_err("\n");
 	kt_test_wait_on_bit();
+	pr_err("\n");
+	kt_test_seqcount();
 	pr_err("\n");
 }

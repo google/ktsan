@@ -30,7 +30,7 @@ void __init kt_cache_init(kt_cache_t *cache, size_t obj_size,
 	*(void **)obj = NULL;
 
 	cache->head = (void *)cache->base;
-	spin_lock_init(&cache->lock);
+	kt_spin_init(&cache->lock);
 }
 
 /* Only available during early boot. */
@@ -46,19 +46,19 @@ void *kt_cache_alloc(kt_cache_t *cache)
 {
 	void *obj;
 
-	spin_lock(&cache->lock);
+	kt_spin_lock(&cache->lock);
 	obj = cache->head;
 	if (obj)
 		cache->head = *(void **)obj;
-	spin_unlock(&cache->lock);
+	kt_spin_unlock(&cache->lock);
 
 	return obj;
 }
 
 void kt_cache_free(kt_cache_t *cache, void *obj)
 {
-	spin_lock(&cache->lock);
+	kt_spin_lock(&cache->lock);
 	*(void **)obj = cache->head;
 	cache->head = obj;
-	spin_unlock(&cache->lock);
+	kt_spin_unlock(&cache->lock);
 }

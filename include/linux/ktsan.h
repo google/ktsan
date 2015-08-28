@@ -65,6 +65,16 @@ void ktsan_mtx_post_lock(void *addr, bool write, bool try, bool success);
 void ktsan_mtx_pre_unlock(void *addr, bool write);
 void ktsan_mtx_post_unlock(void *addr, bool write);
 
+/*
+ * Begin/end of seqcount read critical section.
+ * Disables/enabled handling of memory reads, because reads inside of seqcount
+ * read critical section are inherently racy.
+ */
+void ktsan_seqcount_begin(const void *s);
+void ktsan_seqcount_end(const void *s);
+void ktsan_seqcount_ignore_begin(void);
+void ktsan_seqcount_ignore_end(void);
+
 void ktsan_thread_fence(ktsan_memory_order_t mo);
 
 void ktsan_atomic8_store(void *addr, u8 value, ktsan_memory_order_t mo);
@@ -153,9 +163,10 @@ static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try,
 static inline void ktsan_mtx_pre_unlock(void *addr, bool write) {}
 static inline void ktsan_mtx_post_unlock(void *addr, bool write) {}
 
-static inline void ktsan_membar_acquire(void) {}
-static inline void ktsan_membar_release(void) {}
-static inline void ktsan_membar_acq_rel(void) {}
+static inline void ktsan_seqcount_begin(const void *s) {}
+static inline void ktsan_seqcount_end(const void *s) {}
+static inline void ktsan_seqcount_ignore_begin(void) {}
+static inline void ktsan_seqcount_ignore_end(void) {}
 
 /* ktsan_atomic* are not called in non-ktsan build. */
 /* ktsan_bitop* are not called in non-ktsan build. */
