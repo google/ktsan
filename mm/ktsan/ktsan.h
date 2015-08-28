@@ -32,7 +32,7 @@
 
 #define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
-#define KT_DEBUG 1
+#define KT_DEBUG 0
 #define KT_DEBUG_TRACE 0
 
 typedef unsigned long	uptr_t;
