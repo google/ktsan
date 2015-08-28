@@ -683,7 +683,7 @@ static void
 locks_insert_lock_ctx(struct file_lock *fl, struct list_head *before)
 {
 	fl->fl_nspid = get_pid(task_tgid(current));
-	list_add_tail(&fl->fl_list, before);
+	list_add_tail_once(&fl->fl_list, before);
 	locks_insert_global_locks(fl);
 }
 
@@ -2366,7 +2366,7 @@ void locks_remove_posix(struct file *filp, fl_owner_t owner)
 	 * posix_lock_file().  Another process could be setting a lock on this
 	 * file at the same time, but we wouldn't remove that lock anyway.
 	 */
-	if (!ctx || list_empty(&ctx->flc_posix))
+	if (!ctx || list_empty_once(&ctx->flc_posix))
 		return;
 
 	lock.fl_type = F_UNLCK;

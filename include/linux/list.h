@@ -77,6 +77,18 @@ static inline void list_add_tail(struct list_head *new, struct list_head *head)
 	__list_add(new, head->prev, head);
 }
 
+/* The same as list_add_tail, but can be used concurrently with list_empty_once. */
+static inline void list_add_tail_once(struct list_head *new, struct list_head *head)
+{
+	struct list_head *prev = head->prev;
+	struct list_head *next = head;
+
+	next->prev = new;
+	new->next = next;
+	new->prev = prev;
+	WRITE_ONCE(prev->next, new);
+}
+
 /*
  * Delete a list entry by making the prev/next entries
  * point to each other.
@@ -187,6 +199,16 @@ static inline int list_is_last(const struct list_head *list,
 static inline int list_empty(const struct list_head *head)
 {
 	return head->next == head;
+}
+
+/**
+ * list_empty_once - tests whether a list is empty provided that there can be
+ *	concurrent mutations of the list (best-effort check).
+ * @head: the list to test.
+ */
+static inline int list_empty_once(const struct list_head *head)
+{
+	return READ_ONCE(head->next) == head;
 }
 
 /**
