@@ -6,6 +6,7 @@ obj-y := access.o 		\
 	 memblock.o 		\
 	 report.o 		\
 	 shadow.o 		\
+	 spinlock.o		\
 	 stack.o 		\
 	 stat.o 		\
 	 sync_atomic.o 		\
@@ -29,6 +30,7 @@ CFLAGS_REMOVE_ktsan.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_memblock.o		= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_report.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_shadow.o			= -pg -O0 -O1 -O2
+CFLAGS_REMOVE_spinlock.o                = -pg -O0 -O1 -O2
 CFLAGS_REMOVE_stack.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_stat.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync_atomic.o		= -pg -O0 -O1 -O2
@@ -52,6 +54,7 @@ CFLAGS_ktsan.o			= -O3
 CFLAGS_memblock.o		= -O3
 CFLAGS_report.o			= -O3
 CFLAGS_shadow.o			= -O3
+CFLAGS_spinlock.o               = -O3
 CFLAGS_stack.o			= -O3
 CFLAGS_stat.o			= -O3
 CFLAGS_sync_atomic.o		= -O3
