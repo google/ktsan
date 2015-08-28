@@ -58,7 +58,7 @@ void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync)
 
 	memblock = kt_memblock_ensure_created(thr, addr);
 	list_add(&sync->list, &memblock->sync_list);
-	spin_unlock(&memblock->tab.lock);
+	kt_spin_unlock(&memblock->tab.lock);
 }
 
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
@@ -83,7 +83,7 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 		kt_sync_destroy(thr, sync->tab.key);
 	}
 
-	spin_unlock(&memblock->tab.lock);
+	kt_spin_unlock(&memblock->tab.lock);
 	kt_cache_free(&kt_ctx.memblock_tab.obj_cache, memblock);
 
 	kt_stat_dec(thr, kt_stat_memblock_objects);

@@ -35,7 +35,7 @@ void kt_sync_destroy(kt_thr_t *thr, uptr_t addr)
 	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, true);
 	BUG_ON(sync == NULL);
 
-	spin_unlock(&sync->tab.lock);
+	kt_spin_unlock(&sync->tab.lock);
 	kt_cache_free(&kt_ctx.sync_tab.obj_cache, sync);
 
 	kt_stat_dec(thr, kt_stat_sync_objects);
@@ -48,7 +48,7 @@ void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 
 	sync = kt_sync_ensure_created(thr, pc, addr);
 	kt_clk_acquire(&thr->clk, &sync->clk);
-	spin_unlock(&sync->tab.lock);
+	kt_spin_unlock(&sync->tab.lock);
 }
 
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
@@ -57,7 +57,7 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 
 	sync = kt_sync_ensure_created(thr, pc, addr);
 	kt_clk_acquire(&sync->clk, &thr->clk);
-	spin_unlock(&sync->tab.lock);
+	kt_spin_unlock(&sync->tab.lock);
 }
 
 void kt_seqcount_begin(kt_thr_t *thr, uptr_t pc, uptr_t addr)
