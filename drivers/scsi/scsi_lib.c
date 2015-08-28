@@ -488,7 +488,7 @@ static void scsi_run_queue(struct request_queue *q)
 
 	if (scsi_target(sdev)->single_lun)
 		scsi_single_lun_run(sdev);
-	if (!list_empty(&sdev->host->starved_list))
+	if (!list_empty_once(&sdev->host->starved_list))
 		scsi_starved_list_run(sdev->host);
 
 	if (q->mq_ops)
@@ -1823,7 +1823,7 @@ static void scsi_request_fn(struct request_queue *q)
 		if (blk_queue_tagged(q) && !(req->cmd_flags & REQ_QUEUED)) {
 			spin_lock_irq(shost->host_lock);
 			if (list_empty(&sdev->starved_entry))
-				list_add_tail(&sdev->starved_entry,
+				list_add_tail_once(&sdev->starved_entry,
 					      &shost->starved_list);
 			spin_unlock_irq(shost->host_lock);
 			goto not_ready;
