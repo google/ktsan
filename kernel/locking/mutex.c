@@ -50,6 +50,7 @@
 void
 __mutex_init(struct mutex *lock, const char *name, struct lock_class_key *key)
 {
+	ktsan_thr_event_disable();
 	atomic_set(&lock->count, 1);
 	spin_lock_init(&lock->wait_lock);
 	INIT_LIST_HEAD(&lock->wait_list);
@@ -59,6 +60,7 @@ __mutex_init(struct mutex *lock, const char *name, struct lock_class_key *key)
 #endif
 
 	debug_mutex_init(lock, name, key);
+	ktsan_thr_event_enable();
 }
 
 EXPORT_SYMBOL(__mutex_init);
