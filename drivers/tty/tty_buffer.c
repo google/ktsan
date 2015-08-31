@@ -394,7 +394,7 @@ void tty_schedule_flip(struct tty_port *port)
 {
 	struct tty_bufhead *buf = &port->buf;
 
-	buf->tail->commit = buf->tail->used;
+	ACCESS_ONCE(buf->tail->commit) = buf->tail->used;
 	schedule_work(&buf->work);
 }
 EXPORT_SYMBOL(tty_schedule_flip);

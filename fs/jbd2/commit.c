@@ -539,7 +539,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 
 	commit_transaction->t_state = T_FLUSH;
 	journal->j_committing_transaction = commit_transaction;
-	journal->j_running_transaction = NULL;
+	WRITE_ONCE(journal->j_running_transaction, NULL);
 	start_time = ktime_get();
 	commit_transaction->t_log_start = journal->j_head;
 	wake_up(&journal->j_wait_transaction_locked);
@@ -1109,7 +1109,7 @@ restart_loop:
 
 	commit_transaction->t_state = T_COMMIT_CALLBACK;
 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
-	journal->j_commit_sequence = commit_transaction->t_tid;
+	WRITE_ONCE(journal->j_commit_sequence, commit_transaction->t_tid);
 	journal->j_committing_transaction = NULL;
 	commit_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
 

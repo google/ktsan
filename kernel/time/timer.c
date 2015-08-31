@@ -1259,7 +1259,7 @@ static unsigned long __next_timer_interrupt(struct tvec_base *base)
 				continue;
 
 			found = 1;
-			expires = nte->expires;
+			expires = ACCESS_ONCE(nte->expires);
 			/* Look at the cascade bucket(s)? */
 			if (!index || slot < index)
 				goto cascade;

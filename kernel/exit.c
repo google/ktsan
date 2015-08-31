@@ -197,7 +197,7 @@ repeat:
 		 * exited already, and the leader's parent ignores SIGCHLD,
 		 * then we are the one who should release the leader.
 		 */
-		zap_leader = do_notify_parent(leader, leader->exit_signal);
+		zap_leader = do_notify_parent(leader, atomic_read(&leader->exit_signal));
 		if (zap_leader)
 			leader->exit_state = EXIT_DEAD;
 	}
@@ -526,12 +526,12 @@ static void reparent_leader(struct task_struct *father, struct task_struct *p,
 		return;
 
 	/* We don't want people slaying init. */
-	p->exit_signal = SIGCHLD;
+	atomic_set(&p->exit_signal, SIGCHLD);
 
 	/* If it has exited notify the new parent about this child's death. */
 	if (!p->ptrace &&
 	    p->exit_state == EXIT_ZOMBIE && thread_group_empty(p)) {
-		if (do_notify_parent(p, p->exit_signal)) {
+		if (do_notify_parent(p, atomic_read(&p->exit_signal))) {
 			p->exit_state = EXIT_DEAD;
 			list_add(&p->ptrace_entry, dead);
 		}
@@ -602,11 +602,11 @@ static void exit_notify(struct task_struct *tsk, int group_dead)
 		int sig = thread_group_leader(tsk) &&
 				thread_group_empty(tsk) &&
 				!ptrace_reparented(tsk) ?
-			tsk->exit_signal : SIGCHLD;
+			atomic_read(&tsk->exit_signal) : SIGCHLD;
 		autoreap = do_notify_parent(tsk, sig);
 	} else if (thread_group_leader(tsk)) {
 		autoreap = thread_group_empty(tsk) &&
-			do_notify_parent(tsk, tsk->exit_signal);
+			do_notify_parent(tsk, atomic_read(&tsk->exit_signal));
 	} else {
 		autoreap = true;
 	}
@@ -923,7 +923,7 @@ static int eligible_child(struct wait_opts *wo, struct task_struct *p)
 	 * set; otherwise, wait for non-clone children *only*.  (Note:
 	 * A "clone" child here is one that reports to its parent
 	 * using a signal other than SIGCHLD.) */
-	if (((p->exit_signal != SIGCHLD) ^ !!(wo->wo_flags & __WCLONE))
+	if (((atomic_read(&p->exit_signal) != SIGCHLD) ^ !!(wo->wo_flags & __WCLONE))
 	    && !(wo->wo_flags & __WALL))
 		return 0;
 
@@ -1102,7 +1102,7 @@ static int wait_task_zombie(struct wait_opts *wo, struct task_struct *p)
 
 		/* If parent wants a zombie, don't release it now */
 		state = EXIT_ZOMBIE;
-		if (do_notify_parent(p, p->exit_signal))
+		if (do_notify_parent(p, atomic_read(&p->exit_signal)))
 			state = EXIT_DEAD;
 		p->exit_state = state;
 		write_unlock_irq(&tasklist_lock);

@@ -433,8 +433,8 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
 		if (whole) {
 			struct task_struct *t = task;
 			do {
-				min_flt += t->min_flt;
-				maj_flt += t->maj_flt;
+				min_flt += READ_ONCE(t->min_flt);
+				maj_flt += READ_ONCE(t->maj_flt);
 				gtime += task_gtime(t);
 			} while_each_thread(task, t);
 
@@ -474,7 +474,7 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ll(m, ' ', sid);
 	seq_put_decimal_ll(m, ' ', tty_nr);
 	seq_put_decimal_ll(m, ' ', tty_pgrp);
-	seq_put_decimal_ull(m, ' ', task->flags);
+	seq_put_decimal_ull(m, ' ', ACCESS_ONCE(task->flags));
 	seq_put_decimal_ull(m, ' ', min_flt);
 	seq_put_decimal_ull(m, ' ', cmin_flt);
 	seq_put_decimal_ull(m, ' ', maj_flt);
@@ -507,7 +507,7 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
 	seq_put_decimal_ull(m, ' ', wchan);
 	seq_put_decimal_ull(m, ' ', 0);
 	seq_put_decimal_ull(m, ' ', 0);
-	seq_put_decimal_ll(m, ' ', task->exit_signal);
+	seq_put_decimal_ll(m, ' ', atomic_read(&task->exit_signal));
 	seq_put_decimal_ll(m, ' ', task_cpu(task));
 	seq_put_decimal_ull(m, ' ', task->rt_priority);
 	seq_put_decimal_ull(m, ' ', task->policy);

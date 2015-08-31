@@ -985,8 +985,8 @@ static int de_thread(struct task_struct *tsk)
 		tsk->group_leader = tsk;
 		leader->group_leader = tsk;
 
-		tsk->exit_signal = SIGCHLD;
-		leader->exit_signal = -1;
+		atomic_set(&tsk->exit_signal, SIGCHLD);
+		atomic_set(&leader->exit_signal, -1);
 
 		BUG_ON(leader->exit_state != EXIT_ZOMBIE);
 		leader->exit_state = EXIT_DEAD;
@@ -1009,7 +1009,7 @@ static int de_thread(struct task_struct *tsk)
 
 no_thread_group:
 	/* we have changed execution domain */
-	tsk->exit_signal = SIGCHLD;
+	atomic_set(&tsk->exit_signal, SIGCHLD);
 
 	exit_itimers(sig);
 	flush_itimer_signals();

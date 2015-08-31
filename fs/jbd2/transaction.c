@@ -277,7 +277,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
 		rsv_blocks = handle->h_rsv_handle->h_buffer_credits;
 
 alloc_transaction:
-	if (!journal->j_running_transaction) {
+	if (!READ_ONCE(journal->j_running_transaction)) {
 		/*
 		 * If __GFP_FS is not present, then we may be being called from
 		 * inside the fs writeback layer, so we MUST NOT fail.
@@ -971,7 +971,7 @@ attach_next:
 	 * in jbd2_write_access_granted()
 	 */
 	smp_wmb();
-	jh->b_next_transaction = transaction;
+	WRITE_ONCE(jh->b_next_transaction, transaction);
 
 done:
 	jbd_unlock_bh_state(bh);
@@ -1018,8 +1018,8 @@ static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh)
 	jh = READ_ONCE(bh->b_private);
 	if (!jh)
 		goto out;
-	if (jh->b_transaction != handle->h_transaction &&
-	    jh->b_next_transaction != handle->h_transaction)
+	if (READ_ONCE(jh->b_transaction) != handle->h_transaction &&
+	    READ_ONCE(jh->b_next_transaction) != handle->h_transaction)
 		goto out;
 	/*
 	 * There are two reasons for the barrier here:
@@ -1349,7 +1349,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
 	if (jh->b_transaction == transaction && jh->b_jlist == BJ_Metadata) {
 		JBUFFER_TRACE(jh, "fastpath");
 		if (unlikely(jh->b_transaction !=
-			     journal->j_running_transaction)) {
+			     READ_ONCE(journal->j_running_transaction))) {
 			printk(KERN_ERR "JBD2: %s: "
 			       "jh->b_transaction (%llu, %p, %u) != "
 			       "journal->j_running_transaction (%p, %u)\n",
@@ -2311,7 +2311,7 @@ void __jbd2_journal_file_buffer(struct journal_head *jh,
 		__jbd2_journal_temp_unlink_buffer(jh);
 	else
 		jbd2_journal_grab_journal_head(bh);
-	jh->b_transaction = transaction;
+	WRITE_ONCE(jh->b_transaction, transaction);
 
 	switch (jlist) {
 	case BJ_None:
