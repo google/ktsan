@@ -21,7 +21,7 @@
 #define KT_SYNC_TAB_SIZE 196613
 #define KT_MEMBLOCK_TAB_SIZE 196613
 
-#define KT_MAX_SYNC_COUNT (1200 * 1000)
+#define KT_MAX_SYNC_COUNT (2300 * 1000)
 #define KT_MAX_MEMBLOCK_COUNT (200 * 1000)
 #define KT_MAX_PERCPU_SYNC_COUNT (30 * 1000)
 #define KT_MAX_THREAD_COUNT 1024
@@ -55,7 +55,8 @@ typedef struct kt_cache_s		kt_cache_t;
 typedef struct kt_stack_s		kt_stack_t;
 typedef enum kt_event_type_e		kt_event_type_t;
 typedef struct kt_event_s		kt_event_t;
-typedef struct kt_part_header_s		kt_part_header_t;
+typedef struct kt_trace_state_s		kt_trace_state_t;
+typedef struct kt_trace_part_header_s	kt_trace_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
 typedef struct kt_id_manager_s		kt_id_manager_t;
 typedef struct kt_thr_pool_s		kt_thr_pool_t;
@@ -83,6 +84,8 @@ enum kt_event_type_e {
 	kt_event_type_mop, /* memory operation */
 	kt_event_type_func_enter,
 	kt_event_type_func_exit,
+	kt_event_type_thr_start,
+	kt_event_type_thr_stop,
 #if KT_DEBUG
 	kt_event_type_lock,
 	kt_event_type_unlock,
@@ -92,8 +95,6 @@ enum kt_event_type_e {
 	kt_event_type_nonmat_release,
 	kt_event_type_membar_acquire,
 	kt_event_type_membar_release,
-	kt_event_type_thr_start,
-	kt_event_type_thr_stop,
 	kt_event_type_preempt_enable,
 	kt_event_type_preempt_disable,
 	kt_event_type_irq_enable,
@@ -104,17 +105,24 @@ enum kt_event_type_e {
 };
 
 struct kt_event_s {
-	unsigned int		type;
-	unsigned int		pc;
+	u32			type;
+	u32			data;
+	/* The data field is cpu id for thread start and stop
+	   events and pc for other kinds of event. */
 };
 
-struct kt_part_header_s {
+struct kt_trace_state_s {
 	kt_stack_t		stack;
+	int			cpu_id;
+};
+
+struct kt_trace_part_header_s {
+	kt_trace_state_t	state;
 	kt_time_t		clock;
 };
 
 struct kt_trace_s {
-	kt_part_header_t	headers[KT_TRACE_PARTS];
+	kt_trace_part_header_t	headers[KT_TRACE_PARTS];
 	kt_event_t		events[KT_TRACE_SIZE];
 	unsigned long		position;
 	kt_spinlock_t		lock;
@@ -312,8 +320,9 @@ void kt_stack_print_current(unsigned long strip_addr);
 /* Trace. */
 
 void kt_trace_init(kt_trace_t *trace);
-void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, uptr_t addr);
-void kt_trace_restore_stack(kt_thr_t *thr, kt_time_t clock, kt_stack_t *stack);
+void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u32 data);
+void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
+				kt_trace_state_t *state);
 void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 
 /* Clocks. */

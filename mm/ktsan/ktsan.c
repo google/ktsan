@@ -180,6 +180,7 @@ void ktsan_print_diagnostics(void)
 	if (thr != NULL) {
 		kt_time_t time;
 		time = kt_clk_get(&thr->clk, thr->id);
+		pr_err("Trace:\n");
 		kt_trace_dump(&thr->trace, (time - 512) % KT_TRACE_SIZE, time);
 		pr_err("\n");
 	}
@@ -232,18 +233,18 @@ void ktsan_print_diagnostics(void)
 
 #if KT_DEBUG
 	if (thr != NULL) {
-		kt_stack_t stack;
+		kt_trace_state_t state;
 
 		pr_err("Last event disable:\n");
-		kt_trace_restore_stack(thr,
-				thr->last_event_disable_time, &stack);
-		kt_stack_print(&stack);
+		kt_trace_restore_state(thr,
+				thr->last_event_disable_time, &state);
+		kt_stack_print(&state.stack);
 		pr_err("\n");
 
 		pr_err("Last event enable:\n");
-		kt_trace_restore_stack(thr,
-				thr->last_event_enable_time, &stack);
-		kt_stack_print(&stack);
+		kt_trace_restore_state(thr,
+				thr->last_event_enable_time, &state);
+		kt_stack_print(&state.stack);
 		pr_err("\n");
 
 		pr_err("Thread start:\n");
@@ -330,7 +331,7 @@ void ktsan_sync_acquire(void *addr)
 {
 	ENTER(false, false);
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_acquire, pc);
+	kt_trace_add_event(thr, kt_event_type_acquire, kt_pc_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 	kt_sync_acquire(thr, pc, (uptr_t)addr);
@@ -342,7 +343,7 @@ void ktsan_sync_release(void *addr)
 {
 	ENTER(false, false);
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_release, pc);
+	kt_trace_add_event(thr, kt_event_type_release, kt_pc_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 	kt_sync_release(thr, pc, (uptr_t)addr);

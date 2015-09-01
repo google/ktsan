@@ -107,7 +107,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	int i;
 	char function[MAX_FUNCTION_NAME_SIZE];
 	kt_thr_t *old;
-	kt_stack_t stack;
+	kt_trace_state_t state;
 
 	if (new->report_disable_depth != 0)
 		return;
@@ -132,12 +132,10 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	pr_err("ThreadSanitizer: data-race in %s\n", function);
 	pr_err("\n");
 
-	pr_err("%s of size %d by thread T%d (K%d):\n",
-		info->new.read ? "Read" : "Write",
-		(1 << info->new.size), info->new.tid, new->kid);
+	pr_err("%s of size %d by thread T%d (K%d, CPU%d):\n",
+		info->new.read ? "Read" : "Write", (1 << info->new.size),
+		info->new.tid, new->kid, smp_processor_id());
 	kt_stack_print_current(info->strip_addr);
-	pr_err("DBG: cpu = %lx\n", (uptr_t)new->cpu);
-	pr_err("DBG: cpu id = %d\n", smp_processor_id());
 	pr_err("\n");
 
 	/* FIXME(xairy): stack might be wrong if id was reassigned. */
@@ -149,12 +147,20 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 			(1 << info->old.size), info->old.tid);
 		pr_err("No stack available.\n");
 	} else {
-		pr_err("Previous %s of size %d by thread T%d (K%d):\n",
+		kt_trace_restore_state(old, info->old.clock, &state);
+		if (state.cpu_id == -1) {
+			pr_err("Previous %s of size %d by thread T%d (K%d):\n",
 			info->old.read ? "read" : "write",
-			(1 << info->old.size), info->old.tid, old->kid);
-		kt_trace_restore_stack(old, info->old.clock, &stack);
-		kt_stack_print(&stack);
-		pr_err("DBG: cpu = %lx\n", (uptr_t)old->cpu);
+			(1 << info->old.size), info->old.tid,
+			old->kid);
+		} else {
+			pr_err("Previous %s of size %d by thread T%d "
+							"(K%d, CPU%d):\n",
+			info->old.read ? "read" : "write",
+			(1 << info->old.size), info->old.tid,
+			old->kid, state.cpu_id);
+		}
+		kt_stack_print(&state.stack);
 	}
 	pr_err("\n");
 

@@ -113,9 +113,9 @@ kt_thr_t *kt_thr_get(int id)
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
-#if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_thr_start, pc);
+	kt_trace_add_event(thr, kt_event_type_thr_start, smp_processor_id());
 	kt_clk_tick(&thr->clk, thr->id);
+#if KT_DEBUG
 	kt_stack_save_current(&thr->start_stack, _RET_IP_);
 #endif /* KT_DEBUG */
 
@@ -126,10 +126,8 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
 	BUG_ON(thr->event_disable_depth != 0);
 
-#if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_thr_stop, pc);
+	kt_trace_add_event(thr, kt_event_type_thr_stop, smp_processor_id());
 	kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG */
 
 	/* Current thread might be rescheduled even if preemption is disabled
 	   (for example using might_sleep()). Therefore, percpu syncs won't
@@ -149,7 +147,7 @@ void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
 bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc)
 {
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_event_disable, pc);
+	kt_trace_add_event(thr, kt_event_type_event_disable, kt_pc_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 	if (thr->event_disable_depth == 0)
 		thr->last_event_disable_time = kt_clk_get(&thr->clk, thr->id);
@@ -164,7 +162,7 @@ bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc)
 bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc)
 {
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_event_enable, pc);
+	kt_trace_add_event(thr, kt_event_type_event_enable, kt_pc_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 	if (thr->event_disable_depth - 1 == 0)
 		thr->last_event_enable_time = kt_clk_get(&thr->clk, thr->id);
