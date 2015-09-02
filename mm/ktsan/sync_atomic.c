@@ -7,12 +7,14 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 {
 	if (mo == ktsan_memory_order_acquire ||
 	    mo == ktsan_memory_order_acq_rel) {
+		if (thr->acquire_active) {
 #if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_membar_acquire,
-					kt_pc_compress(pc));
-		kt_clk_tick(&thr->clk, thr->id);
+			kt_trace_add_event(thr, kt_event_type_membar_acquire,
+						kt_pc_compress(pc));
+			kt_clk_tick(&thr->clk, thr->id);
 #endif
-		kt_clk_acquire(&thr->clk, &thr->acquire_clk);
+			kt_clk_acquire(&thr->clk, &thr->acquire_clk);
+		}
 	}
 
 	kt_thread_fence_no_ktsan(mo);
@@ -24,37 +26,21 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 					kt_pc_compress(pc));
 		kt_clk_tick(&thr->clk, thr->id);
 #endif
-		kt_clk_acquire(&thr->release_clk, &thr->clk);
+		if (thr->release_active)
+			kt_clk_acquire(&thr->release_clk, &thr->clk);
+		else
+			kt_clk_set(&thr->release_clk, &thr->clk);
+		thr->release_active = KT_TAME_COUNTER_LIMIT;
 	}
 }
 
-static void kt_atomic_pre_op(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync,
-		ktsan_memory_order_t mo, bool read, bool write)
-{
-	if (mo == ktsan_memory_order_acquire ||
-	    mo == ktsan_memory_order_acq_rel) {
-#if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_acquire,
-					kt_pc_compress(pc));
-		kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG */
-		kt_clk_acquire(&thr->clk, &sync->clk);
-		kt_thread_fence_no_ktsan(ktsan_memory_order_acquire);
-	} else if (read) {
-#if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_nonmat_acquire,
-					kt_pc_compress(pc));
-		kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG */
-		kt_clk_acquire(&thr->acquire_clk, &sync->clk);
-	}
-}
-
-static void kt_atomic_post_op(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync,
-		ktsan_memory_order_t mo, bool read, bool write)
+static kt_tab_sync_t *kt_atomic_pre_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+	ktsan_memory_order_t mo, bool read, bool write, kt_tab_sync_t *sync)
 {
 	if (mo == ktsan_memory_order_release ||
 	    mo == ktsan_memory_order_acq_rel) {
+		if (sync == NULL)
+			sync = kt_sync_ensure_created(thr, pc, addr);
 #if KT_DEBUG
 		kt_trace_add_event(thr, kt_event_type_release,
 					kt_pc_compress(pc));
@@ -63,28 +49,65 @@ static void kt_atomic_post_op(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync,
 		kt_thread_fence_no_ktsan(ktsan_memory_order_release);
 		kt_clk_acquire(&sync->clk, &thr->clk);
 	} else if (write) {
+		if (thr->release_active) {
+			if (sync == NULL)
+				sync = kt_sync_ensure_created(thr, pc, addr);
 #if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_nonmat_release,
+			kt_trace_add_event(thr, kt_event_type_nonmat_release,
+						kt_pc_compress(pc));
+			kt_clk_tick(&thr->clk, thr->id);
+#endif /* KT_DEBUG */
+			kt_clk_acquire(&sync->clk, &thr->release_clk);
+		}
+	}
+
+	return sync;
+}
+
+static kt_tab_sync_t *kt_atomic_post_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+	ktsan_memory_order_t mo, bool read, bool write, kt_tab_sync_t *sync)
+{
+	if (mo == ktsan_memory_order_acquire ||
+	    mo == ktsan_memory_order_acq_rel) {
+		if (sync == NULL)
+			sync = kt_sync_ensure_created(thr, pc, addr);
+#if KT_DEBUG
+		kt_trace_add_event(thr, kt_event_type_acquire,
 					kt_pc_compress(pc));
 		kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
-		kt_clk_acquire(&sync->clk, &thr->release_clk);
+		kt_clk_acquire(&thr->clk, &sync->clk);
+		kt_thread_fence_no_ktsan(ktsan_memory_order_acquire);
+	} else if (read) {
+		if (sync == NULL)
+			sync = kt_sync_ensure_created(thr, pc, addr);
+#if KT_DEBUG
+		kt_trace_add_event(thr, kt_event_type_nonmat_acquire,
+					kt_pc_compress(pc));
+		kt_clk_tick(&thr->clk, thr->id);
+#endif /* KT_DEBUG */
+		if (thr->acquire_active)
+			kt_clk_acquire(&thr->acquire_clk, &sync->clk);
+		else
+			kt_clk_set(&thr->acquire_clk, &sync->clk);
+		thr->acquire_active = KT_TAME_COUNTER_LIMIT;
 	}
+
+	return sync;
 }
 
 #define KT_ATOMIC_OP(op, ad, mo, read, write)				\
 do {									\
-	kt_tab_sync_t *sync;						\
+	kt_tab_sync_t *sync = NULL;					\
 									\
-	sync = kt_sync_ensure_created(thr, pc, (ad));			\
-									\
-	kt_atomic_pre_op(thr, pc, sync, mo, read, write);		\
+	sync = kt_atomic_pre_op(thr, pc, ad, mo, read, write, sync);	\
 									\
 	(op);								\
 									\
-	kt_atomic_post_op(thr, pc, sync, mo, read, write);		\
+	sync = kt_atomic_post_op(thr, pc, ad, mo, read, write, sync);	\
 									\
-	kt_spin_unlock(&sync->tab.lock);				\
+	if (sync != NULL)						\
+		kt_spin_unlock(&sync->tab.lock);			\
 } while (0)
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,

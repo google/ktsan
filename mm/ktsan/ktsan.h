@@ -26,8 +26,9 @@
 #define KT_MAX_PERCPU_SYNC_COUNT (30 * 1000)
 #define KT_MAX_THREAD_COUNT 1024
 
-#define KT_QUARANTINE_SIZE 512
+#define KT_TAME_COUNTER_LIMIT 3
 
+#define KT_QUARANTINE_SIZE 512
 #define KT_MAX_STACK_FRAMES 64
 
 #define KT_TRACE_PARTS 8
@@ -219,7 +220,9 @@ struct kt_thr_s {
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
 	kt_clk_t		acquire_clk;
+	int			acquire_active;
 	kt_clk_t		release_clk;
+	int			release_active;
 	kt_trace_t		trace;
 	int			call_depth;
 	int			read_disable_depth;
@@ -331,6 +334,7 @@ void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 
 void kt_clk_init(kt_clk_t *clk);
 void kt_clk_acquire(kt_clk_t *dst, kt_clk_t *src);
+void kt_clk_set(kt_clk_t *dst, kt_clk_t *src);
 
 static inline
 kt_time_t kt_clk_get(kt_clk_t *clk, int tid)

@@ -14,3 +14,11 @@ void kt_clk_acquire(kt_clk_t *dst, kt_clk_t *src)
 	for (i = 0; i < KT_MAX_THREAD_COUNT; i++)
 		dst->time[i] = max(dst->time[i], src->time[i]);
 }
+
+void kt_clk_set(kt_clk_t *dst, kt_clk_t *src)
+{
+	int i;
+
+	for (i = 0; i < KT_MAX_THREAD_COUNT; i++)
+		dst->time[i] = src->time[i];
+}

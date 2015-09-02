@@ -46,7 +46,9 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	new->cpu = NULL;
 	kt_clk_init(&new->clk);
 	kt_clk_init(&new->acquire_clk);
+	new->acquire_active = 0;
 	kt_clk_init(&new->release_clk);
+	new->release_active = 0;
 	kt_trace_init(&new->trace);
 	new->call_depth = 0;
 	new->read_disable_depth = 0;
