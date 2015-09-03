@@ -1188,6 +1188,8 @@ again:
 		break;
 	case D_WALK_QUIT:
 	case D_WALK_SKIP:
+		if (!(seq&1))
+			read_seqcount_cancel(&rename_lock.seqcount);
 		goto out_unlock;
 	case D_WALK_NORETRY:
 		retry = false;
@@ -1209,6 +1211,8 @@ resume:
 			break;
 		case D_WALK_QUIT:
 			spin_unlock(&dentry->d_lock);
+			if (!(seq&1))
+				read_seqcount_cancel(&rename_lock.seqcount);
 			goto out_unlock;
 		case D_WALK_NORETRY:
 			retry = false;
@@ -1240,7 +1244,7 @@ ascend:
 		spin_lock(&this_parent->d_lock);
 
 		/* might go back up the wrong parent if we have had a rename. */
-		if (need_seqretry(&rename_lock, seq))
+		if (need_seqretry_check(&rename_lock, seq))
 			goto rename_retry;
 		/* go into the first sibling still alive */
 		do {
