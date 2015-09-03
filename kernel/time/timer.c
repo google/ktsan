@@ -757,7 +757,7 @@ static struct tvec_base *lock_timer_base(struct timer_list *timer,
 	__acquires(timer->base->lock)
 {
 	for (;;) {
-		u32 tf = timer->flags;
+		u32 tf = READ_ONCE(timer->flags);
 		struct tvec_base *base;
 
 		if (!(tf & TIMER_MIGRATING)) {
@@ -802,7 +802,7 @@ __mod_timer(struct timer_list *timer, unsigned long expires,
 		 */
 		if (likely(base->running_timer != timer)) {
 			/* See the comment in lock_timer_base() */
-			timer->flags |= TIMER_MIGRATING;
+			WRITE_ONCE(timer->flags, timer->flags | TIMER_MIGRATING);
 
 			spin_unlock(&base->lock);
 			base = new_base;

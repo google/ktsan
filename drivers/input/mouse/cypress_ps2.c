@@ -120,11 +120,12 @@ static int cypress_ps2_read_cmd_status(struct psmouse *psmouse,
 	if (rc < 0)
 		goto out;
 
-	wait_event_timeout(ps2dev->wait,
-			(psmouse->pktcnt >= pktsize),
-			msecs_to_jiffies(CYTP_CMD_TIMEOUT));
-
-	memcpy(param, psmouse->packet, pktsize);
+	if (wait_event_timeout(ps2dev->wait,
+			(smp_load_acquire(&psmouse->pktcnt) >= pktsize),
+			msecs_to_jiffies(CYTP_CMD_TIMEOUT)))
+		memcpy(param, psmouse->packet, pktsize);
+	else
+		; /* out of luck */
 
 	psmouse_dbg(psmouse, "Command 0x%02x response data (0x): %*ph\n",
 			cmd, pktsize, param);
