@@ -108,7 +108,8 @@ void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 	kt_trace_follow(trace, beg, end, state);
 
 	event = &trace->events[end];
-	if (event->type == kt_event_type_mop) {
+	if (event->type != kt_event_type_func_enter &&
+	    event->type != kt_event_type_func_exit) {
 		BUG_ON(state->stack.size + 1 == KT_MAX_STACK_FRAMES);
 		state->stack.pc[state->stack.size] = event->data;
 		state->stack.size++;
