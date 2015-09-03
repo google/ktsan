@@ -187,6 +187,7 @@ int __ps2_command(struct ps2dev *ps2dev, unsigned char *param, int command)
 	int receive = (command >> 8) & 0xf;
 	int rc = -1;
 	int i;
+	unsigned char cmdcnt;
 
 	if (receive > sizeof(ps2dev->cmdbuf)) {
 		WARN_ON(1);
@@ -225,23 +226,22 @@ int __ps2_command(struct ps2dev *ps2dev, unsigned char *param, int command)
 	timeout = msecs_to_jiffies(command == PS2_CMD_RESET_BAT ? 4000 : 500);
 
 	timeout = wait_event_timeout(ps2dev->wait,
-				     !(READ_ONCE(ps2dev->flags) & PS2_FLAG_CMD1), timeout);
+		!(READ_ONCE(ps2dev->flags) & PS2_FLAG_CMD1), timeout);
 
-	if (smp_load_acquire(&ps2dev->cmdcnt) &&
-			!(smp_load_acquire(&ps2dev->flags) & PS2_FLAG_CMD1)) {
+	if (READ_ONCE(ps2dev->cmdcnt) &&
+			!(READ_ONCE(ps2dev->flags) & PS2_FLAG_CMD1)) {
 		timeout = ps2_adjust_timeout(ps2dev, command, timeout);
 		wait_event_timeout(ps2dev->wait,
-				   !(smp_load_acquire(&ps2dev->flags) & PS2_FLAG_CMD), timeout);
+			!(READ_ONCE(ps2dev->flags) & PS2_FLAG_CMD), timeout);
 	}
 
-	if (param)
-		for (i = 0; i < receive; i++)
-			param[i] = ps2dev->cmdbuf[(receive - 1) - i];
-
-	if (ps2dev->cmdcnt && (command != PS2_CMD_RESET_BAT || ps2dev->cmdcnt != 1))
-		goto out;
-
-	rc = 0;
+	cmdcnt = smp_load_acquire(&ps2dev->cmdcnt);
+	if (!cmdcnt || (command == PS2_CMD_RESET_BAT && cmdcnt == 1)) {
+		if (param)
+			for (i = 0; i < receive; i++)
+				param[i] = ps2dev->cmdbuf[(receive - 1) - i];
+		rc = 0;
+	}
 
  out:
 	serio_pause_rx(ps2dev->serio);
