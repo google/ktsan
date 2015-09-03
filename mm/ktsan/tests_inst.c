@@ -160,6 +160,55 @@ static void kt_test_spinlock(void)
 		"spinlock", false);
 }
 
+/* ktsan test: READ_ONCE_CTRL. */
+
+struct roc_arg {
+	unsigned long sync;
+	unsigned long data;
+};
+
+static void roc_init(void *p)
+{
+	struct roc_arg *arg = p;
+	
+	arg->sync = arg->data = 0;
+}
+
+static void roc_write_wmb(void *p)
+{
+	struct roc_arg *arg = p;
+
+	arg->data = 1;
+	smp_wmb();
+	WRITE_ONCE(arg->sync, 1);
+}
+
+static void roc_read(void *p)
+{
+	struct roc_arg *arg = p;
+
+	if (READ_ONCE(arg->sync)) {
+		arg->data = 2;
+	}
+}
+
+static void roc_read_ctrl(void *p)
+{
+	struct roc_arg *arg = p;
+
+	if (READ_ONCE_CTRL(arg->sync)) {
+		arg->data = 2;
+	}
+}
+
+static void kt_test_read_once_ctrl(void)
+{
+	kt_test(roc_init, roc_write_wmb, roc_read,
+		"READ_ONCE[_CTRL]", true);
+	kt_test(roc_init, roc_write_wmb, roc_read_ctrl,
+		"READ_ONCE_CTRL", false);
+}
+
 /* ktsan test: atomic. */
 
 static void atomic_first(void *arg)
@@ -460,6 +509,8 @@ static void kt_test_rcu(void)
 		"rcu-deref-assign", false);
 }
 
+/* ktsan test: seqlock */
+
 struct wait_on_bit_arg
 {
 	unsigned long bit;
@@ -686,6 +737,8 @@ void kt_tests_run_inst(void)
 	kt_test_offset();
 	pr_err("\n");
 	kt_test_spinlock();
+	pr_err("\n");
+	kt_test_read_once_ctrl();
 	pr_err("\n");
 	kt_test_atomic();
 	pr_err("\n");
