@@ -334,7 +334,8 @@ static irqreturn_t psmouse_interrupt(struct serio *serio,
 		goto out;
 	}
 
-	psmouse->packet[psmouse->pktcnt++] = data;
+	psmouse->packet[psmouse->pktcnt] = data;
+	smp_store_release(&psmouse->pktcnt, psmouse->pktcnt + 1);
 /*
  * Check if this is a new device announcement (0xAA 0x00)
  */
