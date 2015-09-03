@@ -246,6 +246,20 @@ static __always_inline void __read_once_size(const volatile void *p, void *res, 
 	}
 }
 
+static __always_inline void __read_once_size_acquire(const volatile void *p, void *res, int size)
+{
+	switch (size) {
+	case 1: *(__u8 *)res = ktsan_atomic8_load((void *)p, ktsan_memory_order_acquire); break;
+	case 2: *(__u16 *)res = ktsan_atomic16_load((void *)p, ktsan_memory_order_acquire); break;
+	case 4: *(__u32 *)res = ktsan_atomic32_load((void *)p, ktsan_memory_order_acquire); break;
+	case 8: *(__u64 *)res = ktsan_atomic64_load((void *)p, ktsan_memory_order_acquire); break;
+	default:
+		barrier();
+		__builtin_memcpy((void *)res, (const void *)p, size);
+		barrier();
+	}
+}
+
 static __always_inline void __write_once_size(volatile void *p, void *res, int size)
 {
 	switch (size) {
@@ -310,12 +324,24 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
  * use of smp_load_acquire() will be much simpler.  Control dependencies
  * should be avoided except on the hottest of hotpaths.
  */
+#ifndef CONFIG_KTSAN
 #define READ_ONCE_CTRL(x) \
 ({ \
 	typeof(x) __val = READ_ONCE(x); \
 	smp_read_barrier_depends(); /* Enforce control dependency. */ \
 	__val; \
 })
+#else /* CONFIG_KTSAN */
+/* Annotate READ_ONCE_CTRL as load-acquire since
+   KTSAN doesn't unserstand control dependency. */
+#define READ_ONCE_CTRL(x)					\
+({								\
+	typeof(x)* ___x1 = &(x);				\
+	union { typeof(x) __val; char __c[1]; } __u;		\
+	__read_once_size_acquire(___x1, __u.__c, sizeof(x));	\
+	__u.__val;						\
+})
+#endif /* CONFIG_KTSAN */
 
 #endif /* __KERNEL__ */
 

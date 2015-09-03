@@ -13,6 +13,7 @@ obj-y := access.o 		\
 	 sync_atomic_no_ktsan.o \
 	 sync_mtx.o 		\
 	 sync_percpu.o 		\
+	 sync_seqlock.o 	\
 	 sync.o 		\
 	 tab.o 			\
 	 tests_inst.o 		\
@@ -37,6 +38,7 @@ CFLAGS_REMOVE_sync_atomic.o		= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync_atomic_no_ktsan.o	= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync_mtx.o		= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync_percpu.o		= -pg -O0 -O1 -O2
+CFLAGS_REMOVE_sync_seqlock.o		= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_tab.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_tests_inst.o		= -pg -O0 -O1 -O2
@@ -61,6 +63,7 @@ CFLAGS_sync_atomic.o		= -O3
 CFLAGS_sync_atomic_no_ktsan.o	= -O3
 CFLAGS_sync_mtx.o		= -O3
 CFLAGS_sync_percpu.o		= -O3
+CFLAGS_sync_seqlock.o		= -O3
 CFLAGS_sync.o			= -O3
 CFLAGS_tab.o			= -O3
 CFLAGS_tests_inst.o		= -O3
