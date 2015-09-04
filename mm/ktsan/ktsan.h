@@ -535,6 +535,10 @@ void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
 void kt_report_bad_mtx_unlock(kt_thr_t *thr, kt_tab_sync_t *sync, uptr_t strip);
 
+#if KT_DEBUG
+void kt_report_sync_usage(void);
+#endif /* KT_DEBUG */
+
 /* Suppressions. */
 void kt_supp_init(void);
 bool kt_supp_suppressed(unsigned long pc);

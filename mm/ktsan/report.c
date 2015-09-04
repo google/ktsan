@@ -39,7 +39,7 @@ int sync_entry_cmp(const void *a, const void *b) {
 	return sb->count - sa->count;
 }
 
-static void kt_report_sync_usage(void)
+void kt_report_sync_usage(void)
 {
 	int sync_objects_count = 0;
 	int sync_entries_count = 0;
@@ -83,7 +83,7 @@ static void kt_report_sync_usage(void)
 			&sync_entry_cmp, NULL);
 
 	pr_err("\n");
-	pr_err("Most syncs created at:\n");
+	pr_err("Most syncs created at (totally %d):\n", sync_objects_count);
 	for (i = 0; i < 32; i++) {
 		pr_err(" %6d [<%p>] %pS\n", sync_entries[i].count,
 			(void *)sync_entries[i].pc, (void *)sync_entries[i].pc);

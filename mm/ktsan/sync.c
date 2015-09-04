@@ -10,6 +10,10 @@ kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	uptr_t memblock_addr;
 
 	sync = kt_tab_access(&kt_ctx.sync_tab, addr, &created, false);
+#if KT_DEBUG
+	if (sync == NULL)
+		kt_report_sync_usage();
+#endif /* KT_DEBUG */
 	BUG_ON(sync == NULL); /* Ran out of memory. */
 
 	if (created) {
