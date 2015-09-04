@@ -50,7 +50,7 @@ void kt_report_sync_usage(void)
 	uptr_t curr_pc;
 	static int counter = 0;
 
-	if (counter++ % 128 != 0)
+	if (counter++ % 8 != 0)
 		return;
 
 	for (p = 0; p < kt_ctx.sync_tab.size; p++) {
