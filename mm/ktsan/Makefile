@@ -9,6 +9,7 @@ obj-y := access.o 		\
 	 spinlock.o		\
 	 stack.o 		\
 	 stat.o 		\
+	 supp.o			\
 	 sync_atomic.o 		\
 	 sync_atomic_no_ktsan.o \
 	 sync_mtx.o 		\
@@ -34,6 +35,7 @@ CFLAGS_REMOVE_shadow.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_spinlock.o                = -pg -O0 -O1 -O2
 CFLAGS_REMOVE_stack.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_stat.o			= -pg -O0 -O1 -O2
+CFLAGS_REMOVE_supp.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync_atomic.o		= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync_atomic_no_ktsan.o	= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync_mtx.o		= -pg -O0 -O1 -O2
@@ -59,6 +61,7 @@ CFLAGS_shadow.o			= -O3
 CFLAGS_spinlock.o               = -O3
 CFLAGS_stack.o			= -O3
 CFLAGS_stat.o			= -O3
+CFLAGS_supp.o			= -O3
 CFLAGS_sync_atomic.o		= -O3
 CFLAGS_sync_atomic_no_ktsan.o	= -O3
 CFLAGS_sync_mtx.o		= -O3
