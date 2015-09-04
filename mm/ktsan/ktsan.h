@@ -189,6 +189,8 @@ struct kt_tab_sync_s {
 	int			lock_tid; /* id of thread that locked mutex */
 	struct list_head	list;
 	uptr_t			pc;
+	kt_time_t		last_lock_time;
+	kt_time_t		last_unlock_time;
 };
 
 struct kt_tab_lock_s {
@@ -531,6 +533,7 @@ void kt_func_exit(kt_thr_t *thr);
 void kt_report_disable(kt_thr_t *thr);
 void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
+void kt_report_bad_mtx_unlock(kt_thr_t *thr, kt_tab_sync_t *sync, uptr_t strip);
 
 /* Suppressions. */
 void kt_supp_init(void);
