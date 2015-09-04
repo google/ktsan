@@ -570,8 +570,16 @@ static void locks_delete_global_locks(struct file_lock *fl)
 	 * is done while holding the flc_lock, and new insertions into the list
 	 * also require that it be held.
 	 */
-	if (hlist_unhashed(&fl->fl_link))
+	/*
+	 * This is not safe as other threads modify fl->fl_link.pprev
+	 * concurrently if the node is still in the list.
+	 */
+	ktsan_thr_event_disable();
+	if (hlist_unhashed(&fl->fl_link)) {
+		ktsan_thr_event_enable();
 		return;
+	}
+	ktsan_thr_event_enable();
 	lg_local_lock_cpu(&file_lock_lglock, fl->fl_link_cpu);
 	hlist_del_init(&fl->fl_link);
 	lg_local_unlock_cpu(&file_lock_lglock, fl->fl_link_cpu);
