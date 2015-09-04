@@ -299,7 +299,7 @@ void ktsan_thr_stop(void)
 void ktsan_thr_event_disable(void)
 {
 	ENTER(false, true);
-	kt_thr_event_disable(thr, pc);
+	kt_thr_event_disable(thr, pc, &kt_flags);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_thr_event_disable);
@@ -307,7 +307,7 @@ EXPORT_SYMBOL(ktsan_thr_event_disable);
 void ktsan_thr_event_enable(void)
 {
 	ENTER(false, true);
-	kt_thr_event_enable(thr, pc);
+	kt_thr_event_enable(thr, pc, &kt_flags);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_thr_event_enable);
@@ -370,14 +370,7 @@ void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
 {
 	ENTER(false, true);
 
-	if (kt_thr_event_disable(thr, pc)) {
-		/* Disable interrupts while inside of mutex_lock and
-		   similar functions. Otherwise all events in interrupts
-		   that happen during that time will be ignored. */
-		thr->irq_flags_before_mtx = kt_flags;
-		/* Set all disabled in kt_flags. */
-		kt_flags = arch_local_irq_save();
-
+	if (kt_thr_event_disable(thr, pc, &kt_flags)) {
 		kt_mtx_pre_lock(thr, pc, (uptr_t)addr, write, try);
 	}
 
@@ -389,11 +382,8 @@ void ktsan_mtx_post_lock(void *addr, bool write, bool try, bool success)
 {
 	ENTER(false, true);
 
-	if (kt_thr_event_enable(thr, pc)) {
+	if (kt_thr_event_enable(thr, pc, &kt_flags)) {
 		kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try, success);
-
-		BUG_ON(!arch_irqs_disabled());
-		kt_flags = thr->irq_flags_before_mtx;
 	}
 
 	LEAVE();
@@ -404,14 +394,7 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 {
 	ENTER(false, true);
 
-	if (kt_thr_event_disable(thr, pc)) {
-		/* Disable interrupts while inside of mutex_unlock and
-		   similar functions. Otherwise all events in interrupts
-		   that happen during that time will be ignored. */
-		thr->irq_flags_before_mtx = kt_flags;
-		/* Set all disabled in kt_flags. */
-		kt_flags = arch_local_irq_save();
-
+	if (kt_thr_event_disable(thr, pc, &kt_flags)) {
 		kt_mtx_pre_unlock(thr, pc, (uptr_t)addr, write);
 	}
 
@@ -423,11 +406,8 @@ void ktsan_mtx_post_unlock(void *addr, bool write)
 {
 	ENTER(false, true);
 
-	if (kt_thr_event_enable(thr, pc)) {
+	if (kt_thr_event_enable(thr, pc, &kt_flags)) {
 		kt_mtx_post_unlock(thr, pc, (uptr_t)addr, write);
-
-		BUG_ON(!arch_irqs_disabled());
-		kt_flags = thr->irq_flags_before_mtx;
 	}
 
 	LEAVE();

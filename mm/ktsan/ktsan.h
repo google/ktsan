@@ -225,7 +225,7 @@ struct kt_thr_s {
 	int			report_disable_depth;
 	int			preempt_disable_depth;
 	bool			irqs_disabled;
-	unsigned long		irq_flags_before_mtx;
+	unsigned long		irq_flags_before_disable;
 	struct list_head	quarantine_list; /* list entry */
 	struct list_head	percpu_list; /* list head */
 	/* List of currently "acquired" for reading seqcounts. */
@@ -371,8 +371,8 @@ kt_thr_t *kt_thr_get(int id);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
-bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc);
-bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc);
+bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
+bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
 
 /* Synchronization. */
 
