@@ -220,11 +220,15 @@ void kt_report_bad_mtx_unlock(kt_thr_t *new, kt_tab_sync_t *sync, uptr_t strip)
 	BUG_ON(old == NULL);
 	kt_trace_restore_state(old, sync->last_lock_time, &state);
 
+	pr_err("==================================================================\n");
+
 	pr_err("ThreadSanitizer: mutex unlocked in a different thread\n");
+	pr_err("\n");
 
 	pr_err("Unlock by T%d (K%d, CPU%d):\n",
 		new->id, new->kid, smp_processor_id());
 	kt_stack_print_current(strip);
+	pr_err("\n");
 
 	if (state.cpu_id == -1) {
 		pr_err("Previous lock by T%d (K%d):\n", old->id, old->kid);
@@ -233,4 +237,7 @@ void kt_report_bad_mtx_unlock(kt_thr_t *new, kt_tab_sync_t *sync, uptr_t strip)
 			old->id, old->kid, state.cpu_id);
 	}
 	kt_stack_print(&state.stack);
+	pr_err("\n");
+
+	pr_err("==================================================================\n");
 }
