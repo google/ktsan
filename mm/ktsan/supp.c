@@ -18,6 +18,7 @@ typedef struct kt_supp_s kt_supp_t;
 static kt_supp_t suppressions[] = {
 	{"generic_fillattr"},		/* Non-atomic read/write of timespec. https://lkml.org/lkml/2015/8/28/400 */
 	{"atime_needs_update"},		/* Non-atomic read/write of timespec */
+	{"generic_update_time"},	/* Non-atomic read/write of timespec */
 	{"tcp_poll"},			/* Race on tp->rcv_nxt. Seems benign */
 	{"vm_stat_account"},		/* Race on mm->total_vm. Stat accounting */
 };
