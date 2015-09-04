@@ -442,6 +442,7 @@ struct rw_semaphore __sched *rwsem_down_write_failed(struct rw_semaphore *sem)
 	long count;
 	bool waiting = true; /* any queued threads before us */
 	struct rwsem_waiter waiter;
+	unsigned long flags;
 
 	/* undo write bias from down_write operation, stop active locking */
 	count = rwsem_atomic_update(-RWSEM_ACTIVE_WRITE_BIAS, sem);
@@ -457,7 +458,7 @@ struct rw_semaphore __sched *rwsem_down_write_failed(struct rw_semaphore *sem)
 	waiter.task = current;
 	waiter.type = RWSEM_WAITING_FOR_WRITE;
 
-	raw_spin_lock_irq(&sem->wait_lock);
+	raw_spin_lock_irqsave(&sem->wait_lock, flags);
 
 	/* account for this before adding a new element to the list */
 	if (list_empty(&sem->wait_list))
@@ -485,7 +486,7 @@ struct rw_semaphore __sched *rwsem_down_write_failed(struct rw_semaphore *sem)
 	while (true) {
 		if (rwsem_try_write_lock(count, sem))
 			break;
-		raw_spin_unlock_irq(&sem->wait_lock);
+		raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 
 		ktsan_mtx_post_lock(sem, true, false, false);
 		/* Block until there are no active lockers. */
@@ -495,12 +496,12 @@ struct rw_semaphore __sched *rwsem_down_write_failed(struct rw_semaphore *sem)
 		} while ((count = sem->count) & RWSEM_ACTIVE_MASK);
 		ktsan_mtx_pre_lock(sem, true, false);
 
-		raw_spin_lock_irq(&sem->wait_lock);
+		raw_spin_lock_irqsave(&sem->wait_lock, flags);
 	}
 	__set_current_state(TASK_RUNNING);
 
 	list_del(&waiter.list);
-	raw_spin_unlock_irq(&sem->wait_lock);
+	raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 
 	return sem;
 }

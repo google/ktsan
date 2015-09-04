@@ -362,6 +362,7 @@ void ktsan_memblock_alloc(void *addr, unsigned long size)
 void ktsan_memblock_free(void *addr, unsigned long size)
 {
 	ENTER(false, true);
+	BUG_ON(thr->event_disable_depth != 0);
 	kt_memblock_free(thr, pc, (uptr_t)addr, (size_t)size);
 	LEAVE();
 }
