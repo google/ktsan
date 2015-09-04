@@ -395,7 +395,6 @@ void kt_seqcount_ignore_end(kt_thr_t *thr, uptr_t pc);
 void kt_seqcount_bug(kt_thr_t *thr, uptr_t addr, const char *what);
 
 void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo);
-void kt_thread_fence_no_ktsan(ktsan_memory_order_t mo);
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,
 		void *addr, u8 value, ktsan_memory_order_t mo);
@@ -455,6 +454,8 @@ int kt_atomic_fetch_clear_bit(kt_thr_t *thr, uptr_t pc,
 		void *addr, long nr, ktsan_memory_order_t mo);
 int kt_atomic_fetch_change_bit(kt_thr_t *thr, uptr_t pc,
 		void *addr, long nr, ktsan_memory_order_t mo);
+
+void kt_thread_fence_no_ktsan(ktsan_memory_order_t mo);
 
 void kt_atomic8_store_no_ktsan(void *addr, u8 value);
 void kt_atomic16_store_no_ktsan(void *addr, u16 value);
@@ -530,6 +531,10 @@ void kt_func_exit(kt_thr_t *thr);
 void kt_report_disable(kt_thr_t *thr);
 void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
+
+/* Suppressions. */
+void kt_supp_init(void);
+bool kt_supp_suppressed(unsigned long pc);
 
 /* Internal allocator. */
 

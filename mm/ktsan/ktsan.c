@@ -154,6 +154,7 @@ void ktsan_init(void)
 
 	ctx->cpus = alloc_percpu(kt_cpu_t);
 	kt_stat_init();
+	kt_supp_init();
 	kt_tests_init();
 
 	/* These stats were not recorded in kt_thr_create. */
