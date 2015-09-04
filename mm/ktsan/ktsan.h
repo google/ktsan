@@ -189,6 +189,8 @@ struct kt_tab_sync_s {
 	int			lock_tid; /* id of thread that locked mutex */
 	struct list_head	list;
 	uptr_t			pc;
+	kt_time_t		last_lock_time;
+	kt_time_t		last_unlock_time;
 };
 
 struct kt_tab_lock_s {
@@ -225,7 +227,7 @@ struct kt_thr_s {
 	int			report_disable_depth;
 	int			preempt_disable_depth;
 	bool			irqs_disabled;
-	unsigned long		irq_flags_before_mtx;
+	unsigned long		irq_flags_before_disable;
 	struct list_head	quarantine_list; /* list entry */
 	struct list_head	percpu_list; /* list head */
 	/* List of currently "acquired" for reading seqcounts. */
@@ -371,8 +373,8 @@ kt_thr_t *kt_thr_get(int id);
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
 
-bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc);
-bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc);
+bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
+bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
 
 /* Synchronization. */
 
@@ -531,6 +533,11 @@ void kt_func_exit(kt_thr_t *thr);
 void kt_report_disable(kt_thr_t *thr);
 void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
+void kt_report_bad_mtx_unlock(kt_thr_t *thr, kt_tab_sync_t *sync, uptr_t strip);
+
+#if KT_DEBUG
+void kt_report_sync_usage(void);
+#endif /* KT_DEBUG */
 
 /* Suppressions. */
 void kt_supp_init(void);

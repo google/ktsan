@@ -39,7 +39,7 @@ int sync_entry_cmp(const void *a, const void *b) {
 	return sb->count - sa->count;
 }
 
-static void kt_report_sync_usage(void)
+void kt_report_sync_usage(void)
 {
 	int sync_objects_count = 0;
 	int sync_entries_count = 0;
@@ -83,7 +83,7 @@ static void kt_report_sync_usage(void)
 			&sync_entry_cmp, NULL);
 
 	pr_err("\n");
-	pr_err("Most syncs created at:\n");
+	pr_err("Most syncs created at (totally %d):\n", sync_objects_count);
 	for (i = 0; i < 32; i++) {
 		pr_err(" %6d [<%p>] %pS\n", sync_entries[i].count,
 			(void *)sync_entries[i].pc, (void *)sync_entries[i].pc);
@@ -206,4 +206,31 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	kt_stat_inc(new, kt_stat_reports);
 
 	kt_spin_unlock(&kt_report_lock);
+}
+
+void kt_report_bad_mtx_unlock(kt_thr_t *new, kt_tab_sync_t *sync, uptr_t strip)
+{
+	kt_thr_t *old;
+	kt_trace_state_t state;
+
+	BUG_ON(sync->lock_tid == -1);
+	BUG_ON(sync->lock_tid == new->id);
+
+	old = kt_thr_get(sync->lock_tid);
+	BUG_ON(old == NULL);
+	kt_trace_restore_state(old, sync->last_lock_time, &state);
+
+	pr_err("ThreadSanitizer: mutex unlocked in a different thread\n");
+
+	pr_err("Unlock by T%d (K%d, CPU%d):\n",
+		new->id, new->kid, smp_processor_id());
+	kt_stack_print_current(strip);
+
+	if (state.cpu_id == -1) {
+		pr_err("Previous lock by T%d (K%d):\n", old->id, old->kid);
+	} else {
+		pr_err("Previous lock by T%d (K%d, CPU%d):\n",
+			old->id, old->kid, state.cpu_id);
+	}
+	kt_stack_print(&state.stack);
 }

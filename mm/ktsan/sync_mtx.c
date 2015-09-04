@@ -31,6 +31,7 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, false);
 	BUG_ON(sync == NULL);
 	sync->lock_tid = thr->id;
+	sync->last_lock_time = kt_clk_get(&thr->clk, thr->id);
 	kt_spin_unlock(&sync->tab.lock);
 }
 
@@ -48,8 +49,11 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, false);
 	BUG_ON(sync == NULL);
 	BUG_ON(wr && sync->lock_tid == -1);
-	BUG_ON(wr && sync->lock_tid != thr->id);
+	if (wr && sync->lock_tid != thr->id) {
+		kt_report_bad_mtx_unlock(thr, sync, _RET_IP_);
+	}
 	sync->lock_tid = -1;
+	sync->last_unlock_time = kt_clk_get(&thr->clk, thr->id);
 	kt_spin_unlock(&sync->tab.lock);
 }
 
