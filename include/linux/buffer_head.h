@@ -342,7 +342,7 @@ map_bh(struct buffer_head *bh, struct super_block *sb, sector_t block)
 static inline void wait_on_buffer(struct buffer_head *bh)
 {
 	might_sleep();
-	if (buffer_locked(bh))
+	if (READ_ONCE_CTRL(bh->b_state) & (1ul << BH_Lock))
 		__wait_on_buffer(bh);
 }
 
