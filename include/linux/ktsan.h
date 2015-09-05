@@ -59,6 +59,7 @@ void ktsan_memblock_free(void *addr, unsigned long size);
 
 void ktsan_sync_acquire(void *addr);
 void ktsan_sync_release(void *addr);
+void ktsan_sync_drop(void *addr);
 
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try);
 void ktsan_mtx_post_lock(void *addr, bool write, bool try, bool success);
@@ -156,6 +157,7 @@ static inline void ktsan_memblock_free(void *addr, unsigned long size) {}
 
 static inline void ktsan_sync_acquire(void *addr) {}
 static inline void ktsan_sync_release(void *addr) {}
+static inline void ktsan_sync_drop(void *addr) {}
 
 static inline void ktsan_mtx_pre_lock(void *addr, bool write, bool try) {}
 static inline void ktsan_mtx_post_lock(void *addr, bool write, bool try,
