@@ -12,7 +12,8 @@
 
 #define KT_DEBUG 0
 #define KT_DEBUG_TRACE 0
-#define KT_COLLECT_STATS 0
+#define KT_ENABLE_STATS 0
+#define KT_ENABLE_LOCKSETS 0
 
 #define KT_GRAIN 8
 #define KT_SHADOW_SLOTS_LOG 2
@@ -78,6 +79,7 @@ typedef struct kt_stack_depot_s		kt_stack_depot_t;
 typedef struct kt_stack_depot_obj_s	kt_stack_depot_obj_t;
 typedef enum kt_event_type_e		kt_event_type_t;
 typedef struct kt_event_s		kt_event_t;
+typedef struct kt_trace_mtx_info_s	kt_trace_mtx_info_t;
 typedef struct kt_trace_state_s		kt_trace_state_t;
 typedef struct kt_trace_part_header_s	kt_trace_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
@@ -134,9 +136,11 @@ enum kt_event_type_e {
 	kt_event_type_func_exit,
 	kt_event_type_thr_start,
 	kt_event_type_thr_stop,
-#if KT_DEBUG
+#if (KT_DEBUG || KT_ENABLE_LOCKSETS)
 	kt_event_type_lock,
 	kt_event_type_unlock,
+#endif /* KT_DEBUG || KT_ENABLE_LOCKSETS */
+#if KT_DEBUG
 	kt_event_type_acquire,
 	kt_event_type_release,
 	kt_event_type_nonmat_acquire,
@@ -155,13 +159,25 @@ enum kt_event_type_e {
 struct kt_event_s {
 	u32			type;
 	u32			data;
-	/* The data field is cpu id for thread start and stop
-	   events and pc for other kinds of event. */
+	/* The data field is
+	   cpu id for thread start and stop events,
+	   sync addr for lock and unlock events,
+	   and pc for other kinds of event. */
 };
+
+#if KT_ENABLE_LOCKSETS
+struct kt_trace_mtx_info_s {
+	uptr_t			addr;
+	kt_stack_handle_t	stack_handle;
+};
+#endif /* KT_ENABLE_LOCKSETS */
 
 struct kt_trace_state_s {
 	kt_stack_t		stack;
 	int			cpu_id;
+#if KT_ENABLE_LOCKSETS
+	kt_trace_mtx_info_t	locked_mtx[KT_MAX_LOCKED_MTX_COUNT];
+#endif /* KT_ENABLE_LOCKSETS */
 };
 
 struct kt_trace_part_header_s {
@@ -688,13 +704,13 @@ void kt_tab_init(kt_tab_t *tab, unsigned size,
 void kt_tab_destroy(kt_tab_t *tab);
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
-/* Statistics. Enabled only when KT_COLLECT_STATS = 1. */
+/* Statistics. Enabled only when KT_ENABLE_STATS = 1. */
 
 void kt_stat_init(void);
 
 static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
-#if KT_COLLECT_STATS
+#if KT_ENABLE_STATS
 	WARN_ON_ONCE(thr->cpu == NULL);
 	if (thr->cpu == NULL)
 		return;

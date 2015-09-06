@@ -106,41 +106,42 @@ void kt_report_enable(kt_thr_t *thr)
 void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 {
 	int i, n;
-	unsigned long newpc, oldpc;
-	char function[MAX_FUNCTION_NAME_SIZE];
 	kt_thr_t *old;
-	kt_trace_state_t newstate, oldstate;
+	uptr_t new_pc, old_pc;
+	kt_trace_state_t old_state, new_state;
+	char function[MAX_FUNCTION_NAME_SIZE];
 
 	if (new->report_disable_depth != 0)
 		return;
 
-	kt_trace_restore_state(new, info->new.clock, &newstate);
-	BUG_ON(newstate.stack.size == 0);
-	newpc = kt_pc_decompress(newstate.stack.pc[newstate.stack.size - 1]);
-	if (kt_supp_suppressed(newpc))
+	kt_trace_restore_state(new, info->new.clock, &new_state);
+	BUG_ON(new_state.stack.size == 0);
+	new_pc = kt_pc_decompress(new_state.stack.pc[new_state.stack.size - 1]);
+	if (kt_supp_suppressed(new_pc))
 		return;
 
 	old = kt_thr_get(info->old.tid);
 	BUG_ON(old == NULL);
-	kt_trace_restore_state(old, info->old.clock, &oldstate);
-	/* We use newpc/oldpc pair for report deduplication (see racy_pc).
-	 * If we fail to restore second stack, use newpc/newpc pair instead.
+	kt_trace_restore_state(old, info->old.clock, &old_state);
+
+	/* We use new_pc/old_pc pair for report deduplication (see racy_pc).
+	 * If we fail to restore second stack, use new_pc/new_pc pair instead.
 	 * This is better than reporting tons of reports with missing stack.
 	 */
-	oldpc = newpc;
-	if (oldstate.stack.size > 0) {
-		oldpc = kt_pc_decompress(
-			oldstate.stack.pc[oldstate.stack.size - 1]);
-		if (kt_supp_suppressed(oldpc))
+	old_pc = new_pc;
+	if (old_state.stack.size > 0) {
+		old_pc = kt_pc_decompress(
+				old_state.stack.pc[old_state.stack.size - 1]);
+		if (kt_supp_suppressed(old_pc))
 			return;
 	}
 	n = kt_atomic32_load_no_ktsan(&nracy_pc);
 	for (i = 0; i < n; i += 2) {
-		if (newpc == racy_pc[i] && oldpc == racy_pc[i + 1])
+		if (new_pc == racy_pc[i] && old_pc == racy_pc[i + 1])
 			return;
 	}
 
-	sprintf(function, "%pS", (void *)newpc);
+	sprintf(function, "%pS", (void *)new_pc);
 	for (i = 0; i < MAX_FUNCTION_NAME_SIZE; i++) {
 		if (function[i] == '+') {
 			function[i] = '\0';
@@ -151,8 +152,8 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	kt_spin_lock(&kt_report_lock);
 
 	if (nracy_pc < ARRAY_SIZE(racy_pc)) {
-		racy_pc[nracy_pc] = newpc;
-		racy_pc[nracy_pc + 1] = oldpc;
+		racy_pc[nracy_pc] = new_pc;
+		racy_pc[nracy_pc + 1] = old_pc;
 		kt_atomic32_store_no_ktsan(&nracy_pc, nracy_pc + 2);
 	}
 
@@ -163,10 +164,24 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	pr_err("%s of size %d by thread T%d (K%d, CPU%d):\n",
 		info->new.read ? "Read" : "Write", (1 << info->new.size),
 		info->new.tid, new->kid, smp_processor_id());
-	kt_stack_print(&newstate.stack);
+	kt_stack_print(&new_state.stack);
 	pr_err("\n");
 
-	if (oldstate.cpu_id == -1) {
+#if KT_ENABLE_LOCKSETS
+	pr_err("Locks held by T%d:\n", new->id);
+	for (i = 0; i < KT_MAX_LOCKED_MTX_COUNT; i++) {
+		if (new_state.locked_mtx[i].addr != 0) {
+			pr_err("#%d Lock %p taken here:\n",
+				i, (void *)new_state.locked_mtx[i].addr);
+			kt_stack_print(kt_stack_depot_get(
+				&kt_ctx.stack_depot,
+				new_state.locked_mtx[i].stack_handle));
+		}
+	}
+	pr_err("\n");
+#endif /* KT_ENABLE_LOCKSETS */
+
+	if (old_state.cpu_id == -1) {
 		pr_err("Previous %s of size %d by thread T%d (K%d):\n",
 			info->old.read ? "read" : "write",
 			(1 << info->old.size), info->old.tid, old->kid);
@@ -174,10 +189,24 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 		pr_err("Previous %s of size %d by thread T%d (K%d, CPU%d):\n",
 			info->old.read ? "read" : "write",
 			(1 << info->old.size), info->old.tid,
-			old->kid, oldstate.cpu_id);
+			old->kid, old_state.cpu_id);
 	}
-	kt_stack_print(&oldstate.stack);
+	kt_stack_print(&old_state.stack);
 	pr_err("\n");
+
+#if KT_ENABLE_LOCKSETS
+	pr_err("Locks held by T%d:\n", old->id);
+	for (i = 0; i < KT_MAX_LOCKED_MTX_COUNT; i++) {
+		if (old_state.locked_mtx[i].addr != 0) {
+			pr_err("#%d Lock %p taken here:\n",
+				i, (void *)old_state.locked_mtx[i].addr);
+			kt_stack_print(kt_stack_depot_get(
+				&kt_ctx.stack_depot,
+				old_state.locked_mtx[i].stack_handle));
+		}
+	}
+	pr_err("\n");
+#endif /* KT_ENABLE_LOCKSETS */
 
 	pr_err("DBG: addr: %lx\n", info->addr);
 	pr_err("DBG: first offset: %d, second offset: %d\n",
