@@ -8,6 +8,7 @@ obj-y := access.o 		\
 	 shadow.o 		\
 	 spinlock.o		\
 	 stack.o 		\
+	 stack_depot.o 		\
 	 stat.o 		\
 	 supp.o			\
 	 sync_atomic.o 		\
@@ -33,6 +34,7 @@ CFLAGS_REMOVE_report.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_shadow.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_spinlock.o                = -pg -O0 -O1 -O2
 CFLAGS_REMOVE_stack.o			= -pg -O0 -O1 -O2
+CFLAGS_REMOVE_stack_depot.o		= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_stat.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_supp.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_sync_atomic.o		= -pg -O0 -O1 -O2
@@ -58,6 +60,7 @@ CFLAGS_report.o			= -O3 -fomit-frame-pointer
 CFLAGS_shadow.o			= -O3 -fomit-frame-pointer
 CFLAGS_spinlock.o               = -O3
 CFLAGS_stack.o			= -O3 -fomit-frame-pointer
+CFLAGS_stack_depot.o		= -O3 -fomit-frame-pointer
 CFLAGS_stat.o			= -O3 -fomit-frame-pointer
 CFLAGS_supp.o			= -O3 -fomit-frame-pointer
 CFLAGS_sync_atomic.o		= -O3 -fomit-frame-pointer
