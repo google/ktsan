@@ -294,9 +294,9 @@ static int faultin_page(struct task_struct *tsk, struct vm_area_struct *vma,
 
 	if (tsk) {
 		if (ret & VM_FAULT_MAJOR)
-			tsk->maj_flt++;
+			WRITE_ONCE(tsk->maj_flt, READ_ONCE(tsk->maj_flt) + 1);
 		else
-			tsk->min_flt++;
+			WRITE_ONCE(tsk->min_flt, READ_ONCE(tsk->min_flt) + 1);
 	}
 
 	if (ret & VM_FAULT_RETRY) {
