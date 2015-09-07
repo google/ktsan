@@ -21,6 +21,7 @@ static kt_supp_t suppressions[] = {
 	{"generic_update_time"},	/* Non-atomic read/write of timespec */
 	{"tcp_poll"},			/* Race on tp->rcv_nxt. Seems benign */
 	{"vm_stat_account"},		/* Race on mm->total_vm. Stat accounting */
+	{"radix_tree_next_chunk"},	/* Race when checking root_tag_get */
 };
 
 void kt_supp_init(void)
