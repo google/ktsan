@@ -806,7 +806,7 @@ int __sched mutex_lock_interruptible(struct mutex *lock)
 		return 0;
 	} else {
 		ret = __mutex_lock_interruptible_slowpath(lock);
-		ktsan_mtx_post_lock(lock, true, false, true);
+		ktsan_mtx_post_lock(lock, true, false, !ret);
 		return ret;
 	}
 }
