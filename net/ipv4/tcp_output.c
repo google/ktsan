@@ -76,7 +76,7 @@ static void tcp_event_new_data_sent(struct sock *sk, const struct sk_buff *skb)
 	unsigned int prior_packets = tp->packets_out;
 
 	tcp_advance_send_head(sk, skb);
-	tp->snd_nxt = TCP_SKB_CB(skb)->end_seq;
+	WRITE_ONCE(tp->snd_nxt, TCP_SKB_CB(skb)->end_seq);
 
 	tp->packets_out += tcp_skb_pcount(skb);
 	if (!prior_packets || icsk->icsk_pending == ICSK_TIME_EARLY_RETRANS ||
