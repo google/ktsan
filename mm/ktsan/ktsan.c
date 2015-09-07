@@ -352,6 +352,14 @@ void ktsan_sync_release(void *addr)
 }
 EXPORT_SYMBOL(ktsan_sync_release);
 
+void ktsan_sync_drop(void *addr)
+{
+	ENTER(false, false);
+	kt_sync_drop_and_free(thr, (uptr_t)addr);
+	LEAVE();
+}
+EXPORT_SYMBOL(ktsan_sync_drop);
+
 void ktsan_memblock_alloc(void *addr, unsigned long size)
 {
 	ENTER(false, true);

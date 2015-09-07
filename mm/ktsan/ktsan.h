@@ -383,7 +383,8 @@ bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
 /* Synchronization. */
 
 kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t pc, uptr_t addr);
-void kt_sync_destroy(kt_thr_t *thr, uptr_t addr);
+void kt_sync_free(kt_thr_t *thr, uptr_t addr);
+void kt_sync_drop_and_free(kt_thr_t *thr, uptr_t addr);
 
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
@@ -514,6 +515,7 @@ void kt_percpu_list_clean(kt_thr_t *thr, uptr_t pc);
 
 uptr_t kt_memblock_addr(uptr_t addr);
 void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync);
+void kt_memblock_remove_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync);
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 
