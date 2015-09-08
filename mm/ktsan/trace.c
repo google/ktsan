@@ -147,7 +147,11 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 
 	for (i = beg; i <= end; i++) {
 		event = &trace->events[i % KT_TRACE_SIZE];
-		if (event->type == kt_event_type_func_enter) {
+		if (event->type == kt_event_type_mop) {
+			pc = kt_pc_decompress(event->data);
+			pr_err(" i: %lu, access , pc: [<%p>] %pS\n",
+				i, (void *)pc, (void *)pc);
+		} else if (event->type == kt_event_type_func_enter) {
 			pc = kt_pc_decompress(event->data);
 			pr_err(" i: %lu, enter  , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
