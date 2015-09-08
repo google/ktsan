@@ -218,13 +218,14 @@ struct rw_semaphore __sched *rwsem_down_read_failed(struct rw_semaphore *sem)
 	long count, adjustment = -RWSEM_ACTIVE_READ_BIAS;
 	struct rwsem_waiter waiter;
 	struct task_struct *tsk = current;
+	unsigned long flags;
 
 	/* set up my own style of waitqueue */
 	waiter.task = tsk;
 	waiter.type = RWSEM_WAITING_FOR_READ;
 	get_task_struct(tsk);
 
-	raw_spin_lock_irq(&sem->wait_lock);
+	raw_spin_lock_irqsave(&sem->wait_lock, flags);
 	if (list_empty(&sem->wait_list))
 		adjustment += RWSEM_WAITING_BIAS;
 	list_add_tail(&waiter.list, &sem->wait_list);
@@ -242,7 +243,7 @@ struct rw_semaphore __sched *rwsem_down_read_failed(struct rw_semaphore *sem)
 	     adjustment != -RWSEM_ACTIVE_READ_BIAS))
 		sem = __rwsem_do_wake(sem, RWSEM_WAKE_ANY);
 
-	raw_spin_unlock_irq(&sem->wait_lock);
+	raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 
 	ktsan_mtx_post_lock(sem, false, false, false);
 	/* wait to be given the lock */
