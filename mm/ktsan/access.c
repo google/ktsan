@@ -6,8 +6,9 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 
-static bool ranges_intersect(int first_offset, int first_size,
-			     int second_offset, int second_size)
+static inline
+bool ranges_intersect(int first_offset, int first_size, int second_offset,
+	int second_size)
 {
 	if (first_offset + first_size <= second_offset)
 		return false;
@@ -18,39 +19,40 @@ static bool ranges_intersect(int first_offset, int first_size,
 	return true;
 }
 
-static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
-			kt_shadow_t *slot, kt_shadow_t value, bool stored)
+static inline
+bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr, kt_shadow_t *slot,
+	kt_shadow_t value, bool stored)
 {
 	kt_race_info_t info;
 	kt_shadow_t old;
+	u64 raw;
 
-	kt_atomic64_store_no_ktsan(&old, KT_SHADOW_TO_LONG(*slot));
-
-	if (*(unsigned long *)(&old) == 0) {
-		if (!stored) {
+	raw = kt_atomic64_load_no_ktsan(slot);
+	if (raw == 0) {
+		if (!stored)
 			kt_atomic64_store_no_ktsan(slot,
 				KT_SHADOW_TO_LONG(value));
-			return true;
-		}
-		return false;
+		return true;
 	}
+	old = *(kt_shadow_t*)&raw;
 
 	/* Is the memory access equal to the previous? */
 	if (value.offset == old.offset && value.size == old.size) {
 		/* Same thread? */
-		if (value.tid == old.tid) {
+		if (likely(value.tid == old.tid)) {
 			/* TODO. */
 			return false;
 		}
 
 		/* Happens-before? */
-		if (kt_clk_get(&thr->clk, old.tid) >= old.clock) {
-			kt_atomic64_store_no_ktsan(slot,
-				KT_SHADOW_TO_LONG(value));
+		if (likely(kt_clk_get(&thr->clk, old.tid) >= old.clock)) {
+			if (!stored)
+				kt_atomic64_store_no_ktsan(slot,
+					KT_SHADOW_TO_LONG(value));
 			return true;
 		}
 
-		if (old.read && value.read)
+		if (likely(old.read && value.read))
 			return false;
 
 		info.addr = addr;
@@ -64,8 +66,8 @@ static bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr,
 	}
 
 	/* Do the memory accesses intersect? */
-	if (ranges_intersect(old.offset, (1 << old.size),
-			     value.offset, (1 << value.size))) {
+	if (unlikely(ranges_intersect(old.offset, (1 << old.size),
+			     value.offset, (1 << value.size)))) {
 		if (old.tid == value.tid)
 			return false;
 		if (old.read && value.read)
@@ -106,7 +108,7 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 
 	slots = kt_shadow_get(addr);
 
-	if (!slots)
+	if (unlikely(!slots))
 		return; /* FIXME? */
 
 	current_clock = kt_clk_get(&thr->clk, thr->id);

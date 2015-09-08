@@ -28,7 +28,7 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 	}
 }
 
-static inline void kt_trace_switch(kt_trace_t *trace, kt_time_t clock)
+void kt_trace_switch(kt_trace_t *trace, kt_time_t clock)
 {
 	unsigned part, prev_part;
 	kt_trace_part_header_t *header, *prev_header;
@@ -59,25 +59,6 @@ void kt_trace_init(kt_trace_t *trace)
 	for (i = 0; i < KT_TRACE_PARTS; i++)
 		trace->headers[i].state.cpu_id = -1;
 	kt_spin_init(&trace->lock);
-}
-
-void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u32 data)
-{
-	kt_trace_t *trace;
-	kt_time_t clock;
-	kt_event_t event;
-
-	trace = &thr->trace;
-	clock = kt_clk_get(&thr->clk, thr->id);
-
-	trace->position = clock % KT_TRACE_SIZE;
-
-	if ((trace->position % KT_TRACE_PART_SIZE) == 0)
-		kt_trace_switch(trace, clock);
-
-	event.type = (int)type;
-	event.data = data;
-	trace->events[trace->position] = event;
 }
 
 void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
