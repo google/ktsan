@@ -1685,7 +1685,7 @@ static void release_tty(struct tty_struct *tty, int idx)
 	tty_driver_remove_tty(tty->driver, tty);
 	tty->port->itty = NULL;
 	if (tty->link)
-		tty->link->port->itty = NULL;
+		WRITE_ONCE(tty->link->port->itty, NULL);
 	cancel_work_sync(&tty->port->buf.work);
 
 	tty_kref_put(tty->link);

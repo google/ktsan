@@ -206,7 +206,7 @@ enum {
 	IRQD_WAKEUP_ARMED		= (1 << 19),
 };
 
-#define __irqd_to_state(d)		((d)->common->state_use_accessors)
+#define __irqd_to_state(d)	ACCESS_ONCE(((d)->common->state_use_accessors))
 
 static inline bool irqd_is_setaffinity_pending(struct irq_data *d)
 {
