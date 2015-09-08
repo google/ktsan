@@ -136,7 +136,6 @@ struct kt_trace_part_header_s {
 struct kt_trace_s {
 	kt_trace_part_header_t	headers[KT_TRACE_PARTS];
 	kt_event_t		events[KT_TRACE_SIZE];
-	unsigned long		position;
 	kt_spinlock_t		lock;
 };
 
@@ -366,18 +365,18 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u32 data)
 	kt_trace_t *trace;
 	kt_time_t clock;
 	kt_event_t event;
+	unsigned pos;
 
 	trace = &thr->trace;
 	clock = kt_clk_get(&thr->clk, thr->id);
+	pos = clock % KT_TRACE_SIZE;
 
-	trace->position = clock % KT_TRACE_SIZE;
-
-	if ((trace->position % KT_TRACE_PART_SIZE) == 0)
+	if ((pos % KT_TRACE_PART_SIZE) == 0)
 		kt_trace_switch(trace, clock);
 
 	event.type = (int)type;
 	event.data = data;
-	trace->events[trace->position] = event;
+	trace->events[pos] = event;
 }
 
 /* Spinlock. */

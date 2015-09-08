@@ -36,7 +36,7 @@ void kt_trace_switch(kt_trace_t *trace, kt_time_t clock)
 
 	kt_spin_lock(&trace->lock);
 
-	part = trace->position / KT_TRACE_PART_SIZE;
+	part = (clock % KT_TRACE_SIZE) / KT_TRACE_PART_SIZE;
 	header = &trace->headers[part];
 	prev_part = (part == 0) ? (KT_TRACE_PARTS - 1) : (part - 1);
 	prev_header = &trace->headers[prev_part];
