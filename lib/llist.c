@@ -66,7 +66,7 @@ struct llist_node *llist_del_first(struct llist_head *head)
 {
 	struct llist_node *entry, *old_entry, *next;
 
-	entry = READ_ONCE(head->first);
+	entry = READ_ONCE_CTRL(head->first);
 	for (;;) {
 		if (entry == NULL)
 			return NULL;
