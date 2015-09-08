@@ -37,6 +37,12 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 static kt_tab_sync_t *kt_atomic_pre_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	ktsan_memory_order_t mo, bool read, bool write, kt_tab_sync_t *sync)
 {
+	/* This will catch races between atomic operations and non-atomic
+	 * writes (in particular with kfree).
+	 */
+	if (write)
+		kt_access(thr, pc, addr, 0, true);
+
 	if (mo == ktsan_memory_order_release ||
 	    mo == ktsan_memory_order_acq_rel) {
 		if (sync == NULL)
@@ -94,6 +100,12 @@ static kt_tab_sync_t *kt_atomic_post_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 			kt_clk_set(&thr->acquire_clk, &sync->clk);
 		thr->acquire_active = KT_TAME_COUNTER_LIMIT;
 	}
+
+	/* This will catch races between atomic operations and non-atomic
+	 * writes (in particular with kfree).
+	 */
+	if (read && !write)
+		kt_access(thr, pc, addr, 0, true);
 
 	return sync;
 }
