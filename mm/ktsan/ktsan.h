@@ -12,7 +12,8 @@
 
 #define KT_DEBUG 0
 #define KT_DEBUG_TRACE 0
-#define KT_COLLECT_STATS 0
+#define KT_ENABLE_STATS 0
+#define KT_ENABLE_LOCKSETS 0
 
 #define KT_GRAIN 8
 #define KT_SHADOW_SLOTS_LOG 2
@@ -25,15 +26,23 @@
 #define KT_SYNC_TAB_SIZE 196613
 #define KT_MEMBLOCK_TAB_SIZE 196613
 
-#define KT_MAX_SYNC_COUNT (2000 * 1000)
+#define KT_MAX_SYNC_COUNT (1700 * 1000)
 #define KT_MAX_MEMBLOCK_COUNT (200 * 1000)
 #define KT_MAX_PERCPU_SYNC_COUNT (30 * 1000)
 #define KT_MAX_THREAD_COUNT 1024
 
-#define KT_TAME_COUNTER_LIMIT 3
-
 #define KT_QUARANTINE_SIZE 512
 #define KT_MAX_STACK_FRAMES 96
+#define KT_TAME_COUNTER_LIMIT 3
+#define KT_MAX_LOCKED_MTX_COUNT 32
+
+#define KT_STACK_DEPOT_PARTS 196613
+#if KT_ENABLE_LOCKSETS
+/* Can't be more than 16 GB. */
+#define KT_STACK_DEPOT_MEMORY_LIMIT (2UL * 1024 * 1024 * 1024)
+#else /* KT_ENABLE_LOCKSETS */
+#define KT_STACK_DEPOT_MEMORY_LIMIT (256 * 1024 * 1024)
+#endif /* KT_ENABLE_LOCKSETS */
 
 #define KT_TRACE_PARTS 8
 #define KT_TRACE_PART_SIZE (8 * 1024)
@@ -46,8 +55,8 @@
 #define KT_BUG_ON(x) {}
 #endif
 
-typedef unsigned long	uptr_t;
-typedef unsigned long	kt_time_t;
+typedef unsigned long			uptr_t;
+typedef unsigned long			kt_time_t;
 
 typedef struct kt_thr_s			kt_thr_t;
 typedef struct kt_clk_s			kt_clk_t;
@@ -65,8 +74,12 @@ typedef struct kt_cpu_s			kt_cpu_t;
 typedef struct kt_race_info_s		kt_race_info_t;
 typedef struct kt_cache_s		kt_cache_t;
 typedef struct kt_stack_s		kt_stack_t;
+typedef u32				kt_stack_handle_t;
+typedef struct kt_stack_depot_s		kt_stack_depot_t;
+typedef struct kt_stack_depot_obj_s	kt_stack_depot_obj_t;
 typedef enum kt_event_type_e		kt_event_type_t;
 typedef struct kt_event_s		kt_event_t;
+typedef struct kt_trace_mtx_info_s	kt_trace_mtx_info_t;
 typedef struct kt_trace_state_s		kt_trace_state_t;
 typedef struct kt_trace_part_header_s	kt_trace_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
@@ -82,11 +95,36 @@ struct kt_spinlock_s {
 	u8			state;
 };
 
+/* Internal allocator. */
+
+struct kt_cache_s {
+	unsigned long		base;
+	unsigned long		mem_size;
+	void			*head;
+	kt_spinlock_t		lock;
+};
+
 /* Stack. */
 
 struct kt_stack_s {
-	unsigned int		pc[KT_MAX_STACK_FRAMES];
-	int			size;
+	s32			size;
+	u32			pc[KT_MAX_STACK_FRAMES];
+};
+
+/* Stack depot. */
+
+struct kt_stack_depot_obj_s {
+	kt_stack_depot_obj_t	*link;
+	u32			hash;
+	s32			stack_size;
+	u32			stack_pc[0];
+};
+
+struct kt_stack_depot_s {
+	kt_cache_t		stack_cache;
+	u64			stack_offset;
+	kt_stack_depot_obj_t	*parts[KT_STACK_DEPOT_PARTS];
+	kt_spinlock_t		lock;
 };
 
 /* Trace. */
@@ -98,9 +136,11 @@ enum kt_event_type_e {
 	kt_event_type_func_exit,
 	kt_event_type_thr_start,
 	kt_event_type_thr_stop,
-#if KT_DEBUG
+#if (KT_DEBUG || KT_ENABLE_LOCKSETS)
 	kt_event_type_lock,
 	kt_event_type_unlock,
+#endif /* KT_DEBUG || KT_ENABLE_LOCKSETS */
+#if KT_DEBUG
 	kt_event_type_acquire,
 	kt_event_type_release,
 	kt_event_type_nonmat_acquire,
@@ -119,13 +159,25 @@ enum kt_event_type_e {
 struct kt_event_s {
 	u32			type;
 	u32			data;
-	/* The data field is cpu id for thread start and stop
-	   events and pc for other kinds of event. */
+	/* The data field is
+	   cpu id for thread start and stop events,
+	   sync addr for lock and unlock events,
+	   and pc for other kinds of event. */
 };
+
+#if KT_ENABLE_LOCKSETS
+struct kt_trace_mtx_info_s {
+	uptr_t			addr;
+	kt_stack_handle_t	stack_handle;
+};
+#endif /* KT_ENABLE_LOCKSETS */
 
 struct kt_trace_state_s {
 	kt_stack_t		stack;
 	int			cpu_id;
+#if KT_ENABLE_LOCKSETS
+	kt_trace_mtx_info_t	locked_mtx[KT_MAX_LOCKED_MTX_COUNT];
+#endif /* KT_ENABLE_LOCKSETS */
 };
 
 struct kt_trace_part_header_s {
@@ -161,15 +213,6 @@ struct kt_race_info_s {
 	unsigned long		addr;
 	kt_shadow_t		old;
 	kt_shadow_t		new;
-};
-
-/* Internal allocator. */
-
-struct kt_cache_s {
-	unsigned long		base;
-	unsigned long		mem_size;
-	void			*head;
-	kt_spinlock_t		lock;
 };
 
 /* Hash table. */
@@ -309,8 +352,9 @@ struct kt_ctx_s {
 	kt_tab_t		sync_tab; /* sync addr -> sync object */
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
-	kt_thr_pool_t		thr_pool;
 	kt_cache_t		percpu_sync_cache;
+	kt_thr_pool_t		thr_pool;
+	kt_stack_depot_t	stack_depot;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -330,6 +374,16 @@ static inline unsigned long kt_pc_decompress(unsigned int pc)
 void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
 void kt_stack_print(kt_stack_t *stack);
 void kt_stack_print_current(unsigned long strip_addr);
+
+/* Stack depot. */
+
+void kt_stack_depot_init(kt_stack_depot_t *depot);
+void kt_stack_depot_destroy(kt_stack_depot_t *depot);
+
+kt_stack_handle_t kt_stack_depot_save(kt_stack_depot_t *depot,
+					kt_stack_t *stack);
+kt_stack_t *kt_stack_depot_get(kt_stack_depot_t *depot,
+				kt_stack_handle_t handle);
 
 /* Clocks. */
 
@@ -650,13 +704,13 @@ void kt_tab_init(kt_tab_t *tab, unsigned size,
 void kt_tab_destroy(kt_tab_t *tab);
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
 
-/* Statistics. Enabled only when KT_COLLECT_STATS = 1. */
+/* Statistics. Enabled only when KT_ENABLE_STATS = 1. */
 
 void kt_stat_init(void);
 
 static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
 {
-#if KT_COLLECT_STATS
+#if KT_ENABLE_STATS
 	WARN_ON_ONCE(thr->cpu == NULL);
 	if (thr->cpu == NULL)
 		return;

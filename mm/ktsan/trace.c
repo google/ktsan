@@ -24,6 +24,32 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 		} else if (event->type == kt_event_type_thr_stop) {
 			BUG_ON(state->cpu_id != event->data);
 			state->cpu_id = -1;
+#if KT_ENABLE_LOCKSETS
+		} else if (event->type == kt_event_type_lock) {
+			int k;
+			for (k = 0; k < KT_MAX_LOCKED_MTX_COUNT; k++) {
+				if (state->locked_mtx[k].addr != 0)
+					continue;
+				state->locked_mtx[k].addr =
+					kt_pc_decompress(event->data);
+				state->locked_mtx[k].stack_handle =
+					kt_stack_depot_save(&kt_ctx.stack_depot,
+								&state->stack);
+				break;
+			}
+			BUG_ON(k == KT_MAX_LOCKED_MTX_COUNT);
+		} else if (event->type == kt_event_type_unlock) {
+			int k;
+			for (k = 0; k < KT_MAX_LOCKED_MTX_COUNT; k++) {
+				if (state->locked_mtx[k].addr !=
+						kt_pc_decompress(event->data))
+					continue;
+				state->locked_mtx[k].addr = 0;
+				state->locked_mtx[k].stack_handle = 0;
+				break;
+			}
+			BUG_ON(k == KT_MAX_LOCKED_MTX_COUNT);
+#endif /* KT_ENABLE_LOCKSETS */
 		}
 	}
 }
@@ -77,6 +103,13 @@ void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 	kt_spin_lock(&trace->lock);
 
 	if (header->clock > clock) {
+#if KT_ENABLE_LOCKSETS
+		int i;
+		for (i = 0; i < KT_MAX_LOCKED_MTX_COUNT; i++) {
+			state->locked_mtx[i].addr = 0;
+			state->locked_mtx[i].stack_handle = 0;
+		}
+#endif /* KT_ENABLE_LOCKSETS */
 		state->stack.size = 0;
 		state->cpu_id = -1;
 		kt_spin_unlock(&trace->lock);
@@ -89,8 +122,15 @@ void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 	kt_trace_follow(trace, beg, end, state);
 
 	event = &trace->events[end];
-	if (event->type != kt_event_type_func_enter &&
-	    event->type != kt_event_type_func_exit) {
+	if (event->type != kt_event_type_func_enter
+	    && event->type != kt_event_type_func_exit
+	    && event->type != kt_event_type_thr_stop
+	    && event->type != kt_event_type_thr_start
+#if (KT_DEBUG || KT_ENABLE_LOCKSETS)
+	    && event->type != kt_event_type_lock
+	    && event->type != kt_event_type_unlock
+#endif /* KT_DEBUG || KT_ENABLE_LOCKSETS */
+	) {
 		BUG_ON(state->stack.size + 1 == KT_MAX_STACK_FRAMES);
 		state->stack.pc[state->stack.size] = event->data;
 		state->stack.size++;
@@ -116,18 +156,20 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 			pr_err(" i: %lu, exit   , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
 		} else if (event->type == kt_event_type_thr_stop) {
-			pr_err(" i: %lu, stop   , cpu: %d\n", i, event->data);
+			pr_err(" i: %lu, stop   , cpu: %d\n",
+				i, event->data);
 		} else if (event->type == kt_event_type_thr_start) {
-			pr_err(" i: %lu, start  , cpu: %d\n", i, event->data);
-#if KT_DEBUG
+			pr_err(" i: %lu, start  , cpu: %d\n",
+				i, event->data);
+#if (KT_DEBUG || KT_ENABLE_LOCKSETS)
 		} else if (event->type == kt_event_type_lock) {
-			pc = kt_pc_decompress(event->data);
-			pr_err(" i: %lu, lock   , pc: [<%p>] %pS\n",
-				i, (void *)pc, (void *)pc);
+			pr_err(" i: %lu, lock   , addr: %p \n",
+				i, (void *)kt_pc_decompress(event->data));
 		} else if (event->type == kt_event_type_unlock) {
-			pc = kt_pc_decompress(event->data);
-			pr_err(" i: %lu, unlock , pc: [<%p>] %pS\n",
-				i, (void *)pc, (void *)pc);
+			pr_err(" i: %lu, unlock , addr: %p \n",
+				i, (void *)kt_pc_decompress(event->data));
+#endif /* KT_DEBUG || KT_ENABLE_LOCKSETS */
+#if KT_DEBUG
 		} else if (event->type == kt_event_type_preempt_enable) {
 			pc = kt_pc_decompress(event->data);
 			pr_err(" i: %lu, prm on , pc: [<%p>] %pS\n",
