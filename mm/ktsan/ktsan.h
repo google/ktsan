@@ -35,6 +35,13 @@
 #define KT_TRACE_PART_SIZE (8 * 1024)
 #define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
 
+/* For use on performance-critical paths. */
+#if KT_DEBUG
+#define KT_BUG_ON(x) BUG_ON(x)
+#else
+#define KT_BUG_ON(x) {}
+#endif
+
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
 
@@ -216,7 +223,7 @@ struct kt_tab_test_s {
 struct kt_thr_s {
 	int			id;
 	int			kid; /* kernel thread id */
-	atomic_t		inside;	/* already inside of ktsan runtime */
+	unsigned long		inside;	/* already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
 	kt_clk_t		acquire_clk;

@@ -37,59 +37,47 @@ kt_ctx_t kt_ctx;
 	kt_thr_t *thr;							\
 	uptr_t pc;							\
 	unsigned long kt_flags;						\
-	int kt_inside_was;						\
 	bool event_handled;						\
 									\
 	thr = NULL;							\
-	kt_inside_was = -1;						\
 	event_handled = false;						\
 									\
 	DISABLE_INTERRUPTS(kt_flags);					\
 									\
-	if (!kt_ctx.enabled)						\
+	if (unlikely(!kt_ctx.enabled))					\
 		goto exit;						\
 									\
 	/* Ignore reports from some interrupts for now. */		\
-	if (IN_INTERRUPT())						\
+	if (unlikely(IN_INTERRUPT()))					\
 		goto exit;						\
 									\
 	/* TODO(xairy): check if we even need theese checks. */		\
-	if (!current)							\
+	if (unlikely(!current))						\
 		goto exit;						\
-	if (!current->ktsan.thr)					\
-		goto exit;						\
-									\
 	thr = current->ktsan.thr;					\
+	if (unlikely(!thr))					\
+		goto exit;						\
+									\
+	if (unlikely(thr->event_disable_depth != 0 && !(handle_disabled)))\
+		goto exit;						\
+									\
+	if (unlikely(thr->cpu == NULL && !(handle_scheduler)))		\
+		goto exit;						\
+									\
+	if (unlikely(__test_and_set_bit(0, &thr->inside)))		\
+		goto exit;						\
+									\
 	pc = (uptr_t)_RET_IP_;						\
-									\
-	if (thr->event_disable_depth != 0 && !(handle_disabled))	\
-		goto exit;						\
-									\
-	if (thr->cpu == NULL && !(handle_scheduler))			\
-		goto exit;						\
-									\
-	kt_inside_was = kt_atomic32_compare_exchange_no_ktsan(		\
-				&thr->inside, 0, 1);			\
-	if (kt_inside_was != 0) {					\
-		goto exit;						\
-	}								\
-									\
 	event_handled = true;						\
 /**/
 
 #define LEAVE()								\
-	/* thr might become NULL in ktsan_thread_destroy. */		\
-	thr = current->ktsan.thr;					\
-									\
-	if (thr) {							\
-		kt_inside_was =	kt_atomic32_compare_exchange_no_ktsan(	\
-					&thr->inside, 1, 0);		\
-		BUG_ON(kt_inside_was != 1);				\
-	}								\
+	KT_BUG_ON(thr != current->ktsan.thr);				\
+	if (unlikely(!__test_and_clear_bit(0, &thr->inside)))		\
+		KT_BUG_ON(1);						\
 									\
 exit:									\
-	if (thr && event_handled)					\
-		BUG_ON(kt_atomic32_load_no_ktsan(&thr->inside) != 0);	\
+	KT_BUG_ON(thr && event_handled && thr->inside);			\
 	ENABLE_INTERRUPTS(kt_flags);					\
 /**/
 
@@ -149,7 +137,7 @@ void ktsan_init(void)
 	current->ktsan.thr = thr;
 
 	BUG_ON(ctx->enabled);
-	inside = atomic_cmpxchg(&thr->inside, 0, 1);
+	inside = __test_and_set_bit(0, &thr->inside);
 	BUG_ON(inside != 0);
 
 	ctx->cpus = alloc_percpu(kt_cpu_t);
@@ -161,8 +149,8 @@ void ktsan_init(void)
 	kt_stat_inc(thr, kt_stat_thread_create);
 	kt_stat_inc(thr, kt_stat_threads);
 
-	inside = atomic_cmpxchg(&thr->inside, 1, 0);
-	BUG_ON(inside != 1);
+	inside = __test_and_clear_bit(0, &thr->inside);
+	BUG_ON(!inside);
 	ctx->enabled = 1;
 
 	pr_err("ktsan: enabled.\n");
@@ -204,8 +192,6 @@ void ktsan_print_diagnostics(void)
 			pr_err(" thr->cpu != NULL:              %s\n",
 				(thr->cpu != NULL) ? "+" : "-");
 		}
-		pr_err(" kt_inside_was == 0:            %s\n",
-			(kt_inside_was == 0) ? "+" : "-");
 	}
 
 	pr_err("\n");
