@@ -22,46 +22,6 @@ void kt_thread_fence_no_ktsan(ktsan_memory_order_t mo)
 	}
 }
 
-u8 kt_atomic8_load_no_ktsan(void *addr)
-{
-	return *(volatile u8 *)addr;
-}
-
-u16 kt_atomic16_load_no_ktsan(void *addr)
-{
-	return *(volatile u16 *)addr;
-}
-
-u32 kt_atomic32_load_no_ktsan(void *addr)
-{
-	return *(volatile u32 *)addr;
-}
-
-u64 kt_atomic64_load_no_ktsan(void *addr)
-{
-	return *(volatile u64 *)addr;
-}
-
-void kt_atomic8_store_no_ktsan(void *addr, u8 value)
-{
-	*(volatile u8 *)addr = value;
-}
-
-void kt_atomic16_store_no_ktsan(void *addr, u16 value)
-{
-	*(volatile u16 *)addr = value;
-}
-
-void kt_atomic32_store_no_ktsan(void *addr, u32 value)
-{
-	*(volatile u32 *)addr = value;
-}
-
-void kt_atomic64_store_no_ktsan(void *addr, u64 value)
-{
-	*(volatile u64 *)addr = value;
-}
-
 u8 kt_atomic8_exchange_no_ktsan(void *addr, u8 value)
 {
 	return xchg((u8 *)addr, value);

@@ -5,10 +5,14 @@
 #include <linux/list.h>
 #include <linux/percpu.h>
 #include <linux/types.h>
+#include <linux/gfp.h>
+#include <linux/kernel.h>
+#include <linux/mm_types.h>
+#include <linux/mm.h>
 
 #define KT_DEBUG 0
 #define KT_DEBUG_TRACE 0
-#define KT_COLLECT_STATS 1
+#define KT_COLLECT_STATS 0
 
 #define KT_GRAIN 8
 #define KT_SHADOW_SLOTS_LOG 2
@@ -29,11 +33,18 @@
 #define KT_TAME_COUNTER_LIMIT 3
 
 #define KT_QUARANTINE_SIZE 512
-#define KT_MAX_STACK_FRAMES 64
+#define KT_MAX_STACK_FRAMES 96
 
 #define KT_TRACE_PARTS 8
 #define KT_TRACE_PART_SIZE (8 * 1024)
 #define KT_TRACE_SIZE (KT_TRACE_PARTS * KT_TRACE_PART_SIZE)
+
+/* For use on performance-critical paths. */
+#if KT_DEBUG
+#define KT_BUG_ON(x) BUG_ON(x)
+#else
+#define KT_BUG_ON(x) {}
+#endif
 
 typedef unsigned long	uptr_t;
 typedef unsigned long	kt_time_t;
@@ -125,7 +136,6 @@ struct kt_trace_part_header_s {
 struct kt_trace_s {
 	kt_trace_part_header_t	headers[KT_TRACE_PARTS];
 	kt_event_t		events[KT_TRACE_SIZE];
-	unsigned long		position;
 	kt_spinlock_t		lock;
 };
 
@@ -151,7 +161,6 @@ struct kt_race_info_s {
 	unsigned long		addr;
 	kt_shadow_t		old;
 	kt_shadow_t		new;
-	unsigned long		strip_addr;
 };
 
 /* Internal allocator. */
@@ -216,7 +225,7 @@ struct kt_tab_test_s {
 struct kt_thr_s {
 	int			id;
 	int			kid; /* kernel thread id */
-	atomic_t		inside;	/* already inside of ktsan runtime */
+	unsigned long		inside;	/* already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
 	kt_clk_t		acquire_clk;
@@ -322,36 +331,52 @@ void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
 void kt_stack_print(kt_stack_t *stack);
 void kt_stack_print_current(unsigned long strip_addr);
 
-/* Trace. */
-
-void kt_trace_init(kt_trace_t *trace);
-void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u32 data);
-void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
-				kt_trace_state_t *state);
-void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
-
 /* Clocks. */
 
 void kt_clk_init(kt_clk_t *clk);
 void kt_clk_acquire(kt_clk_t *dst, kt_clk_t *src);
 void kt_clk_set(kt_clk_t *dst, kt_clk_t *src);
 
-static inline
+static __always_inline
 kt_time_t kt_clk_get(kt_clk_t *clk, int tid)
 {
-	WARN_ON_ONCE(tid >= KT_MAX_THREAD_COUNT);
-	if (tid >= KT_MAX_THREAD_COUNT)
-		return 0;
+	KT_BUG_ON(tid >= KT_MAX_THREAD_COUNT);
 	return clk->time[tid];
 }
 
-static inline
+static __always_inline
 void kt_clk_tick(kt_clk_t *clk, int tid)
 {
-	WARN_ON_ONCE(tid >= KT_MAX_THREAD_COUNT);
-	if (tid >= KT_MAX_THREAD_COUNT)
-		return;
+	KT_BUG_ON(tid >= KT_MAX_THREAD_COUNT);
 	clk->time[tid]++;
+}
+
+/* Trace. */
+
+void kt_trace_init(kt_trace_t *trace);
+void kt_trace_switch(kt_trace_t *trace, kt_time_t clock);
+void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
+				kt_trace_state_t *state);
+void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
+
+static inline
+void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u32 data)
+{
+	kt_trace_t *trace;
+	kt_time_t clock;
+	kt_event_t event;
+	unsigned pos;
+
+	trace = &thr->trace;
+	clock = kt_clk_get(&thr->clk, thr->id);
+	pos = clock % KT_TRACE_SIZE;
+
+	if ((pos % KT_TRACE_PART_SIZE) == 0)
+		kt_trace_switch(trace, clock);
+
+	event.type = (int)type;
+	event.data = data;
+	trace->events[pos] = event;
 }
 
 /* Spinlock. */
@@ -363,7 +388,28 @@ int kt_spin_is_locked(kt_spinlock_t *l);
 
 /* Shadow. */
 
-void *kt_shadow_get(uptr_t addr);
+static __always_inline
+void *kt_shadow_get(uptr_t addr)
+{
+	struct page *page;
+	unsigned long aligned_addr;
+	unsigned long shadow_offset;
+
+	if (unlikely(addr < (unsigned long)(__va(0)) ||
+			addr >= (unsigned long)(__va(max_pfn << PAGE_SHIFT))))
+		return NULL;
+
+	/* XXX: kmemcheck checks something about pte here. */
+
+	page = virt_to_page(addr);
+	if (unlikely(!page->shadow))
+		return NULL;
+
+	aligned_addr = round_down(addr, KT_GRAIN);
+	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KT_SHADOW_SLOTS;
+	return page->shadow + shadow_offset;
+}
+
 void kt_shadow_clear(uptr_t addr, size_t size);
 
 /* Threads. */
@@ -464,15 +510,53 @@ int kt_atomic_fetch_change_bit(kt_thr_t *thr, uptr_t pc,
 
 void kt_thread_fence_no_ktsan(ktsan_memory_order_t mo);
 
-void kt_atomic8_store_no_ktsan(void *addr, u8 value);
-void kt_atomic16_store_no_ktsan(void *addr, u16 value);
-void kt_atomic32_store_no_ktsan(void *addr, u32 value);
-void kt_atomic64_store_no_ktsan(void *addr, u64 value);
+static __always_inline
+u8 kt_atomic8_load_no_ktsan(void *addr)
+{
+	return *(volatile u8 *)addr;
+}
 
-u8 kt_atomic8_load_no_ktsan(void *addr);
-u16 kt_atomic16_load_no_ktsan(void *addr);
-u32 kt_atomic32_load_no_ktsan(void *addr);
-u64 kt_atomic64_load_no_ktsan(void *addr);
+static __always_inline
+u16 kt_atomic16_load_no_ktsan(void *addr)
+{
+	return *(volatile u16 *)addr;
+}
+
+static __always_inline
+u32 kt_atomic32_load_no_ktsan(void *addr)
+{
+	return *(volatile u32 *)addr;
+}
+
+static __always_inline
+u64 kt_atomic64_load_no_ktsan(void *addr)
+{
+	return *(volatile u64 *)addr;
+}
+
+static __always_inline
+void kt_atomic8_store_no_ktsan(void *addr, u8 value)
+{
+	*(volatile u8 *)addr = value;
+}
+
+static __always_inline
+void kt_atomic16_store_no_ktsan(void *addr, u16 value)
+{
+	*(volatile u16 *)addr = value;
+}
+
+static __always_inline
+void kt_atomic32_store_no_ktsan(void *addr, u32 value)
+{
+	*(volatile u32 *)addr = value;
+}
+
+static __always_inline
+void kt_atomic64_store_no_ktsan(void *addr, u64 value)
+{
+	*(volatile u64 *)addr = value;
+}
 
 u8 kt_atomic8_exchange_no_ktsan(void *addr, u8 value);
 u16 kt_atomic16_exchange_no_ktsan(void *addr, u16 value);

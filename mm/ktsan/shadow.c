@@ -73,32 +73,6 @@ void ktsan_split_page(struct page *page, unsigned int order)
 }
 EXPORT_SYMBOL(ktsan_split_page);
 
-static bool physical_memory_addr(unsigned long addr)
-{
-	return (addr >= (unsigned long)(__va(0)) &&
-		addr < (unsigned long)(__va(max_pfn << PAGE_SHIFT)));
-}
-
-void *kt_shadow_get(uptr_t addr)
-{
-	struct page *page;
-	unsigned long aligned_addr;
-	unsigned long shadow_offset;
-
-	if (!physical_memory_addr(addr))
-		return NULL;
-
-	/* XXX: kmemcheck checks something about pte here. */
-
-	page = virt_to_page(addr);
-	if (!page->shadow)
-		return NULL;
-
-	aligned_addr = round_down(addr, KT_GRAIN);
-	shadow_offset = (aligned_addr & (PAGE_SIZE - 1)) * KT_SHADOW_SLOTS;
-	return page->shadow + shadow_offset;
-}
-
 void kt_shadow_clear(uptr_t addr, size_t size)
 {
 	void *shadow_beg;
