@@ -109,25 +109,28 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	unsigned long newpc, oldpc;
 	char function[MAX_FUNCTION_NAME_SIZE];
 	kt_thr_t *old;
-	kt_trace_state_t state;
+	kt_trace_state_t newstate, oldstate;
 
 	if (new->report_disable_depth != 0)
 		return;
 
-	newpc = info->strip_addr;
+	kt_trace_restore_state(new, info->new.clock, &newstate);
+	BUG_ON(newstate.stack.size == 0);
+	newpc = kt_pc_decompress(newstate.stack.pc[newstate.stack.size - 1]);
 	if (kt_supp_suppressed(newpc))
 		return;
 
 	old = kt_thr_get(info->old.tid);
 	BUG_ON(old == NULL);
-	kt_trace_restore_state(old, info->old.clock, &state);
+	kt_trace_restore_state(old, info->old.clock, &oldstate);
 	/* We use newpc/oldpc pair for report deduplication (see racy_pc).
 	 * If we fail to restore second stack, use newpc/newpc pair instead.
 	 * This is better than reporting tons of reports with missing stack.
 	 */
 	oldpc = newpc;
-	if (state.stack.size > 0) {
-		oldpc = kt_pc_decompress(state.stack.pc[state.stack.size - 1]);
+	if (oldstate.stack.size > 0) {
+		oldpc = kt_pc_decompress(
+			oldstate.stack.pc[oldstate.stack.size - 1]);
 		if (kt_supp_suppressed(oldpc))
 			return;
 	}
@@ -160,10 +163,10 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	pr_err("%s of size %d by thread T%d (K%d, CPU%d):\n",
 		info->new.read ? "Read" : "Write", (1 << info->new.size),
 		info->new.tid, new->kid, smp_processor_id());
-	kt_stack_print_current(newpc);
+	kt_stack_print(&newstate.stack);
 	pr_err("\n");
 
-	if (state.cpu_id == -1) {
+	if (oldstate.cpu_id == -1) {
 		pr_err("Previous %s of size %d by thread T%d (K%d):\n",
 			info->old.read ? "read" : "write",
 			(1 << info->old.size), info->old.tid, old->kid);
@@ -171,9 +174,9 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 		pr_err("Previous %s of size %d by thread T%d (K%d, CPU%d):\n",
 			info->old.read ? "read" : "write",
 			(1 << info->old.size), info->old.tid,
-			old->kid, state.cpu_id);
+			old->kid, oldstate.cpu_id);
 	}
-	kt_stack_print(&state.stack);
+	kt_stack_print(&oldstate.stack);
 	pr_err("\n");
 
 	pr_err("DBG: addr: %lx\n", info->addr);

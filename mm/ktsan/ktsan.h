@@ -162,7 +162,6 @@ struct kt_race_info_s {
 	unsigned long		addr;
 	kt_shadow_t		old;
 	kt_shadow_t		new;
-	unsigned long		strip_addr;
 };
 
 /* Internal allocator. */

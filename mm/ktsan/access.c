@@ -55,14 +55,7 @@ bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr, kt_shadow_t *slot,
 		if (likely(old.read && value.read))
 			return false;
 
-		info.addr = addr;
-		info.old = old;
-		info.new = value;
-		/* Strip ktsan_* and kt_access frames. */
-		info.strip_addr = (uptr_t)__builtin_return_address(1);
-		kt_report_race(thr, &info);
-
-		return false;
+		goto report_race;
 	}
 
 	/* Do the memory accesses intersect? */
@@ -75,11 +68,10 @@ bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr, kt_shadow_t *slot,
 		if (kt_clk_get(&thr->clk, old.tid) >= old.clock)
 			return false;
 
+	report_race:
 		info.addr = addr;
 		info.old = old;
 		info.new = value;
-		/* Strip ktsan_* and kt_access frames. */
-		info.strip_addr = (uptr_t)__builtin_return_address(1);
 		kt_report_race(thr, &info);
 
 		return false;
