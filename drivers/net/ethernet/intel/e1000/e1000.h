@@ -216,7 +216,7 @@ struct e1000_rx_ring {
 ({									\
 	unsigned int clean = smp_load_acquire(&(R)->next_to_clean);	\
 	unsigned int use = READ_ONCE((R)->next_to_use);			\
-	clean > use ? 0 : (R)->count + clean - use - 1;			\
+	(clean > use ? 0 : (R)->count) + clean - use - 1;		\
 })
 
 #define E1000_RX_DESC_EXT(R, i)						\
