@@ -64,11 +64,6 @@ static void vunmap_pte_range(pmd_t *pmd, unsigned long addr, unsigned long end)
 	pte = pte_offset_kernel(pmd, addr);
 	do {
 		pte_t ptent = ptep_get_and_clear(&init_mm, addr, pte);
-		/* Dropping this sync object significantly reduces
-		   the total number of syncs objects (by ~500k).
-		   This can possibly lead to false positives, but
-		   we haven't observed any of them. */
-		ktsan_sync_drop(&pte->pte);
 		WARN_ON(!pte_none(ptent) && !pte_present(ptent));
 	} while (pte++, addr += PAGE_SIZE, addr != end);
 }

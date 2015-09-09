@@ -383,6 +383,10 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 
 	account_kernel_stack(ti, 1);
 
+#ifdef CONFIG_KTSAN
+	tsk->ktsan.thr = NULL;
+#endif
+
 	return tsk;
 
 free_ti:
@@ -1300,10 +1304,6 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	p = dup_task_struct(current);
 	if (!p)
 		goto fork_out;
-
-#ifdef CONFIG_KTSAN
-	p->ktsan.thr = NULL;
-#endif
 
 	ftrace_graph_init_task(p);
 
