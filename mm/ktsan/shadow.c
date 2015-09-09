@@ -57,7 +57,7 @@ void ktsan_free_page(struct page *page, unsigned int order)
 	for (i = 0; i < pages; i++)
 		page[i].shadow = NULL;
 
-	__free_pages(shadow, order);
+	__free_pages(shadow, order + KT_SHADOW_SLOTS_LOG);
 }
 EXPORT_SYMBOL(ktsan_free_page);
 
