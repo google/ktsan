@@ -484,7 +484,6 @@ bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
 
 kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_free(kt_thr_t *thr, uptr_t addr);
-void kt_sync_drop_and_free(kt_thr_t *thr, uptr_t addr);
 
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);

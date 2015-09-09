@@ -3281,13 +3281,7 @@ EXPORT_SYMBOL(get_zeroed_page);
 
 void __free_pages(struct page *page, unsigned int order)
 {
-	/* Dropping this sync object significantly reduces
-	   the total number of syncs objects (by ~500k).
-	   This can possibly lead to false positives, but
-	   we haven't observed any of them. */
-	int rv = put_page_testzero(page);
-	ktsan_sync_drop(&page->_count);
-	if (rv) {
+	if (put_page_testzero(page)) {
 		if (order == 0)
 			free_hot_cold_page(page, false);
 		else

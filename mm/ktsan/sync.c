@@ -47,26 +47,6 @@ void kt_sync_free(kt_thr_t *thr, uptr_t addr)
 	kt_stat_inc(thr, kt_stat_sync_free);
 }
 
-/* Remove sync object from hash table and memblock and frees it. */
-void kt_sync_drop_and_free(kt_thr_t *thr, uptr_t addr)
-{
-	kt_tab_sync_t *sync;
-	uptr_t memblock_addr;
-
-	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, true);
-	if (sync == NULL)
-		return;
-
-	memblock_addr = kt_memblock_addr(addr);
-	kt_memblock_remove_sync(thr, memblock_addr, sync);
-
-	kt_spin_unlock(&sync->tab.lock);
-	kt_cache_free(&kt_ctx.sync_tab.obj_cache, sync);
-
-	kt_stat_dec(thr, kt_stat_sync_objects);
-	kt_stat_inc(thr, kt_stat_sync_free);
-}
-
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
