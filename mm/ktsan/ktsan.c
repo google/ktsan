@@ -106,11 +106,12 @@ static void ktsan_report_memory_usage(void)
 	u64 sync_total_mem = sync_tab_mem + sync_cache_mem;
 
 	u64 memblock_tab_mem = KT_MEMBLOCK_TAB_SIZE * sizeof(kt_tab_part_t);
-	u64 memblock_cache_mem = KT_MAX_MEMBLOCK_COUNT * sizeof(kt_tab_sync_t);
+	u64 memblock_cache_mem = KT_MAX_MEMBLOCK_COUNT *
+					sizeof(kt_tab_memblock_t);
 	u64 memblock_total_mem = memblock_tab_mem + memblock_cache_mem;
 
 	u64 percpu_sync_cache_mem = KT_MAX_PERCPU_SYNC_COUNT *
-		sizeof(kt_percpu_sync_t);
+					sizeof(kt_percpu_sync_t);
 
 	u64 thr_cache_mem = KT_MAX_THREAD_COUNT * sizeof(kt_thr_t);
 
@@ -123,7 +124,7 @@ static void ktsan_report_memory_usage(void)
 	pr_err("             syncs: %llu MB \n", sync_total_mem >> 20);
 	pr_err("          memblock: %llu MB \n", memblock_total_mem >> 20);
 	pr_err("      percpu syncs: %llu MB\n", percpu_sync_cache_mem >> 20);
-	pr_err("              thrs: %llu MB\n", thr_cache_mem >> 20);
+	pr_err("      thrs (trace): %llu MB\n", thr_cache_mem >> 20);
 	pr_err("       stack depot: %llu MB\n", depot_objs_mem >> 20);
 }
 
