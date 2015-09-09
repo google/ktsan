@@ -29,7 +29,9 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 
 	/* FIXME(xairy): double tab access. */
 	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, false);
-	BUG_ON(sync == NULL);
+	if (sync == NULL)
+		return;
+
 	/* The following BUG_ON currently fails on scheduler rq lock.
 	 * Which is bad.
 	 */
@@ -52,7 +54,9 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 
 	/* FIXME(xairy): double tab access. */
 	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, false);
-	BUG_ON(sync == NULL);
+	if (sync == NULL)
+		return;
+
 	if (wr) {
 		BUG_ON(sync->lock_tid == -1);
 		if (wr && sync->lock_tid != thr->id)
