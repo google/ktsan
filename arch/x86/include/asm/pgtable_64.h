@@ -74,7 +74,14 @@ static inline void native_pmd_clear(pmd_t *pmd)
 static inline pte_t native_ptep_get_and_clear(pte_t *xp)
 {
 #ifdef CONFIG_SMP
-	return native_make_pte(xchg(&xp->pte, 0));
+	/* Make KTSAN ignore xchg.
+	   This significantly reduces the number of sync objects.
+	   This might introduce false positives, but none were observed. */
+	pte_t rv;
+	ktsan_thr_event_disable();
+	rv = native_make_pte(xchg(&xp->pte, 0));
+	ktsan_thr_event_enable();
+	return rv;
 #else
 	/* native_local_ptep_get_and_clear,
 	   but duplicated because of cyclic dependency */
@@ -87,14 +94,7 @@ static inline pte_t native_ptep_get_and_clear(pte_t *xp)
 static inline pmd_t native_pmdp_get_and_clear(pmd_t *xp)
 {
 #ifdef CONFIG_SMP
-	/* Make KTSAN ignore xchg.
-	   This significantly reduces the number of sync objects.
-	   This might introduce false positives, but none were observed. */
-	pmd_t rv;
-	ktsan_thr_event_disable();
-	rv = native_make_pmd(xchg(&xp->pmd, 0));
-	ktsan_thr_event_enable();
-	return rv;
+	return native_make_pmd(xchg(&xp->pmd, 0));
 #else
 	/* native_local_pmdp_get_and_clear,
 	   but duplicated because of cyclic dependency */
