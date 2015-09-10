@@ -92,9 +92,6 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	int i;
 	bool stored;
 
-	kt_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
-	kt_stat_inc(thr, kt_stat_access_size1 + size);
-
 	if (read && thr->read_disable_depth)
 		return;
 
@@ -102,6 +99,9 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 
 	if (unlikely(!slots))
 		return; /* FIXME? */
+
+	kt_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
+	kt_stat_inc(thr, kt_stat_access_size1 + size);
 
 	current_clock = kt_clk_get(&thr->clk, thr->id);
 	kt_trace_add_event(thr, kt_event_type_mop, kt_pc_compress(pc));

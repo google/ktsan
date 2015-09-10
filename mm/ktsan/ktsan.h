@@ -333,6 +333,11 @@ enum kt_stat_e {
 	kt_stat_threads,
 	kt_stat_thread_create,
 	kt_stat_thread_destroy,
+	kt_stat_acquire,
+	kt_stat_release,
+	kt_stat_func_entry,
+	kt_stat_func_exit,
+	kt_stat_trace_event,
 	kt_stat_count,
 };
 
@@ -358,6 +363,29 @@ struct kt_ctx_s {
 };
 
 extern kt_ctx_t kt_ctx;
+
+/* Statistics. Enabled only when KT_ENABLE_STATS = 1. */
+
+void kt_stat_init(void);
+
+static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
+{
+#if KT_ENABLE_STATS
+	if (thr->cpu == NULL)
+		return;
+	thr->cpu->stat.stat[what] += x;
+#endif
+}
+
+static inline void kt_stat_inc(kt_thr_t *thr, kt_stat_t what)
+{
+	kt_stat_add(thr, what, 1);
+}
+
+static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
+{
+	kt_stat_add(thr, what, -1);
+}
 
 /* Stack. */
 
@@ -421,6 +449,8 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u32 data)
 	kt_event_t event;
 	unsigned pos;
 
+	kt_stat_inc(thr, kt_stat_trace_event);
+
 	trace = &thr->trace;
 	clock = kt_clk_get(&thr->clk, thr->id);
 	pos = clock % KT_TRACE_SIZE;
@@ -465,6 +495,9 @@ void *kt_shadow_get(uptr_t addr)
 }
 
 void kt_shadow_clear(uptr_t addr, size_t size);
+
+extern unsigned long kt_shadow_pages;
+
 
 /* Threads. */
 
@@ -702,30 +735,6 @@ void kt_tab_init(kt_tab_t *tab, unsigned size,
 		 unsigned obj_size, unsigned obj_max_num);
 void kt_tab_destroy(kt_tab_t *tab);
 void *kt_tab_access(kt_tab_t *tab, uptr_t key, bool *created, bool destroy);
-
-/* Statistics. Enabled only when KT_ENABLE_STATS = 1. */
-
-void kt_stat_init(void);
-
-static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
-{
-#if KT_ENABLE_STATS
-	WARN_ON_ONCE(thr->cpu == NULL);
-	if (thr->cpu == NULL)
-		return;
-	thr->cpu->stat.stat[what] += x;
-#endif
-}
-
-static inline void kt_stat_inc(kt_thr_t *thr, kt_stat_t what)
-{
-	kt_stat_add(thr, what, 1);
-}
-
-static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
-{
-	kt_stat_add(thr, what, -1);
-}
 
 /* Tests. */
 

@@ -63,6 +63,7 @@ void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
 
+	kt_stat_inc(thr, kt_stat_acquire);
 	sync = kt_sync_ensure_created(thr, pc, addr);
 	if (sync == NULL)
 		return;
@@ -74,6 +75,7 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 {
 	kt_tab_sync_t *sync;
 
+	kt_stat_inc(thr, kt_stat_release);
 	sync = kt_sync_ensure_created(thr, pc, addr);
 	if (sync == NULL)
 		return;
