@@ -3234,6 +3234,8 @@ retry_cpuset:
 
 	if (kmemcheck_enabled && page)
 		kmemcheck_pagealloc_alloc(page, order, gfp_mask);
+	if (page)
+		ktsan_alloc_page(page, order, gfp_mask, -1);
 
 	trace_mm_page_alloc(page, order, alloc_mask, ac.migratetype);
 

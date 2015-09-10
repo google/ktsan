@@ -18,6 +18,9 @@ void ktsan_alloc_page(struct page *page, unsigned int order,
 	if (flags & (__GFP_HIGHMEM | __GFP_NOTRACK))
 		return;
 
+	/* Drop __GFP_NOFAIL flag, since it's to be used in old code only. */
+	flags &= ~__GFP_NOFAIL;
+
 	shadow = alloc_pages_node(node, flags | __GFP_NOTRACK,
 			order + KT_SHADOW_SLOTS_LOG);
 	BUG_ON(!shadow);
