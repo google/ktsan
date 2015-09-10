@@ -12,18 +12,23 @@ static struct {
 	kt_stat_t	i;
 	const char	*s;
 } desc[] = {
-	{kt_stat_reports,		"kt_stat_reports"},
-	{kt_stat_access_read,		"kt_stat_access_read"},
-	{kt_stat_access_write,		"kt_stat_access_write"},
-	{kt_stat_sync_objects,		"kt_stat_sync_objects"},
-	{kt_stat_sync_alloc,		"kt_stat_sync_alloc"},
-	{kt_stat_sync_free,		"kt_stat_sync_free"},
-	{kt_stat_memblock_objects,	"kt_stat_memblock_objects"},
-	{kt_stat_memblock_alloc,	"kt_stat_memblock_alloc"},
-	{kt_stat_memblock_free,		"kt_stat_memblock_free"},
-	{kt_stat_threads,		"kt_stat_threads"},
-	{kt_stat_thread_create,		"kt_stat_thread_create"},
-	{kt_stat_thread_destroy,	"kt_stat_thread_destroy"},
+	{kt_stat_reports,		"reports"},
+	{kt_stat_access_read,		"access_read"},
+	{kt_stat_access_write,		"access_write"},
+	{kt_stat_sync_objects,		"sync_objects"},
+	{kt_stat_sync_alloc,		"sync_alloc"},
+	{kt_stat_sync_free,		"sync_free"},
+	{kt_stat_memblock_objects,	"memblock_objects"},
+	{kt_stat_memblock_alloc,	"memblock_alloc"},
+	{kt_stat_memblock_free,		"memblock_free"},
+	{kt_stat_threads,		"threads"},
+	{kt_stat_thread_create,		"thread_create"},
+	{kt_stat_thread_destroy,	"thread_destroy"},
+	{kt_stat_acquire,		"acquire"},
+	{kt_stat_release,		"release"},
+	{kt_stat_func_entry,		"func_entry"},
+	{kt_stat_func_exit,		"func_exit"},
+	{kt_stat_trace_event,		"trace_event"},
 };
 
 void kt_stat_collect(kt_stats_t *stat)
@@ -47,6 +52,9 @@ static int kt_stat_show(struct seq_file *m, void *v)
 	kt_stat_collect(&stat);
 	for (i = 0; i < ARRAY_SIZE(desc); i++)
 		seq_printf(m, "%s: %lu\n", desc[i].s, stat.stat[desc[i].i]);
+	seq_printf(m, "shadow_memory_mb: %lu\n",
+		(kt_shadow_pages * PAGE_SIZE) >> 20);
+
 	return 0;
 }
 

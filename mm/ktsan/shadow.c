@@ -8,6 +8,8 @@
 #include <linux/slab.h>
 #include <linux/slab_def.h>
 
+unsigned long kt_shadow_pages;
+
 void ktsan_alloc_page(struct page *page, unsigned int order,
 		     gfp_t flags, int node)
 {
@@ -24,6 +26,9 @@ void ktsan_alloc_page(struct page *page, unsigned int order,
 	shadow = alloc_pages_node(node, flags | __GFP_NOTRACK,
 			order + KT_SHADOW_SLOTS_LOG);
 	BUG_ON(!shadow);
+
+	kt_atomic64_fetch_add_no_ktsan(&kt_shadow_pages,
+		1 << (order + KT_SHADOW_SLOTS_LOG));
 
 	memset(page_address(shadow), 0,
 	       PAGE_SIZE * (1 << (order + KT_SHADOW_SLOTS_LOG)));
@@ -59,6 +64,9 @@ void ktsan_free_page(struct page *page, unsigned int order)
 
 	for (i = 0; i < pages; i++)
 		page[i].shadow = NULL;
+
+	kt_atomic64_fetch_add_no_ktsan(&kt_shadow_pages,
+		-(1 << (order + KT_SHADOW_SLOTS_LOG)));
 
 	__free_pages(shadow, order + KT_SHADOW_SLOTS_LOG);
 }
