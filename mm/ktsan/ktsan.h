@@ -286,9 +286,9 @@ struct kt_thr_s {
 	struct list_head	quarantine_list; /* list entry */
 	struct list_head	percpu_list; /* list head */
 	/* List of currently "acquired" for reading seqcounts. */
-	uptr_t			seqcount[4];
+	uptr_t			seqcount[6];
 	/* Where the seqcounts were acquired (for debugging). */
-	uptr_t			seqcount_pc[4];
+	uptr_t			seqcount_pc[6];
 	/* Ignore of all seqcount-related events. */
 	int			seqcount_ignore;
 #if KT_DEBUG
