@@ -556,12 +556,16 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
  * object's lifetime is managed by something other than RCU.  That
  * "something other" might be reference counting or simple immortality.
  */
+#ifndef CONFIG_KTSAN
 #define lockless_dereference(p) \
 ({ \
 	typeof(p) _________p1 = READ_ONCE(p); \
 	smp_read_barrier_depends(); /* Dependency order vs. p above. */ \
 	(_________p1); \
 })
+#else
+#define lockless_dereference(p) smp_load_acquire(&p)
+#endif
 
 /* Ignore/forbid kprobes attach on very low level functions marked by this attribute: */
 #ifdef CONFIG_KPROBES
