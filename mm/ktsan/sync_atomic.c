@@ -167,7 +167,7 @@ void kt_atomic64_store(kt_thr_t *thr, uptr_t pc,
 }
 
 u8 kt_atomic8_load(kt_thr_t *thr, uptr_t pc,
-		void *addr, ktsan_memory_order_t mo)
+		const void *addr, ktsan_memory_order_t mo)
 {
 	u8 rv;
 
@@ -178,7 +178,7 @@ u8 kt_atomic8_load(kt_thr_t *thr, uptr_t pc,
 }
 
 u16 kt_atomic16_load(kt_thr_t *thr, uptr_t pc,
-		void *addr, ktsan_memory_order_t mo)
+		const void *addr, ktsan_memory_order_t mo)
 {
 	u16 rv;
 
@@ -189,7 +189,7 @@ u16 kt_atomic16_load(kt_thr_t *thr, uptr_t pc,
 }
 
 u32 kt_atomic32_load(kt_thr_t *thr, uptr_t pc,
-		void *addr, ktsan_memory_order_t mo)
+		const void *addr, ktsan_memory_order_t mo)
 {
 	u32 rv;
 
@@ -200,7 +200,7 @@ u32 kt_atomic32_load(kt_thr_t *thr, uptr_t pc,
 }
 
 u64 kt_atomic64_load(kt_thr_t *thr, uptr_t pc,
-		void *addr, ktsan_memory_order_t mo)
+		const void *addr, ktsan_memory_order_t mo)
 {
 	u64 rv;
 

@@ -82,10 +82,10 @@ void ktsan_atomic16_store(void *addr, u16 value, ktsan_memory_order_t mo);
 void ktsan_atomic32_store(void *addr, u32 value, ktsan_memory_order_t mo);
 void ktsan_atomic64_store(void *addr, u64 value, ktsan_memory_order_t mo);
 
-u8 ktsan_atomic8_load(void *addr, ktsan_memory_order_t mo);
-u16 ktsan_atomic16_load(void *addr, ktsan_memory_order_t mo);
-u32 ktsan_atomic32_load(void *addr, ktsan_memory_order_t mo);
-u64 ktsan_atomic64_load(void *addr, ktsan_memory_order_t mo);
+u8 ktsan_atomic8_load(const void *addr, ktsan_memory_order_t mo);
+u16 ktsan_atomic16_load(const void *addr, ktsan_memory_order_t mo);
+u32 ktsan_atomic32_load(const void *addr, ktsan_memory_order_t mo);
+u64 ktsan_atomic64_load(const void *addr, ktsan_memory_order_t mo);
 
 u8 ktsan_atomic8_exchange(void *addr, u8 value, ktsan_memory_order_t mo);
 u16 ktsan_atomic16_exchange(void *addr, u16 value, ktsan_memory_order_t mo);
