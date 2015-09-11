@@ -322,7 +322,8 @@ static inline bool percpu_ref_is_zero(struct percpu_ref *ref)
 
 	if (__ref_is_percpu(ref, &percpu_count))
 		return false;
-	return !atomic_long_read(&ref->count);
+	/* This should use newer atomic_read_acquire function */
+	return !smp_load_acquire(&ref->count.counter);
 }
 
 #endif
