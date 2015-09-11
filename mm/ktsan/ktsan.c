@@ -492,9 +492,9 @@ void ktsan_atomic64_store(void *addr, u64 value, ktsan_memory_order_t mo)
 }
 EXPORT_SYMBOL(ktsan_atomic64_store);
 
-u8 ktsan_atomic8_load(void *addr, ktsan_memory_order_t mo)
+u8 ktsan_atomic8_load(const void *addr, ktsan_memory_order_t mo)
 {
-	u8 rv;
+	u8 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic8_load(thr, pc, addr, mo);
@@ -506,9 +506,9 @@ u8 ktsan_atomic8_load(void *addr, ktsan_memory_order_t mo)
 }
 EXPORT_SYMBOL(ktsan_atomic8_load);
 
-u16 ktsan_atomic16_load(void *addr, ktsan_memory_order_t mo)
+u16 ktsan_atomic16_load(const void *addr, ktsan_memory_order_t mo)
 {
-	u16 rv;
+	u16 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic16_load(thr, pc, addr, mo);
@@ -520,9 +520,9 @@ u16 ktsan_atomic16_load(void *addr, ktsan_memory_order_t mo)
 }
 EXPORT_SYMBOL(ktsan_atomic16_load);
 
-u32 ktsan_atomic32_load(void *addr, ktsan_memory_order_t mo)
+u32 ktsan_atomic32_load(const void *addr, ktsan_memory_order_t mo)
 {
-	u32 rv;
+	u32 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic32_load(thr, pc, addr, mo);
@@ -534,9 +534,9 @@ u32 ktsan_atomic32_load(void *addr, ktsan_memory_order_t mo)
 }
 EXPORT_SYMBOL(ktsan_atomic32_load);
 
-u64 ktsan_atomic64_load(void *addr, ktsan_memory_order_t mo)
+u64 ktsan_atomic64_load(const void *addr, ktsan_memory_order_t mo)
 {
-	u64 rv;
+	u64 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic64_load(thr, pc, addr, mo);
@@ -550,7 +550,7 @@ EXPORT_SYMBOL(ktsan_atomic64_load);
 
 u8 ktsan_atomic8_exchange(void *addr, u8 value, ktsan_memory_order_t mo)
 {
-	u8 rv;
+	u8 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic8_exchange(thr, pc, addr, value, mo);
@@ -564,7 +564,7 @@ EXPORT_SYMBOL(ktsan_atomic8_exchange);
 
 u16 ktsan_atomic16_exchange(void *addr, u16 value, ktsan_memory_order_t mo)
 {
-	u16 rv;
+	u16 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic16_exchange(thr, pc, addr, value, mo);
@@ -578,7 +578,7 @@ EXPORT_SYMBOL(ktsan_atomic16_exchange);
 
 u32 ktsan_atomic32_exchange(void *addr, u32 value, ktsan_memory_order_t mo)
 {
-	u32 rv;
+	u32 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic32_exchange(thr, pc, addr, value, mo);
@@ -592,7 +592,7 @@ EXPORT_SYMBOL(ktsan_atomic32_exchange);
 
 u64 ktsan_atomic64_exchange(void *addr, u64 value, ktsan_memory_order_t mo)
 {
-	u64 rv;
+	u64 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic64_exchange(thr, pc, addr, value, mo);
@@ -607,7 +607,7 @@ EXPORT_SYMBOL(ktsan_atomic64_exchange);
 u8 ktsan_atomic8_compare_exchange(void *addr, u8 old, u8 new,
 					ktsan_memory_order_t mo)
 {
-	u8 rv;
+	u8 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic8_compare_exchange(thr, pc, addr, old, new, mo);
@@ -622,7 +622,7 @@ EXPORT_SYMBOL(ktsan_atomic8_compare_exchange);
 u16 ktsan_atomic16_compare_exchange(void *addr, u16 old, u16 new,
 					ktsan_memory_order_t mo)
 {
-	u16 rv;
+	u16 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic16_compare_exchange(thr, pc, addr, old, new, mo);
@@ -637,7 +637,7 @@ EXPORT_SYMBOL(ktsan_atomic16_compare_exchange);
 u32 ktsan_atomic32_compare_exchange(void *addr, u32 old, u32 new,
 					ktsan_memory_order_t mo)
 {
-	u32 rv;
+	u32 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic32_compare_exchange(thr, pc, addr, old, new, mo);
@@ -652,7 +652,7 @@ EXPORT_SYMBOL(ktsan_atomic32_compare_exchange);
 u64 ktsan_atomic64_compare_exchange(void *addr, u64 old, u64 new,
 					ktsan_memory_order_t mo)
 {
-	u64 rv;
+	u64 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic64_compare_exchange(thr, pc, addr, old, new, mo);
@@ -666,7 +666,7 @@ EXPORT_SYMBOL(ktsan_atomic64_compare_exchange);
 
 u8 ktsan_atomic8_fetch_add(void *addr, u8 value, ktsan_memory_order_t mo)
 {
-	u8 rv;
+	u8 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic8_fetch_add(thr, pc, addr, value, mo);
@@ -680,7 +680,7 @@ EXPORT_SYMBOL(ktsan_atomic8_fetch_add);
 
 u16 ktsan_atomic16_fetch_add(void *addr, u16 value, ktsan_memory_order_t mo)
 {
-	u16 rv;
+	u16 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic16_fetch_add(thr, pc, addr, value, mo);
@@ -694,7 +694,7 @@ EXPORT_SYMBOL(ktsan_atomic16_fetch_add);
 
 u32 ktsan_atomic32_fetch_add(void *addr, u32 value, ktsan_memory_order_t mo)
 {
-	u32 rv;
+	u32 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic32_fetch_add(thr, pc, addr, value, mo);
@@ -708,7 +708,7 @@ EXPORT_SYMBOL(ktsan_atomic32_fetch_add);
 
 u64 ktsan_atomic64_fetch_add(void *addr, u64 value, ktsan_memory_order_t mo)
 {
-	u64 rv;
+	u64 rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic64_fetch_add(thr, pc, addr, value, mo);
@@ -755,7 +755,7 @@ EXPORT_SYMBOL(ktsan_atomic_change_bit);
 
 int ktsan_atomic_fetch_set_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
-	int rv;
+	int rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic_fetch_set_bit(thr, pc, addr, nr, mo);
@@ -769,7 +769,7 @@ EXPORT_SYMBOL(ktsan_atomic_fetch_set_bit);
 
 int ktsan_atomic_fetch_clear_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
-	int rv;
+	int rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic_fetch_clear_bit(thr, pc, addr, nr, mo);
@@ -783,7 +783,7 @@ EXPORT_SYMBOL(ktsan_atomic_fetch_clear_bit);
 
 int ktsan_atomic_fetch_change_bit(void *addr, long nr, ktsan_memory_order_t mo)
 {
-	int rv;
+	int rv = 0;
 
 	ENTER(false, false);
 	rv = kt_atomic_fetch_change_bit(thr, pc, addr, nr, mo);
