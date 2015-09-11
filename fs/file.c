@@ -609,7 +609,7 @@ int __close_fd(struct files_struct *files, unsigned fd)
 	if (fd >= fdt->max_fds)
 		goto out_unlock;
 	/* Synchronizes with the store in __fd_install. */
-	file = smp_load_acquire(fdt->fd[fd]);
+	file = smp_load_acquire(&fdt->fd[fd]);
 	if (!file)
 		goto out_unlock;
 	rcu_assign_pointer(fdt->fd[fd], NULL);
