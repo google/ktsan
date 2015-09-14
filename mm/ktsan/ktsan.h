@@ -38,7 +38,7 @@
 
 #define KT_STACK_DEPOT_PARTS 196613
 #if KT_ENABLE_LOCKSETS
-/* Can't be more than 16 GB. */
+/* Can't be more than 16 GB because offset divided by 4 is stored in uint32 */
 #define KT_STACK_DEPOT_MEMORY_LIMIT (2UL * 1024 * 1024 * 1024)
 #else /* KT_ENABLE_LOCKSETS */
 #define KT_STACK_DEPOT_MEMORY_LIMIT (256 * 1024 * 1024)
@@ -406,8 +406,6 @@ void kt_stack_print_current(unsigned long strip_addr);
 /* Stack depot. */
 
 void kt_stack_depot_init(kt_stack_depot_t *depot);
-void kt_stack_depot_destroy(kt_stack_depot_t *depot);
-
 kt_stack_handle_t kt_stack_depot_save(kt_stack_depot_t *depot,
 					kt_stack_t *stack);
 kt_stack_t *kt_stack_depot_get(kt_stack_depot_t *depot,

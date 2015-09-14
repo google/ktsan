@@ -3,40 +3,23 @@
 #include <linux/jhash.h>
 #include <linux/kernel.h>
 
-#define KT_STACK_HASH_SEED 0x9747b28c
-
 /* Only available during early boot. */
 void __init kt_stack_depot_init(kt_stack_depot_t *depot)
 {
 	unsigned i;
 
-	for (i = 0; i < KT_STACK_DEPOT_PARTS; i++) {
+	for (i = 0; i < KT_STACK_DEPOT_PARTS; i++)
 		depot->parts[i] = NULL;
-	}
 	kt_cache_init(&depot->stack_cache, KT_STACK_DEPOT_MEMORY_LIMIT, 1);
 	depot->stack_offset = 0;
 	kt_spin_init(&depot->lock);
 }
 
-/* Only available during early boot. */
-void __init kt_stack_depot_destroy(kt_stack_depot_t *depot)
-{
-	kt_cache_destroy(&depot->stack_cache);
-}
-
 static inline u32 kt_stack_hash(kt_stack_t *stack)
 {
-	return jhash2((u32 *)stack->pc,
+	return jhash2((u32 *)&stack->pc[0],
 			stack->size * sizeof(stack->pc[0]) / sizeof(u32),
-			KT_STACK_HASH_SEED);
-}
-
-static inline bool kt_stack_compare(kt_stack_t *first, kt_stack_t *second)
-{
-	if (first->size != second->size)
-		return false;
-	return memcmp(&first->pc, &second->pc,
-			sizeof(first->pc[0]) * first->size);
+			0x9747b28c);
 }
 
 static inline kt_stack_t *kt_stack_depot_obj_to_stack(kt_stack_depot_obj_t *obj)
@@ -45,19 +28,15 @@ static inline kt_stack_t *kt_stack_depot_obj_to_stack(kt_stack_depot_obj_t *obj)
 }
 
 static inline kt_stack_depot_obj_t *kt_stack_depot_lookup(
-			kt_stack_depot_obj_t *head, kt_stack_t *stack)
+			kt_stack_depot_obj_t *obj, kt_stack_t *stack, u32 hash)
 {
-	kt_stack_depot_obj_t *obj;
-	u32 hash = kt_stack_hash(stack);
-
-	for (obj = head; obj; obj = obj->link) {
-		if (obj->hash != hash)
+	for (; obj; obj = obj->link) {
+		if (obj->hash != hash || obj->stack_size != stack->size)
 			continue;
-		if (!kt_stack_compare(kt_stack_depot_obj_to_stack(obj), stack))
-			continue;
-		return obj;
+		if (memcmp(&obj->stack_pc[0], &stack->pc[0],
+			sizeof(stack->pc[0]) * stack->size) == 0)
+			return obj;
 	}
-
 	return NULL;
 }
 
@@ -79,36 +58,34 @@ kt_stack_handle_t kt_stack_depot_save(kt_stack_depot_t *depot,
 {
 	u32 hash;
 	kt_stack_depot_obj_t **part;
-	kt_stack_depot_obj_t *obj, *new;
+	kt_stack_depot_obj_t *obj, *head;
 
 	BUG_ON(stack->size == 0);
 
 	hash = kt_stack_hash(stack);
 	part = &depot->parts[hash % KT_STACK_DEPOT_PARTS];
-
-	obj = kt_stack_depot_lookup(smp_load_acquire(part), stack);
+	head = smp_load_acquire(part);
+	obj = kt_stack_depot_lookup(head, stack, hash);
 	if (obj)
 		return kt_stack_depot_obj_to_handle(depot, obj);
 
 	kt_spin_lock(&depot->lock);
-
-	obj = kt_stack_depot_lookup(*part, stack);
+	head = *part;
+	obj = kt_stack_depot_lookup(head, stack, hash);
 	if (!obj) {
-		new = (kt_stack_depot_obj_t *)(depot->stack_cache.base + 
+		obj = (kt_stack_depot_obj_t *)(depot->stack_cache.base +
 						depot->stack_offset);
-		depot->stack_offset += sizeof(*new) +
+		depot->stack_offset += sizeof(*obj) +
 			sizeof(stack->pc[0]) * stack->size;
 		BUG_ON(depot->stack_offset > KT_STACK_DEPOT_MEMORY_LIMIT);
 
-		new->link = obj;
-		new->hash = hash;
-		new->stack_size = stack->size;
-		memcpy(&new->stack_pc[0], &stack->pc[0],
+		obj->link = head;
+		obj->hash = hash;
+		obj->stack_size = stack->size;
+		memcpy(&obj->stack_pc[0], &stack->pc[0],
 				sizeof(stack->pc[0]) * stack->size);
 
-		smp_store_release(part, new);
-
-		obj = new;
+		smp_store_release(part, obj);
 	}
 
 	kt_spin_unlock(&depot->lock);
