@@ -676,7 +676,6 @@ void kt_irq_restore(kt_thr_t *thr, uptr_t pc, unsigned long flags);
 
 void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_percpu_release(kt_thr_t *thr, uptr_t pc);
-void kt_percpu_list_clean(kt_thr_t *thr, uptr_t pc);
 
 /* Memory block allocation. */
 

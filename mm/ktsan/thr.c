@@ -134,7 +134,6 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 	   (for example using might_sleep()). Therefore, percpu syncs won't
 	   be released before thread switching. Release them here. */
 	kt_percpu_release(thr, pc);
-	kt_percpu_list_clean(thr, pc);
 
 	thr->cpu = NULL;
 }

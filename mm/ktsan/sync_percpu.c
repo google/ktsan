@@ -6,15 +6,19 @@
 
 void kt_percpu_release(kt_thr_t *thr, uptr_t pc)
 {
+	struct list_head *entry, *tmp;
 	kt_percpu_sync_t *sync;
 
-	list_for_each_entry(sync, &thr->percpu_list, list) {
+	list_for_each_safe(entry, tmp, &thr->percpu_list) {
+		sync = list_entry(entry, kt_percpu_sync_t, list);
+		list_del(entry);
 #if KT_DEBUG
 		kt_trace_add_event(thr, kt_event_type_release,
 					kt_pc_compress(pc));
 		kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 		kt_sync_release(thr, pc, sync->addr);
+		kt_cache_free(&kt_ctx.percpu_sync_cache, sync);
 	}
 }
 
@@ -24,7 +28,6 @@ static void kt_percpu_try_release(kt_thr_t *thr, uptr_t pc)
 		return;
 
 	kt_percpu_release(thr, pc);
-	kt_percpu_list_clean(thr, pc);
 }
 
 void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
@@ -55,18 +58,6 @@ void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	percpu_sync->addr = addr;
 	INIT_LIST_HEAD(&percpu_sync->list);
 	list_add(&percpu_sync->list, &thr->percpu_list);
-}
-
-void kt_percpu_list_clean(kt_thr_t *thr, uptr_t pc)
-{
-	struct list_head *entry, *tmp;
-	kt_percpu_sync_t *sync;
-
-	list_for_each_safe(entry, tmp, &thr->percpu_list) {
-		sync = list_entry(entry, kt_percpu_sync_t, list);
-		list_del_init(entry);
-		kt_cache_free(&kt_ctx.percpu_sync_cache, sync);
-	}
 }
 
 void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value)
