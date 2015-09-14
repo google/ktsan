@@ -25,20 +25,19 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	int i;
 
 	kt_spin_lock(&pool->lock);
-
-	if (pool->quarantine_size > KT_QUARANTINE_SIZE) {
+	if ((new = kt_cache_alloc(&pool->cache)) != NULL) {
+		new->id = pool->new_id;
+		pool->new_id++;
+		pool->thrs[new->id] = new;
+	} else if (pool->quarantine_size) {
 		new = list_first_entry(&pool->quarantine,
 				kt_thr_t, quarantine_list);
 		list_del(&new->quarantine_list);
 		pool->quarantine_size--;
 	} else {
-		new = kt_cache_alloc(&pool->cache);
-		BUG_ON(new == NULL);
-		new->id = pool->new_id;
-		pool->new_id++;
-		pool->thrs[new->id] = new;
+		pr_err("KTSAN: maximum number of threads is reached\n");
+		BUG();
 	}
-
 	kt_spin_unlock(&pool->lock);
 
 	new->kid = kid;
