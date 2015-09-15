@@ -4,6 +4,7 @@ obj-y := access.o 		\
 	 func.o 		\
 	 ktsan.o 		\
 	 memblock.o 		\
+	 mutexset.o 		\
 	 report.o 		\
 	 shadow.o 		\
 	 spinlock.o		\
@@ -30,6 +31,7 @@ CFLAGS_REMOVE_clk.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_func.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_ktsan.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_memblock.o		= -pg -O0 -O1 -O2
+CFLAGS_REMOVE_mutexset.o		= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_report.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_shadow.o			= -pg -O0 -O1 -O2
 CFLAGS_REMOVE_spinlock.o                = -pg -O0 -O1 -O2
@@ -56,9 +58,10 @@ CFLAGS_clk.o			= -O3 -fomit-frame-pointer
 CFLAGS_func.o			= -O3 -fomit-frame-pointer
 CFLAGS_ktsan.o			= -O3 -fomit-frame-pointer
 CFLAGS_memblock.o		= -O3 -fomit-frame-pointer
+CFLAGS_mutexset.o		= -O3 -fomit-frame-pointer
 CFLAGS_report.o			= -O3 -fomit-frame-pointer
 CFLAGS_shadow.o			= -O3 -fomit-frame-pointer
-CFLAGS_spinlock.o               = -O3
+CFLAGS_spinlock.o               = -O3 -fomit-frame-pointer
 CFLAGS_stack.o			= -O3 -fomit-frame-pointer
 CFLAGS_stack_depot.o		= -O3 -fomit-frame-pointer
 CFLAGS_stat.o			= -O3 -fomit-frame-pointer

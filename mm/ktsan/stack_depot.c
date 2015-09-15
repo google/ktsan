@@ -12,6 +12,7 @@ void __init kt_stack_depot_init(kt_stack_depot_t *depot)
 		depot->parts[i] = NULL;
 	kt_cache_init(&depot->stack_cache, KT_STACK_DEPOT_MEMORY_LIMIT, 1);
 	depot->stack_offset = 0;
+	depot->nstacks = 0;
 	kt_spin_init(&depot->lock);
 }
 
@@ -78,6 +79,7 @@ kt_stack_handle_t kt_stack_depot_save(kt_stack_depot_t *depot,
 		depot->stack_offset += sizeof(*obj) +
 			sizeof(stack->pc[0]) * stack->size;
 		BUG_ON(depot->stack_offset > KT_STACK_DEPOT_MEMORY_LIMIT);
+		depot->nstacks++;
 
 		obj->link = head;
 		obj->hash = hash;
@@ -99,3 +101,13 @@ kt_stack_t *kt_stack_depot_get(kt_stack_depot_t *depot,
 	kt_stack_depot_obj_t *obj = kt_stack_depot_handle_to_obj(depot, handle);
 	return kt_stack_depot_obj_to_stack(obj);
 }
+
+void kt_stack_depot_stats(kt_stack_depot_t *depot, unsigned long *nstacks,
+	unsigned long *memory)
+{
+	kt_spin_lock(&depot->lock);
+	*nstacks = depot->nstacks;
+	*memory = depot->stack_offset;
+	kt_spin_unlock(&depot->lock);
+}
+

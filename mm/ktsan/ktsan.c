@@ -89,6 +89,7 @@ void __init ktsan_init_early(void)
 {
 	kt_ctx_t *ctx = &kt_ctx;
 
+	memset(ctx, 0, sizeof(*ctx));
 	kt_tab_init(&ctx->sync_tab, KT_SYNC_TAB_SIZE,
 		    sizeof(kt_tab_sync_t), KT_MAX_SYNC_COUNT);
 	kt_tab_init(&ctx->memblock_tab, KT_MEMBLOCK_TAB_SIZE,
@@ -136,9 +137,18 @@ void ktsan_init(void)
 {
 	kt_ctx_t *ctx;
 	kt_thr_t *thr;
-	int inside;
+	kt_cpu_t *cpu;
+	int inside, i;
 
 	ctx = &kt_ctx;
+	ctx->cpus = alloc_percpu(kt_cpu_t);
+	for_each_possible_cpu(i) {
+		cpu = per_cpu_ptr(ctx->cpus, i);
+		cpu->thr = NULL;
+		cpu->sync_uid_pos = 0;
+		cpu->sync_uid_end = 0;
+		memset(&cpu->stat, 0, sizeof(cpu->stat));
+	}
 
 	thr = kt_thr_create(NULL, current->pid);
 	kt_thr_start(thr, (uptr_t)_RET_IP_);
@@ -148,7 +158,6 @@ void ktsan_init(void)
 	inside = __test_and_set_bit(0, &thr->inside);
 	BUG_ON(inside != 0);
 
-	ctx->cpus = alloc_percpu(kt_cpu_t);
 	kt_stat_init();
 	kt_supp_init();
 	kt_tests_init();
@@ -161,7 +170,7 @@ void ktsan_init(void)
 	BUG_ON(!inside);
 	ctx->enabled = 1;
 
-	pr_err("ktsan: enabled.\n");
+	pr_err("KTSAN: enabled\n");
 	ktsan_report_memory_usage();
 }
 
@@ -210,7 +219,6 @@ void ktsan_print_diagnostics(void)
 		pr_err(" thr->kid:                   %d\n", thr->kid);
 		pr_err(" thr->inside:                %d\n",
 			kt_atomic32_load_no_ktsan((void *)&thr->inside));
-		pr_err(" thr->call_depth:            %d\n", thr->call_depth);
 		pr_err(" thr->report_disable_depth:  %d\n",
 			thr->report_disable_depth);
 		pr_err(" thr->preempt_disable_depth: %d\n",
@@ -261,6 +269,32 @@ void kt_tests_run(void)
 	kt_tests_run_inst();
 }
 
+void ktsan_interrupt_enter(void)
+{
+	ENTER(KT_ENTER_NORMAL);
+	if (thr->interrupt_depth++ == 0)
+		{} /* switch to interrupt */
+	LEAVE();
+}
+
+void ktsan_interrupt_exit(void)
+{
+	ENTER(KT_ENTER_NORMAL);
+	if (--thr->interrupt_depth == 0)
+		{} /* switch back from interrupt */
+	LEAVE();
+}
+
+void ktsan_syscall_enter(void)
+{
+	/* Does nothing for now. */
+}
+
+void ktsan_syscall_exit(void)
+{
+	/* Does nothing for now. */
+}
+
 void ktsan_thr_create(struct ktsan_thr_s *new, int kid)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
@@ -286,6 +320,7 @@ void ktsan_thr_start(void)
 void ktsan_thr_stop(void)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
+	BUG_ON(thr->interrupt_depth); /* Context switch during an interrupt? */
 	kt_thr_stop(thr, pc);
 	LEAVE();
 }
@@ -325,10 +360,6 @@ EXPORT_SYMBOL(ktsan_report_enable);
 void ktsan_sync_acquire(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-#if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_acquire, kt_pc_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG */
 	kt_sync_acquire(thr, pc, (uptr_t)addr);
 	LEAVE();
 }
@@ -337,10 +368,6 @@ EXPORT_SYMBOL(ktsan_sync_acquire);
 void ktsan_sync_release(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-#if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_release, kt_pc_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG */
 	kt_sync_release(thr, pc, (uptr_t)addr);
 	LEAVE();
 }

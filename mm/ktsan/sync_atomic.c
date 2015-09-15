@@ -9,8 +9,8 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 	    mo == ktsan_memory_order_acq_rel) {
 		if (thr->acquire_active) {
 #if KT_DEBUG
-			kt_trace_add_event(thr, kt_event_type_membar_acquire,
-						kt_pc_compress(pc));
+			kt_trace_add_event(thr, kt_event_membar_acquire,
+						kt_compress(pc));
 			kt_clk_tick(&thr->clk, thr->id);
 #endif
 			kt_clk_acquire(&thr->clk, &thr->acquire_clk);
@@ -23,8 +23,8 @@ void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
 	if (mo == ktsan_memory_order_release ||
 	    mo == ktsan_memory_order_acq_rel) {
 #if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_membar_release,
-					kt_pc_compress(pc));
+		kt_trace_add_event(thr, kt_event_membar_release,
+					kt_compress(pc));
 		kt_clk_tick(&thr->clk, thr->id);
 #endif
 		if (thr->release_active)
@@ -55,12 +55,10 @@ static kt_tab_sync_t *kt_atomic_pre_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 		if (sync == NULL)
 			return NULL;
 #if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_release,
-					kt_pc_compress(pc));
+		kt_trace_add_event(thr, kt_event_release, kt_compress(pc));
 		kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
-		kt_clk_acquire(&sync->clk, &thr->clk);
-		kt_stat_inc(thr, kt_stat_release);
+		kt_release(thr, pc, sync);
 	} else if (write) {
 		if (thr->release_active) {
 			if (sync == NULL)
@@ -68,8 +66,8 @@ static kt_tab_sync_t *kt_atomic_pre_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 			if (sync == NULL)
 				return NULL;
 #if KT_DEBUG
-			kt_trace_add_event(thr, kt_event_type_nonmat_release,
-						kt_pc_compress(pc));
+			kt_trace_add_event(thr, kt_event_nonmat_release,
+						kt_compress(pc));
 			kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 			kt_clk_acquire(&sync->clk, &thr->release_clk);
@@ -96,16 +94,14 @@ static kt_tab_sync_t *kt_atomic_post_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	if (mo == ktsan_memory_order_acquire ||
 	    mo == ktsan_memory_order_acq_rel) {
 #if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_acquire,
-					kt_pc_compress(pc));
+		kt_trace_add_event(thr, kt_event_acquire, kt_compress(pc));
 		kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
-		kt_stat_inc(thr, kt_stat_acquire);
-		kt_clk_acquire(&thr->clk, &sync->clk);
+		kt_acquire(thr, pc, sync);
 	} else if (read) {
 #if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_nonmat_acquire,
-					kt_pc_compress(pc));
+		kt_trace_add_event(thr, kt_event_nonmat_acquire,
+					kt_compress(pc));
 		kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 		if (thr->acquire_active)

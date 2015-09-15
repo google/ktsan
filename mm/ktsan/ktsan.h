@@ -13,7 +13,6 @@
 #define KT_DEBUG 0
 #define KT_DEBUG_TRACE 0
 #define KT_ENABLE_STATS 0
-#define KT_ENABLE_LOCKSETS 0
 
 #define KT_GRAIN 8
 #define KT_SHADOW_SLOTS_LOG 2
@@ -33,15 +32,11 @@
 
 #define KT_MAX_STACK_FRAMES 96
 #define KT_TAME_COUNTER_LIMIT 3
-#define KT_MAX_LOCKED_MTX_COUNT 32
+#define KT_MAX_LOCKED_MTX 32
 
 #define KT_STACK_DEPOT_PARTS 196613
-#if KT_ENABLE_LOCKSETS
 /* Can't be more than 16 GB because offset divided by 4 is stored in uint32 */
-#define KT_STACK_DEPOT_MEMORY_LIMIT (2UL * 1024 * 1024 * 1024)
-#else /* KT_ENABLE_LOCKSETS */
-#define KT_STACK_DEPOT_MEMORY_LIMIT (256 * 1024 * 1024)
-#endif /* KT_ENABLE_LOCKSETS */
+#define KT_STACK_DEPOT_MEMORY_LIMIT (512 << 20)
 
 #define KT_TRACE_PARTS 8
 #define KT_TRACE_PART_SIZE (8 * 1024)
@@ -78,7 +73,8 @@ typedef struct kt_stack_depot_s		kt_stack_depot_t;
 typedef struct kt_stack_depot_obj_s	kt_stack_depot_obj_t;
 typedef enum kt_event_type_e		kt_event_type_t;
 typedef struct kt_event_s		kt_event_t;
-typedef struct kt_trace_mtx_info_s	kt_trace_mtx_info_t;
+typedef struct kt_locked_mutex_s	kt_locked_mutex_t;
+typedef struct kt_mutexset_s		kt_mutexset_t;
 typedef struct kt_trace_state_s		kt_trace_state_t;
 typedef struct kt_trace_part_header_s	kt_trace_part_header_t;
 typedef struct kt_trace_s		kt_trace_t;
@@ -122,6 +118,7 @@ struct kt_stack_depot_obj_s {
 struct kt_stack_depot_s {
 	kt_cache_t		stack_cache;
 	u64			stack_offset;
+	unsigned long		nstacks;
 	kt_stack_depot_obj_t	*parts[KT_STACK_DEPOT_PARTS];
 	kt_spinlock_t		lock;
 };
@@ -129,54 +126,56 @@ struct kt_stack_depot_s {
 /* Trace. */
 
 enum kt_event_type_e {
-	kt_event_type_invalid,
-	kt_event_type_mop, /* memory operation */
-	kt_event_type_func_enter,
-	kt_event_type_func_exit,
-	kt_event_type_thr_start,
-	kt_event_type_thr_stop,
-#if (KT_DEBUG || KT_ENABLE_LOCKSETS)
-	kt_event_type_lock,
-	kt_event_type_unlock,
-#endif /* KT_DEBUG || KT_ENABLE_LOCKSETS */
+	kt_event_invalid,
+	kt_event_mop, /* memory operation */
+	kt_event_func_enter,
+	kt_event_func_exit,
+	kt_event_thr_start,
+	kt_event_thr_stop,
+	kt_event_lock,
+	kt_event_rlock,
+	kt_event_unlock,
+	kt_event_runlock,
 #if KT_DEBUG
-	kt_event_type_acquire,
-	kt_event_type_release,
-	kt_event_type_nonmat_acquire,
-	kt_event_type_nonmat_release,
-	kt_event_type_membar_acquire,
-	kt_event_type_membar_release,
-	kt_event_type_preempt_enable,
-	kt_event_type_preempt_disable,
-	kt_event_type_irq_enable,
-	kt_event_type_irq_disable,
-	kt_event_type_event_disable,
-	kt_event_type_event_enable,
+	kt_event_acquire,
+	kt_event_release,
+	kt_event_nonmat_acquire,
+	kt_event_nonmat_release,
+	kt_event_membar_acquire,
+	kt_event_membar_release,
+	kt_event_preempt_enable,
+	kt_event_preempt_disable,
+	kt_event_irq_enable,
+	kt_event_irq_disable,
+	kt_event_event_disable,
+	kt_event_event_enable,
 #endif /* KT_DEBUG */
 };
 
 struct kt_event_s {
-	u32			type;
-	u32			data;
+	u64			type : 16;
+	u64			data : 48;
 	/* The data field is
 	   cpu id for thread start and stop events,
-	   sync addr for lock and unlock events,
+	   sync uid for lock and unlock events,
 	   and pc for other kinds of event. */
 };
 
-#if KT_ENABLE_LOCKSETS
-struct kt_trace_mtx_info_s {
-	uptr_t			addr;
-	kt_stack_handle_t	stack_handle;
+struct kt_locked_mutex_s {
+	u64			uid;
+	kt_stack_handle_t	stack;
+	bool			write;
 };
-#endif /* KT_ENABLE_LOCKSETS */
+
+struct kt_mutexset_s {
+	kt_locked_mutex_t	mtx[KT_MAX_LOCKED_MTX];
+	int			size;	
+};
 
 struct kt_trace_state_s {
 	kt_stack_t		stack;
+	kt_mutexset_t		mutexset;
 	int			cpu_id;
-#if KT_ENABLE_LOCKSETS
-	kt_trace_mtx_info_t	locked_mtx[KT_MAX_LOCKED_MTX_COUNT];
-#endif /* KT_ENABLE_LOCKSETS */
 };
 
 struct kt_trace_part_header_s {
@@ -237,6 +236,7 @@ struct kt_tab_s {
 
 struct kt_tab_sync_s {
 	kt_tab_obj_t		tab;
+	u64			uid;
 	kt_clk_t		clk;
 	int			lock_tid; /* id of thread that locked mutex */
 	struct list_head	list;
@@ -270,12 +270,13 @@ struct kt_thr_s {
 	unsigned long		inside;	/* already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
+	kt_stack_t		stack;
+	kt_mutexset_t		mutexset;
 	kt_clk_t		acquire_clk;
 	int			acquire_active;
 	kt_clk_t		release_clk;
 	int			release_active;
 	kt_trace_t		trace;
-	int			call_depth;
 	int			read_disable_depth;
 	int			event_disable_depth;
 	int			report_disable_depth;
@@ -290,6 +291,7 @@ struct kt_thr_s {
 	uptr_t			seqcount_pc[6];
 	/* Ignore of all seqcount-related events. */
 	int			seqcount_ignore;
+	int			interrupt_depth;
 #if KT_DEBUG
 	kt_stack_t		start_stack;
 	kt_time_t		last_event_disable_time;
@@ -345,7 +347,11 @@ struct kt_stats_s {
 };
 
 struct kt_cpu_s {
+	/* Thread that currently runs on the CPU or NULL. */
+	kt_thr_t		*thr;
 	kt_stats_t		stat;
+	u64			sync_uid_pos;
+	u64			sync_uid_end;
 };
 
 /* Global. */
@@ -359,6 +365,7 @@ struct kt_ctx_s {
 	kt_cache_t		percpu_sync_cache;
 	kt_thr_pool_t		thr_pool;
 	kt_stack_depot_t	stack_depot;
+	u64			sync_uid_gen;
 };
 
 extern kt_ctx_t kt_ctx;
@@ -388,14 +395,23 @@ static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
 
 /* Stack. */
 
-static inline unsigned int kt_pc_compress(unsigned long pc)
+/* All kernel addresses have 0xffff in high 2 bytes (on x86_64). */
+#define KT_ADDR_MASK	0xffff000000000000ull
+#define KT_PC_MASK	0xffffffff00000000ull
+
+static inline u64 kt_compress(u64 addr)
 {
-	return (pc & UINT_MAX);
+	KT_BUG_ON((addr | KT_ADDR_MASK) != addr);
+	return addr & ~KT_ADDR_MASK;
 }
 
-static inline unsigned long kt_pc_decompress(unsigned int pc)
+static inline u64 kt_decompress(u64 addr)
 {
-	return ((ULONG_MAX - UINT_MAX) | pc);
+	KT_BUG_ON((addr & KT_ADDR_MASK) != 0);
+	if (addr & KT_PC_MASK)
+		return addr | KT_ADDR_MASK;
+	/* This must be a PC with cut off high part. */
+	return addr | KT_PC_MASK;
 }
 
 void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
@@ -409,6 +425,8 @@ kt_stack_handle_t kt_stack_depot_save(kt_stack_depot_t *depot,
 					kt_stack_t *stack);
 kt_stack_t *kt_stack_depot_get(kt_stack_depot_t *depot,
 				kt_stack_handle_t handle);
+void kt_stack_depot_stats(kt_stack_depot_t *depot, unsigned long *nstacks,
+	unsigned long *memory);
 
 /* Clocks. */
 
@@ -433,13 +451,13 @@ void kt_clk_tick(kt_clk_t *clk, int tid)
 /* Trace. */
 
 void kt_trace_init(kt_trace_t *trace);
-void kt_trace_switch(kt_trace_t *trace, kt_time_t clock);
+void kt_trace_switch(kt_thr_t *thr);
 void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 				kt_trace_state_t *state);
 void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 
 static inline
-void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u32 data)
+void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u64 data)
 {
 	kt_trace_t *trace;
 	kt_time_t clock;
@@ -453,10 +471,11 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u32 data)
 	pos = clock % KT_TRACE_SIZE;
 
 	if ((pos % KT_TRACE_PART_SIZE) == 0)
-		kt_trace_switch(trace, clock);
+		kt_trace_switch(thr);
 
-	event.type = (int)type;
+	event.type = type;
 	event.data = data;
+	BUG_ON(event.data != data);
 	trace->events[pos] = event;
 }
 
@@ -518,11 +537,18 @@ void kt_sync_free(kt_thr_t *thr, uptr_t addr);
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 
+void kt_acquire(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync);
+void kt_release(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync);
+
 void kt_mtx_pre_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try);
 void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 		      bool success);
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
+
+void kt_mutexset_lock(kt_mutexset_t *set, u64 uid, kt_stack_handle_t stk,
+	bool wr);
+void kt_mutexset_unlock(kt_mutexset_t *set, u64 uid, bool wr);
 
 void kt_seqcount_begin(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_seqcount_end(kt_thr_t *thr, uptr_t pc, uptr_t addr);
@@ -706,6 +732,7 @@ void kt_report_disable(kt_thr_t *thr);
 void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
 void kt_report_bad_mtx_unlock(kt_thr_t *thr, kt_tab_sync_t *sync, uptr_t strip);
+void kt_report_sync_usage(void);
 
 #if KT_DEBUG
 void kt_report_sync_usage(void);
