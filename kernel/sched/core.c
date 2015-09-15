@@ -4506,7 +4506,9 @@ SYSCALL_DEFINE0(sched_yield)
 	 */
 	__release(rq->lock);
 	spin_release(&rq->lock.dep_map, 1, _THIS_IP_);
+	ktsan_mtx_pre_unlock(&rq->lock, true);
 	do_raw_spin_unlock(&rq->lock);
+	ktsan_mtx_post_unlock(&rq->lock, true);
 	sched_preempt_enable_no_resched();
 
 	schedule();
