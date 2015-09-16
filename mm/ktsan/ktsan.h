@@ -89,6 +89,7 @@ typedef struct kt_thr_pool_s		kt_thr_pool_t;
 typedef struct kt_shadow_s		kt_shadow_t;
 typedef struct kt_percpu_sync_s		kt_percpu_sync_t;
 typedef struct kt_spinlock_s		kt_spinlock_t;
+typedef struct kt_interrupted_s		kt_interrupted_t;
 
 /* Ktsan runtime internal, non-instrumented spinlock. */
 
@@ -132,7 +133,7 @@ struct kt_stack_depot_s {
 /* Trace. */
 
 enum kt_event_type_e {
-	kt_event_invalid,
+	kt_event_nop,
 	kt_event_mop, /* memory operation */
 	kt_event_func_enter,
 	kt_event_func_exit,
@@ -142,6 +143,7 @@ enum kt_event_type_e {
 	kt_event_rlock,
 	kt_event_unlock,
 	kt_event_runlock,
+	kt_event_interrupt,
 #if KT_DEBUG
 	kt_event_acquire,
 	kt_event_release,
@@ -305,6 +307,26 @@ struct kt_thr_s {
 #endif
 };
 
+/* Holds state of an interrupted thread while it executes interrupts.
+ * Essentially a subset of kt_thr_t state.
+ */
+struct kt_interrupted_s {
+	kt_thr_t		*thr;
+	kt_stack_t		stack;
+	kt_mutexset_t		mutexset;
+	kt_clk_t		acquire_clk;
+	int			acquire_active;
+	kt_clk_t		release_clk;
+	int			release_active;
+	int			read_disable_depth;
+	int			report_disable_depth;
+	int			preempt_disable_depth;
+	struct list_head	percpu_list;
+	uptr_t			seqcount[6];
+	uptr_t			seqcount_pc[6];
+	int			seqcount_ignore;
+};
+
 struct kt_thr_pool_s {
 	kt_cache_t		cache;
 	kt_thr_t		*thrs[KT_MAX_THREAD_COUNT];
@@ -359,6 +381,7 @@ struct kt_cpu_s {
 	kt_stats_t		stat;
 	u64			sync_uid_pos;
 	u64			sync_uid_end;
+	kt_interrupted_t	interrupted;
 };
 
 /* Global. */
@@ -467,6 +490,10 @@ void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
 u64 kt_trace_last_data(kt_thr_t *thr);
 
+/* Adds the event to the thread trace.
+ * Only 48 low bits of data are saved, use kt_compress if you need to save
+ * addresses or pcs.
+ */
 static inline
 void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u64 data)
 {
@@ -489,6 +516,14 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u64 data)
 	BUG_ON(event.data != data);
 	trace->events[pos] = event;
 }
+
+/* Same as kt_trace_add_event but saves 2 data items to trace.
+ * Data is still stripped to 48 bits, but data2 is saved entirely.
+ * The function ensures that the two words do not cross part boundary.
+ * It is responsibility of kt_trace_follow to deal with both data items.
+ */
+void kt_trace_add_event2(kt_thr_t *thr, kt_event_type_t type, u64 data,
+	u64 data2);
 
 /* Spinlock. */
 
@@ -536,6 +571,9 @@ kt_thr_t *kt_thr_get(int id);
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc);
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc);
+
+void kt_thr_interrupt(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state);
+void kt_thr_resume(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state);
 
 bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
 bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);

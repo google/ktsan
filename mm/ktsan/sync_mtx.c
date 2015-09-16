@@ -31,9 +31,10 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 
 	/* Temporary push the pc onto stack so that it is recorded. */
 	kt_func_entry(thr, pc);
-	kt_trace_add_event(thr, wr ? kt_event_lock : kt_event_rlock, sync->uid);
-	kt_clk_tick(&thr->clk, thr->id);
 	stk = kt_stack_depot_save(&kt_ctx.stack_depot, &thr->stack);
+	kt_trace_add_event2(thr, wr ? kt_event_lock : kt_event_rlock, sync->uid,
+		stk);
+	kt_clk_tick(&thr->clk, thr->id);
 	kt_mutexset_lock(&thr->mutexset, sync->uid, stk, wr);
 	kt_func_exit(thr);
 

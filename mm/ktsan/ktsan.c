@@ -144,10 +144,7 @@ void ktsan_init(void)
 	ctx->cpus = alloc_percpu(kt_cpu_t);
 	for_each_possible_cpu(i) {
 		cpu = per_cpu_ptr(ctx->cpus, i);
-		cpu->thr = NULL;
-		cpu->sync_uid_pos = 0;
-		cpu->sync_uid_end = 0;
-		memset(&cpu->stat, 0, sizeof(cpu->stat));
+		memset(cpu, 0, sizeof(*cpu));
 	}
 
 	thr = kt_thr_create(NULL, current->pid);
@@ -264,9 +261,14 @@ void kt_tests_run(void)
 
 void ktsan_interrupt_enter(void)
 {
+	/* Switch to a dedicated stack for interrupts. This helps to keep stack
+	 * depot memory consumption sane. If we would glue interrupted thread
+	 * and interrupt stacks together, we will have to constantly save new
+	 * stacks in stack depot.
+	 */
 	ENTER(KT_ENTER_NORMAL);
 	if (thr->interrupt_depth++ == 0)
-		{} /* switch to interrupt */
+		kt_thr_interrupt(thr, pc, &thr->cpu->interrupted);
 	LEAVE();
 }
 
@@ -274,7 +276,8 @@ void ktsan_interrupt_exit(void)
 {
 	ENTER(KT_ENTER_NORMAL);
 	if (--thr->interrupt_depth == 0)
-		{} /* switch back from interrupt */
+		kt_thr_resume(thr, pc, &thr->cpu->interrupted);
+	BUG_ON(thr->interrupt_depth < 0);
 	LEAVE();
 }
 

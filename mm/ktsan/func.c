@@ -4,11 +4,6 @@
 
 static void kt_tame_acquire_and_release_clocks(kt_thr_t *thr)
 {
-	/* Don't tame clocks in interrupts, since it might happen
-	   between a barrier and a relaxed memory operation. */
-	if (in_interrupt())
-		return;
-
 	if (thr->acquire_active)
 		thr->acquire_active--;
 
