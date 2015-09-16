@@ -157,19 +157,22 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	/* Handle unaligned beginning, if any. */
 	if (addr & (KT_GRAIN - 1)) {
 		for (; (addr & (KT_GRAIN - 1)) && size; addr++, size--)
-			kt_access_impl(thr, slots, current_clock, addr, 0, read);
+			kt_access_impl(thr, slots, current_clock, addr,
+				KT_ACCESS_SIZE_1, read);
 		slots += KT_SHADOW_SLOTS;
 	}
 
 	/* Handle middle part, if any. */
 	for (; size >= KT_GRAIN; addr += KT_GRAIN, size -= KT_GRAIN) {
-		kt_access_impl(thr, slots, current_clock, addr, 3, read);
+		kt_access_impl(thr, slots, current_clock, addr,
+			KT_ACCESS_SIZE_8, read);
 		slots += KT_SHADOW_SLOTS;
 	}
 
 	/* Handle ending, if any. */
 	for (; size; addr++, size--)
-		kt_access_impl(thr, slots, current_clock, addr, 0, read);
+		kt_access_impl(thr, slots, current_clock, addr,
+			KT_ACCESS_SIZE_1, read);
 }
 
 void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
@@ -191,10 +194,13 @@ void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	kt_trace_add_event(thr, kt_event_mop, kt_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 
+	/* Below we assume that access size 8 covers whole grain. */
+	BUG_ON(KT_GRAIN != (1 << KT_ACCESS_SIZE_8));
+
 	value.tid = thr->id;
 	value.clock = kt_clk_get(&thr->clk, thr->id);
 	value.offset = 0;
-	value.size = 3;
+	value.size = KT_ACCESS_SIZE_8;
 	value.read = read;
 
 	for (; size; size -= KT_GRAIN) {

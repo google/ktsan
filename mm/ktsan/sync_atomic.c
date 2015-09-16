@@ -42,7 +42,7 @@ static kt_tab_sync_t *kt_atomic_pre_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	 * writes (in particular with kfree).
 	 */
 	if (write)
-		kt_access(thr, pc, addr, 0, true);
+		kt_access(thr, pc, addr, KT_ACCESS_SIZE_1, true);
 
 	if (mo == ktsan_memory_order_release ||
 	    mo == ktsan_memory_order_acq_rel)
@@ -115,7 +115,7 @@ static kt_tab_sync_t *kt_atomic_post_op(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	 * writes (in particular with kfree).
 	 */
 	if (read && !write)
-		kt_access(thr, pc, addr, 0, true);
+		kt_access(thr, pc, addr, KT_ACCESS_SIZE_1, true);
 
 	return sync;
 }

@@ -19,6 +19,12 @@
 #define KT_SHADOW_SLOTS (1 << KT_SHADOW_SLOTS_LOG)
 #define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
+/* Logarithms of access sizes, used in shadow encoding. */
+#define KT_ACCESS_SIZE_1 0
+#define KT_ACCESS_SIZE_2 1
+#define KT_ACCESS_SIZE_4 2
+#define KT_ACCESS_SIZE_8 3
+
 #define KT_THREAD_ID_BITS 13
 #define KT_CLOCK_BITS 42
 
