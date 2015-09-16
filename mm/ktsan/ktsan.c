@@ -238,17 +238,13 @@ void ktsan_print_diagnostics(void)
 		pr_err("Last event disable:\n");
 		kt_trace_restore_state(thr,
 				thr->last_event_disable_time, &state);
-		kt_stack_print(&state.stack);
+		kt_stack_print(&state.stack, 0);
 		pr_err("\n");
 
 		pr_err("Last event enable:\n");
 		kt_trace_restore_state(thr,
 				thr->last_event_enable_time, &state);
-		kt_stack_print(&state.stack);
-		pr_err("\n");
-
-		pr_err("Thread start:\n");
-		kt_stack_print(&thr->start_stack);
+		kt_stack_print(&state.stack, 0);
 		pr_err("\n");
 	}
 #endif /* KT_DEBUG */

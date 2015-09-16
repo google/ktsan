@@ -423,6 +423,11 @@ static inline u64 kt_decompress(u64 addr)
 
 void kt_stack_print(kt_stack_t *stack, uptr_t top_pc);
 
+#if KT_DEBUG
+void kt_stack_print_current(unsigned long strip_addr);
+void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
+#endif
+
 /* Stack depot. */
 
 void kt_stack_depot_init(kt_stack_depot_t *depot);
