@@ -47,7 +47,7 @@ void ktsan_print_diagnostics(void);
 void ktsan_report_disable(void);
 void ktsan_report_enable(void);
 
-void ktsan_thr_create(struct ktsan_thr_s *new, int tid);
+void ktsan_thr_create(struct ktsan_thr_s *new, int pid);
 void ktsan_thr_destroy(struct ktsan_thr_s *old);
 void ktsan_thr_start(void);
 void ktsan_thr_stop(void);

@@ -216,7 +216,7 @@ void ktsan_print_diagnostics(void)
 	if (thr != NULL) {
 		pr_err("Thread:\n");
 		pr_err(" thr->id:                    %d\n", thr->id);
-		pr_err(" thr->kid:                   %d\n", thr->kid);
+		pr_err(" thr->pid:                   %d\n", thr->pid);
 		pr_err(" thr->inside:                %d\n",
 			kt_atomic32_load_no_ktsan((void *)&thr->inside));
 		pr_err(" thr->report_disable_depth:  %d\n",
@@ -229,9 +229,6 @@ void ktsan_print_diagnostics(void)
 			thr->irqs_disabled ? "+" : "-");
 		pr_err("\n");
 	}
-
-	pr_err("Stack trace:\n");
-	kt_stack_print_current(_RET_IP_);
 	pr_err("\n");
 
 #if KT_DEBUG
@@ -241,17 +238,13 @@ void ktsan_print_diagnostics(void)
 		pr_err("Last event disable:\n");
 		kt_trace_restore_state(thr,
 				thr->last_event_disable_time, &state);
-		kt_stack_print(&state.stack);
+		kt_stack_print(&state.stack, 0);
 		pr_err("\n");
 
 		pr_err("Last event enable:\n");
 		kt_trace_restore_state(thr,
 				thr->last_event_enable_time, &state);
-		kt_stack_print(&state.stack);
-		pr_err("\n");
-
-		pr_err("Thread start:\n");
-		kt_stack_print(&thr->start_stack);
+		kt_stack_print(&state.stack, 0);
 		pr_err("\n");
 	}
 #endif /* KT_DEBUG */
@@ -295,10 +288,10 @@ void ktsan_syscall_exit(void)
 	/* Does nothing for now. */
 }
 
-void ktsan_thr_create(struct ktsan_thr_s *new, int kid)
+void ktsan_thr_create(struct ktsan_thr_s *new, int pid)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
-	new->thr = kt_thr_create(thr, kid);
+	new->thr = kt_thr_create(thr, pid);
 	LEAVE();
 }
 

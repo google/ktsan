@@ -110,11 +110,19 @@ static void kt_print_mutexset(kt_mutexset_t *set)
 
 	for (i = 0; i < set->size; i++) {
 		mtx = &set->mtx[i];
-		pr_err("Mutex %llu is %s locked here:\n",
-			mtx->uid, mtx->write ? "write" : "read");
+		pr_err("Mutex %llu is %slocked here:\n",
+			mtx->uid, mtx->write ? "" : "read ");
 		kt_stack_print(kt_stack_depot_get(
-			&kt_ctx.stack_depot, mtx->stack));
+			&kt_ctx.stack_depot, mtx->stack), 0);
 	}
+}
+
+static void print_mop(bool new, bool wr, uptr_t addr, int sz, int pid, int cpu)
+{
+	pr_err("%s at 0x%p of size %d by thread %d on CPU %d:\n",
+		new ? (wr ? "Write" : "Read") :
+			(wr ? "Previous write" : "Previous read"),
+		(void*)addr, sz, pid, cpu);
 }
 
 void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
@@ -129,25 +137,20 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 		return;
 
 	BUG_ON(new->stack.size == 0);
-	new_pc = kt_decompress(new->stack.pc[new->stack.size - 1]);
+	new_pc = kt_decompress(kt_trace_last_data(new));
 	if (kt_supp_suppressed(new_pc))
 		return;
 
 	old = kt_thr_get(info->old.tid);
 	BUG_ON(old == NULL);
 	kt_trace_restore_state(old, info->old.clock, &old_state);
+	if (old_state.stack.size == 0)
+		return;
+	old_pc = kt_decompress(
+			old_state.stack.pc[old_state.stack.size - 1]);
+	if (kt_supp_suppressed(old_pc))
+		return;
 
-	/* We use new_pc/old_pc pair for report deduplication (see racy_pc).
-	 * If we fail to restore second stack, use new_pc/new_pc pair instead.
-	 * This is better than reporting tons of reports with missing stack.
-	 */
-	old_pc = new_pc;
-	if (old_state.stack.size > 0) {
-		old_pc = kt_decompress(
-				old_state.stack.pc[old_state.stack.size - 1]);
-		if (kt_supp_suppressed(old_pc))
-			return;
-	}
 	n = kt_atomic32_load_no_ktsan(&nracy_pc);
 	for (i = 0; i < n; i += 2) {
 		if (new_pc == racy_pc[i] && old_pc == racy_pc[i + 1])
@@ -171,44 +174,33 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	}
 
 	pr_err("==================================================================\n");
-	pr_err("ThreadSanitizer: data-race in %s\n", function);
-	pr_err("\n");
+	pr_err("ThreadSanitizer: data-race in %s\n\n", function);
 
-	pr_err("%s of size %d by thread T%d (K%d, CPU%d):\n",
-		info->new.read ? "Read" : "Write", (1 << info->new.size),
-		info->new.tid, new->kid, smp_processor_id());
-	kt_stack_print(&new->stack);
+	print_mop(true, !info->new.read, info->addr, (1 << info->new.size),
+		new->pid, smp_processor_id());
+	kt_stack_print(&new->stack, new_pc);
 
-	if (old_state.cpu_id == -1) {
-		pr_err("Previous %s of size %d by thread T%d (K%d):\n",
-			info->old.read ? "read" : "write",
-			(1 << info->old.size), info->old.tid, old->kid);
-	} else {
-		pr_err("Previous %s of size %d by thread T%d (K%d, CPU%d):\n",
-			info->old.read ? "read" : "write",
-			(1 << info->old.size), info->old.tid,
-			old->kid, old_state.cpu_id);
-	}
-	kt_stack_print(&old_state.stack);
+	print_mop(false, !info->old.read, info->addr, (1 << info->old.size),
+		old_state.pid, old_state.cpu_id);
+	kt_stack_print(&old_state.stack, 0);
 
 	if (new->mutexset.size) {
-		pr_err("Mutexes locked by T%d:\n", new->id);
+		pr_err("Mutexes locked by thread %d:\n", new->pid);
 		kt_print_mutexset(&new->mutexset);
 	}
 
 	if (old_state.mutexset.size) {
-		pr_err("Mutexes locked by T%d:\n", old->id);
+		pr_err("Mutexes locked by thread %d:\n", old_state.pid);
 		kt_print_mutexset(&old_state.mutexset);
 	}
 
-	pr_err("DBG: addr: %lx\n", info->addr);
-	pr_err("DBG: first offset: %d, second offset: %d\n",
-		(int)info->old.offset, (int)info->new.offset);
+#if KT_DEBUG
 	pr_err("DBG: T%d clock: {T%d: %lu, T%d: %lu}\n", new->id,
 			new->id, kt_clk_get(&new->clk, new->id),
 			old->id, kt_clk_get(&new->clk, old->id));
 	pr_err("DBG: T%d clock: {T%d: %lu}\n", old->id,
 			old->id, (unsigned long)info->old.clock);
+#endif
 
 #if KT_DEBUG_TRACE
 	pr_err("\n");
@@ -228,7 +220,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	kt_spin_unlock(&kt_report_lock);
 }
 
-void kt_report_bad_mtx_unlock(kt_thr_t *new, kt_tab_sync_t *sync, uptr_t strip)
+void kt_report_bad_mtx_unlock(kt_thr_t *new, uptr_t pc, kt_tab_sync_t *sync)
 {
 	kt_thr_t *old;
 	kt_trace_state_t state;
@@ -239,24 +231,22 @@ void kt_report_bad_mtx_unlock(kt_thr_t *new, kt_tab_sync_t *sync, uptr_t strip)
 	old = kt_thr_get(sync->lock_tid);
 	BUG_ON(old == NULL);
 	kt_trace_restore_state(old, sync->last_lock_time, &state);
+	if (state.stack.size == 0)
+		return;
 
 	pr_err("==================================================================\n");
 
 	pr_err("ThreadSanitizer: mutex unlocked in a different thread\n");
 	pr_err("\n");
 
-	pr_err("Unlock by T%d (K%d, CPU%d):\n",
-		new->id, new->kid, smp_processor_id());
-	kt_stack_print_current(strip);
+	pr_err("Unlock by thread %d on CPU %d:\n",
+		new->pid, smp_processor_id());
+	kt_stack_print(&new->stack, pc);
 	pr_err("\n");
 
-	if (state.cpu_id == -1) {
-		pr_err("Previous lock by T%d (K%d):\n", old->id, old->kid);
-	} else {
-		pr_err("Previous lock by T%d (K%d, CPU%d):\n",
-			old->id, old->kid, state.cpu_id);
-	}
-	kt_stack_print(&state.stack);
+	pr_err("Previous lock by thread %d on CPU %d:\n",
+		state.pid, state.cpu_id);
+	kt_stack_print(&state.stack, 0);
 	pr_err("\n");
 
 	pr_err("==================================================================\n");

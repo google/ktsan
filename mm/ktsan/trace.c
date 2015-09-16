@@ -20,8 +20,13 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 			BUG_ON(state->stack.size <= 0);
 			state->stack.size--;
 		} else if (event.type == kt_event_thr_start) {
+			int cpu, pid;
+
+			cpu = event.data & 0xffff;
+			pid = (s32)(u32)(event.data >> 16);
 			BUG_ON(state->cpu_id != -1);
-			state->cpu_id = event.data;
+			state->cpu_id = cpu;
+			state->pid = pid;
 		} else if (event.type == kt_event_thr_stop) {
 			BUG_ON(state->cpu_id != event.data);
 			state->cpu_id = -1;
@@ -57,6 +62,7 @@ void kt_trace_switch(kt_thr_t *thr)
 	header = &trace->headers[part];
 	header->state.stack = thr->stack;
 	header->state.mutexset = thr->mutexset;
+	header->state.pid = thr->pid;
 	/* -1 for case we are called from kt_thr_start. */
 	header->state.cpu_id = thr->cpu ? smp_processor_id() : -1;
 	header->clock = clock;
@@ -71,6 +77,17 @@ void kt_trace_init(kt_trace_t *trace)
 	for (i = 0; i < KT_TRACE_PARTS; i++)
 		trace->headers[i].state.cpu_id = -1;
 	kt_spin_init(&trace->lock);
+}
+
+u64 kt_trace_last_data(kt_thr_t *thr)
+{
+	kt_time_t clock;
+	kt_event_t event;
+
+	clock = kt_clk_get(&thr->clk, thr->id) - 1;
+	event = thr->trace.events[clock % KT_TRACE_SIZE];
+	BUG_ON(event.type != kt_event_mop);
+	return event.data;
 }
 
 void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,

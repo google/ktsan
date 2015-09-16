@@ -84,7 +84,9 @@ void kt_memblock_remove_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync)
 
 void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 {
-	kt_access_range_imitate(thr, pc, addr, size, false);
+	/* Memory block size is multiple of KT_GRAIN, so round the size up.
+	 * In the "worst" case we will catch OOB accesses due to this. */
+	kt_access_range_imitate(thr, pc, addr, round_up(size, KT_GRAIN), false);
 }
 
 void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)

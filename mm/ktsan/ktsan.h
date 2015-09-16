@@ -19,6 +19,12 @@
 #define KT_SHADOW_SLOTS (1 << KT_SHADOW_SLOTS_LOG)
 #define KT_SHADOW_TO_LONG(shadow) (*(long *)(&shadow))
 
+/* Logarithms of access sizes, used in shadow encoding. */
+#define KT_ACCESS_SIZE_1 0
+#define KT_ACCESS_SIZE_2 1
+#define KT_ACCESS_SIZE_4 2
+#define KT_ACCESS_SIZE_8 3
+
 #define KT_THREAD_ID_BITS 13
 #define KT_CLOCK_BITS 42
 
@@ -175,6 +181,7 @@ struct kt_mutexset_s {
 struct kt_trace_state_s {
 	kt_stack_t		stack;
 	kt_mutexset_t		mutexset;
+	int			pid;
 	int			cpu_id;
 };
 
@@ -266,7 +273,7 @@ struct kt_tab_test_s {
 
 struct kt_thr_s {
 	int			id;
-	int			kid; /* kernel thread id */
+	int			pid;
 	unsigned long		inside;	/* already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
@@ -293,7 +300,6 @@ struct kt_thr_s {
 	int			seqcount_ignore;
 	int			interrupt_depth;
 #if KT_DEBUG
-	kt_stack_t		start_stack;
 	kt_time_t		last_event_disable_time;
 	kt_time_t		last_event_enable_time;
 #endif
@@ -303,6 +309,7 @@ struct kt_thr_pool_s {
 	kt_cache_t		cache;
 	kt_thr_t		*thrs[KT_MAX_THREAD_COUNT];
 	int			new_id;
+	int			new_pid;
 	struct list_head	quarantine;
 	int			quarantine_size;
 	kt_spinlock_t		lock;
@@ -414,9 +421,12 @@ static inline u64 kt_decompress(u64 addr)
 	return addr | KT_PC_MASK;
 }
 
-void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
-void kt_stack_print(kt_stack_t *stack);
+void kt_stack_print(kt_stack_t *stack, uptr_t top_pc);
+
+#if KT_DEBUG
 void kt_stack_print_current(unsigned long strip_addr);
+void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
+#endif
 
 /* Stack depot. */
 
@@ -455,6 +465,7 @@ void kt_trace_switch(kt_thr_t *thr);
 void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 				kt_trace_state_t *state);
 void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
+u64 kt_trace_last_data(kt_thr_t *thr);
 
 static inline
 void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u64 data)
@@ -519,7 +530,7 @@ extern unsigned long kt_shadow_pages;
 
 void kt_thr_pool_init(void);
 
-kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid);
+kt_thr_t *kt_thr_create(kt_thr_t *thr, int pid);
 void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old);
 kt_thr_t *kt_thr_get(int id);
 
@@ -716,8 +727,6 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
 void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
 
-void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
-				size_t size, bool read);
 void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 				size_t size, bool read);
 
@@ -731,7 +740,7 @@ void kt_func_exit(kt_thr_t *thr);
 void kt_report_disable(kt_thr_t *thr);
 void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
-void kt_report_bad_mtx_unlock(kt_thr_t *thr, kt_tab_sync_t *sync, uptr_t strip);
+void kt_report_bad_mtx_unlock(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync);
 void kt_report_sync_usage(void);
 
 #if KT_DEBUG
