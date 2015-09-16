@@ -129,9 +129,6 @@ void kt_test_trace(void)
 	pr_err("Restored stack trace:\n");
 	kt_stack_print(&state.stack);
 
-	pr_err("Current stack trace:\n");
-	kt_stack_print_current((uptr_t)_RET_IP_);
-
 	pr_err("ktsan: end of test.\n");
 }
 

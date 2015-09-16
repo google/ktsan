@@ -13,12 +13,13 @@ void kt_thr_pool_init(void)
 	kt_cache_init(&pool->cache, sizeof(kt_thr_t), KT_MAX_THREAD_COUNT);
 	memset(pool->thrs, 0, sizeof(pool->thrs));
 	pool->new_id = 0;
+	pool->new_pid = 0;
 	INIT_LIST_HEAD(&pool->quarantine);
 	pool->quarantine_size = 0;
 	kt_spin_init(&pool->lock);
 }
 
-kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
+kt_thr_t *kt_thr_create(kt_thr_t *thr, int pid)
 {
 	kt_thr_pool_t *pool = &kt_ctx.thr_pool;
 	kt_thr_t *new;
@@ -38,9 +39,13 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 		pr_err("KTSAN: maximum number of threads is reached\n");
 		BUG();
 	}
+	/* Kernel does not assign PIDs to some threads, give them fake
+	 * negative PIDs so that they are distinguishable in reports. */
+	if (pid == 0)
+		pid = --pool->new_pid;
 	kt_spin_unlock(&pool->lock);
 
-	new->kid = kid;
+	new->pid = pid;
 	new->inside = 0;
 	new->cpu = NULL;
 	kt_clk_init(&new->clk);
@@ -116,11 +121,9 @@ kt_thr_t *kt_thr_get(int id)
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
-	kt_trace_add_event(thr, kt_event_thr_start, smp_processor_id());
+	kt_trace_add_event(thr, kt_event_thr_start,
+		smp_processor_id() | ((u32)thr->pid << 16));
 	kt_clk_tick(&thr->clk, thr->id);
-#if KT_DEBUG
-	kt_stack_save_current(&thr->start_stack, _RET_IP_);
-#endif /* KT_DEBUG */
 
 	thr->cpu = this_cpu_ptr(kt_ctx.cpus);
 	BUG_ON(thr->cpu->thr != NULL);

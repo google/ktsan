@@ -175,6 +175,7 @@ struct kt_mutexset_s {
 struct kt_trace_state_s {
 	kt_stack_t		stack;
 	kt_mutexset_t		mutexset;
+	int			pid;
 	int			cpu_id;
 };
 
@@ -266,7 +267,7 @@ struct kt_tab_test_s {
 
 struct kt_thr_s {
 	int			id;
-	int			kid; /* kernel thread id */
+	int			pid;
 	unsigned long		inside;	/* already inside of ktsan runtime */
 	kt_cpu_t		*cpu;
 	kt_clk_t		clk;
@@ -293,7 +294,6 @@ struct kt_thr_s {
 	int			seqcount_ignore;
 	int			interrupt_depth;
 #if KT_DEBUG
-	kt_stack_t		start_stack;
 	kt_time_t		last_event_disable_time;
 	kt_time_t		last_event_enable_time;
 #endif
@@ -303,6 +303,7 @@ struct kt_thr_pool_s {
 	kt_cache_t		cache;
 	kt_thr_t		*thrs[KT_MAX_THREAD_COUNT];
 	int			new_id;
+	int			new_pid;
 	struct list_head	quarantine;
 	int			quarantine_size;
 	kt_spinlock_t		lock;
@@ -414,9 +415,7 @@ static inline u64 kt_decompress(u64 addr)
 	return addr | KT_PC_MASK;
 }
 
-void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr);
 void kt_stack_print(kt_stack_t *stack);
-void kt_stack_print_current(unsigned long strip_addr);
 
 /* Stack depot. */
 
@@ -519,7 +518,7 @@ extern unsigned long kt_shadow_pages;
 
 void kt_thr_pool_init(void);
 
-kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid);
+kt_thr_t *kt_thr_create(kt_thr_t *thr, int pid);
 void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old);
 kt_thr_t *kt_thr_get(int id);
 
