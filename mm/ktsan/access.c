@@ -145,16 +145,17 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 		kt_access(thr, pc, addr, 0, read);
 }
 
-/*
-   Size might be 0, 1, 2 or 3 and equals to the binary logarithm
-   of the actual access size.
-*/
-void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 				size_t size, bool read)
 {
 	kt_shadow_t value;
 	kt_shadow_t *slots;
 	int i;
+
+	/* Currently it is called only from kt_memblock_alloc, so the address
+	 * and size must be multiple of KT_GRAIN. */
+	BUG_ON((addr & (KT_GRAIN - 1)) != 0);
+	BUG_ON((size & (KT_GRAIN - 1)) != 0);
 
 	slots = kt_shadow_get(addr);
 	if (!slots)
@@ -165,26 +166,13 @@ void kt_access_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 
 	value.tid = thr->id;
 	value.clock = kt_clk_get(&thr->clk, thr->id);
-	value.offset = addr & (KT_GRAIN - 1);
-	value.size = size;
+	value.offset = 0;
+	value.size = 3;
 	value.read = read;
 
-	for (i = 0; i < KT_SHADOW_SLOTS; i++)
-		kt_atomic64_store_no_ktsan(&slots[i], KT_SHADOW_TO_LONG(value));
-}
-
-void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
-				size_t size, bool read)
-{
-	/* Handle unaligned beginning, if any. */
-	for (; (addr & (KT_GRAIN - 1)) && size; addr++, size--)
-		kt_access_imitate(thr, pc, addr, 0, read);
-
-	/* Handle middle part, if any. */
-	for (; size >= KT_GRAIN; addr += KT_GRAIN, size -= KT_GRAIN)
-		kt_access_imitate(thr, pc, addr, 3, read);
-
-	/* Handle ending, if any. */
-	for (; size; addr++, size--)
-		kt_access_imitate(thr, pc, addr, 0, read);
+	for (; size; size -= KT_GRAIN) {
+		for (i = 0; i < KT_SHADOW_SLOTS; i++, slots++)
+			kt_atomic64_store_no_ktsan(slots,
+				KT_SHADOW_TO_LONG(value));
+	}
 }
