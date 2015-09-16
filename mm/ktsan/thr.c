@@ -197,3 +197,107 @@ bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 
 	return (thr->event_disable_depth == 0);
 }
+
+void kt_thr_interrupt(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
+{
+	BUG_ON(state->thr != NULL);
+	state->thr = thr;
+
+	BUG_ON(thr->event_disable_depth);
+	/* FIXME: fails during boot.
+	 * How can we receive an interrupt when interrupts are disabled?
+	 * We probably miss some enable of interrupt.
+	 * BUG_ON(thr->irqs_disabled);
+	 */
+
+	memcpy(&state->stack.pc[0], &thr->stack.pc[0],
+		thr->stack.size * sizeof(thr->stack.pc[0]));
+	state->stack.size = thr->stack.size;
+	thr->stack.size = 0;
+
+	state->mutexset = thr->mutexset;
+	thr->mutexset.size = 0;
+
+	state->acquire_active = thr->acquire_active;
+	if (thr->acquire_active) {
+		thr->acquire_active = 0;
+		state->acquire_clk = thr->acquire_clk;
+	}
+	state->release_active = thr->release_active;
+	if (thr->release_active) {
+		thr->release_active = 0;
+		state->release_clk = thr->release_clk;
+	}
+
+	state->read_disable_depth = thr->read_disable_depth;
+	thr->read_disable_depth = 0;
+	state->report_disable_depth = thr->report_disable_depth;
+	thr->report_disable_depth = 0;
+	state->preempt_disable_depth = thr->preempt_disable_depth;
+	thr->preempt_disable_depth = 0;
+
+	list_replace_init(&thr->percpu_list, &state->percpu_list);
+
+	memcpy(&state->seqcount, &thr->seqcount, sizeof(state->seqcount));
+	memcpy(&state->seqcount_pc, &thr->seqcount_pc,
+		sizeof(state->seqcount_pc));
+	memset(&thr->seqcount, 0, sizeof(thr->seqcount));
+	memset(&thr->seqcount_pc, 0, sizeof(thr->seqcount_pc));
+	state->seqcount_ignore = thr->seqcount_ignore;
+	thr->seqcount_ignore = 0;
+
+	/* This resets stack and mutexset during trace replay. */
+	kt_trace_add_event(thr, kt_event_interrupt, 0);
+	kt_clk_tick(&thr->clk, thr->id);
+}
+
+void kt_thr_resume(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
+{
+	int i;
+
+	BUG_ON(state->thr != thr);
+	state->thr = NULL;
+
+	BUG_ON(thr->mutexset.size);
+	BUG_ON(thr->event_disable_depth);
+	BUG_ON(thr->read_disable_depth);
+	BUG_ON(thr->report_disable_depth);
+	BUG_ON(thr->preempt_disable_depth);
+	BUG_ON(thr->seqcount[0]);
+	BUG_ON(thr->seqcount_ignore);
+
+	/* This resets stack and mutexset during trace replay. */
+	kt_trace_add_event(thr, kt_event_interrupt, 0);
+	kt_clk_tick(&thr->clk, thr->id);
+	thr->stack.size = 0;
+	for (i = 0; i < state->stack.size; i++)
+		kt_func_entry(thr, kt_decompress(state->stack.pc[i]));
+
+	thr->mutexset = state->mutexset;
+	for (i = 0; i < thr->mutexset.size; i++) {
+		kt_locked_mutex_t *mtx = &thr->mutexset.mtx[i];
+
+		kt_trace_add_event2(thr, mtx->write ? kt_event_lock :
+			kt_event_rlock, mtx->uid, mtx->stack);
+		kt_clk_tick(&thr->clk, thr->id);
+	}
+
+	thr->acquire_active = state->acquire_active;
+	if (thr->acquire_active)
+		thr->acquire_clk = state->acquire_clk;
+	thr->release_active = state->release_active;
+	if (thr->release_active)
+		thr->release_clk = state->release_clk;
+
+	thr->read_disable_depth = state->read_disable_depth;
+	thr->report_disable_depth = state->report_disable_depth;
+	thr->preempt_disable_depth = state->preempt_disable_depth;
+
+	kt_percpu_release(thr, pc);
+	list_replace_init(&state->percpu_list, &thr->percpu_list);
+
+	memcpy(&thr->seqcount, &state->seqcount, sizeof(thr->seqcount));
+	memcpy(&thr->seqcount_pc, &state->seqcount_pc,
+		sizeof(thr->seqcount_pc));
+	thr->seqcount_ignore = state->seqcount_ignore;
+}

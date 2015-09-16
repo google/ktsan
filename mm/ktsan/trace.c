@@ -30,20 +30,18 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 		} else if (event.type == kt_event_thr_stop) {
 			BUG_ON(state->cpu_id != event.data);
 			state->cpu_id = -1;
-		} else if (event.type == kt_event_lock) {
-			stk = kt_stack_depot_save(&kt_ctx.stack_depot,
-				&state->stack);
+		} else if (event.type == kt_event_lock ||
+				event.type == kt_event_rlock) {
+			stk = *(u64*)&trace->events[++i];
 			kt_mutexset_lock(&state->mutexset, event.data, stk,
-				true);
-		} else if (event.type == kt_event_rlock) {
-			stk = kt_stack_depot_save(&kt_ctx.stack_depot,
-				&state->stack);
-			kt_mutexset_lock(&state->mutexset, event.data, stk,
-				false);
+				event.type == kt_event_lock);
 		} else if (event.type == kt_event_unlock) {
 			kt_mutexset_unlock(&state->mutexset, event.data, true);
 		} else if (event.type == kt_event_runlock) {
 			kt_mutexset_unlock(&state->mutexset, event.data, false);
+		} else if (event.type == kt_event_interrupt) {
+			state->stack.size = 0;
+			state->mutexset.size = 0;
 		}
 	}
 }
@@ -67,6 +65,29 @@ void kt_trace_switch(kt_thr_t *thr)
 	header->state.cpu_id = thr->cpu ? smp_processor_id() : -1;
 	header->clock = clock;
 	kt_spin_unlock(&trace->lock);
+}
+
+void kt_trace_add_event2(kt_thr_t *thr, kt_event_type_t type, u64 data,
+	u64 data2)
+{
+	kt_time_t clock;
+	unsigned pos;
+
+	clock = kt_clk_get(&thr->clk, thr->id);
+	if (((clock + 1) % KT_TRACE_PART_SIZE) == 0) {
+		/* The trace would switch between the two data items.
+		 * Push a fake event to precent it. */
+		kt_trace_add_event(thr, kt_event_nop, 0);
+		kt_clk_tick(&thr->clk, thr->id);
+	}
+	kt_trace_add_event(thr, type, data);
+	kt_clk_tick(&thr->clk, thr->id);
+
+	clock = kt_clk_get(&thr->clk, thr->id);
+	pos = clock % KT_TRACE_SIZE;
+	BUG_ON((pos % KT_TRACE_PART_SIZE) == 0);
+	BUG_ON(sizeof(kt_event_t) != sizeof(data2));
+	*(u64*)&thr->trace.events[pos] = data2;
 }
 
 void kt_trace_init(kt_trace_t *trace)
@@ -164,15 +185,19 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 		} else if (event.type == kt_event_lock) {
 			pr_err(" i: %lu, lock   , mutex: %llu\n",
 				i, (u64)event.data);
+			i++; /* consume stack id */
 		} else if (event.type == kt_event_unlock) {
 			pr_err(" i: %lu, unlock , mutex: %llu\n",
 				i, (u64)event.data);
 		} else if (event.type == kt_event_rlock) {
 			pr_err(" i: %lu, rlock  , mutex: %llu\n",
 				i, (u64)event.data);
+			i++; /* consume stack id */
 		} else if (event.type == kt_event_runlock) {
 			pr_err(" i: %lu, runlock, mutex: %llu\n",
 				i, (u64)event.data);
+		} else if (event.type == kt_event_interrupt) {
+			pr_err(" i: %lu, interrupt\n", i);
 #if KT_DEBUG
 		} else if (event.type == kt_event_preempt_enable) {
 			pc = kt_decompress(event.data);
