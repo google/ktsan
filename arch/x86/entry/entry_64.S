@@ -36,6 +36,7 @@
 #include <asm/context_tracking.h>
 #include <asm/smap.h>
 #include <asm/pgtable_types.h>
+#include <asm/ktsan.h>
 #include <linux/err.h>
 
 /* Avoid __ASSEMBLER__'ifying <linux/audit.h> just for this.  */
@@ -182,9 +183,11 @@ entry_SYSCALL_64_fastpath:
 	cmpl	$__NR_syscall_max, %eax
 #endif
 	ja	1f				/* return -ENOSYS (already in pt_regs->ax) */
+	KTSAN_SYSCALL_ENTER
 	movq	%r10, %rcx
 	call	*sys_call_table(, %rax, 8)
 	movq	%rax, RAX(%rsp)
+	KTSAN_SYSCALL_EXIT
 1:
 /*
  * Syscall return path ending with SYSRET (fast path).
@@ -587,7 +590,12 @@ END(irq_entries_start)
 	/* We entered an interrupt context - irqs are off: */
 	TRACE_IRQS_OFF
 
+	KTSAN_INTERRUPT_ENTER
+
 	call	\func
+
+	KTSAN_INTERRUPT_EXIT
+
 	.endm
 
 	/*

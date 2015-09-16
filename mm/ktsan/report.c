@@ -103,20 +103,33 @@ void kt_report_enable(kt_thr_t *thr)
 	BUG_ON(thr->report_disable_depth < 0);
 }
 
+static void kt_print_mutexset(kt_mutexset_t *set)
+{
+	kt_locked_mutex_t *mtx;
+	int i;
+
+	for (i = 0; i < set->size; i++) {
+		mtx = &set->mtx[i];
+		pr_err("Mutex %llu is %s locked here:\n",
+			mtx->uid, mtx->write ? "write" : "read");
+		kt_stack_print(kt_stack_depot_get(
+			&kt_ctx.stack_depot, mtx->stack));
+	}
+}
+
 void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 {
 	int i, n;
 	kt_thr_t *old;
 	uptr_t new_pc, old_pc;
-	kt_trace_state_t old_state, new_state;
+	kt_trace_state_t old_state;
 	char function[MAX_FUNCTION_NAME_SIZE];
 
 	if (new->report_disable_depth != 0)
 		return;
 
-	kt_trace_restore_state(new, info->new.clock, &new_state);
-	BUG_ON(new_state.stack.size == 0);
-	new_pc = kt_pc_decompress(new_state.stack.pc[new_state.stack.size - 1]);
+	BUG_ON(new->stack.size == 0);
+	new_pc = kt_decompress(new->stack.pc[new->stack.size - 1]);
 	if (kt_supp_suppressed(new_pc))
 		return;
 
@@ -130,7 +143,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	 */
 	old_pc = new_pc;
 	if (old_state.stack.size > 0) {
-		old_pc = kt_pc_decompress(
+		old_pc = kt_decompress(
 				old_state.stack.pc[old_state.stack.size - 1]);
 		if (kt_supp_suppressed(old_pc))
 			return;
@@ -164,22 +177,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	pr_err("%s of size %d by thread T%d (K%d, CPU%d):\n",
 		info->new.read ? "Read" : "Write", (1 << info->new.size),
 		info->new.tid, new->kid, smp_processor_id());
-	kt_stack_print(&new_state.stack);
-	pr_err("\n");
-
-#if KT_ENABLE_LOCKSETS
-	pr_err("Locks held by T%d:\n", new->id);
-	for (i = 0; i < KT_MAX_LOCKED_MTX_COUNT; i++) {
-		if (new_state.locked_mtx[i].addr != 0) {
-			pr_err("#%d Lock %p taken here:\n",
-				i, (void *)new_state.locked_mtx[i].addr);
-			kt_stack_print(kt_stack_depot_get(
-				&kt_ctx.stack_depot,
-				new_state.locked_mtx[i].stack_handle));
-		}
-	}
-	pr_err("\n");
-#endif /* KT_ENABLE_LOCKSETS */
+	kt_stack_print(&new->stack);
 
 	if (old_state.cpu_id == -1) {
 		pr_err("Previous %s of size %d by thread T%d (K%d):\n",
@@ -192,21 +190,16 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 			old->kid, old_state.cpu_id);
 	}
 	kt_stack_print(&old_state.stack);
-	pr_err("\n");
 
-#if KT_ENABLE_LOCKSETS
-	pr_err("Locks held by T%d:\n", old->id);
-	for (i = 0; i < KT_MAX_LOCKED_MTX_COUNT; i++) {
-		if (old_state.locked_mtx[i].addr != 0) {
-			pr_err("#%d Lock %p taken here:\n",
-				i, (void *)old_state.locked_mtx[i].addr);
-			kt_stack_print(kt_stack_depot_get(
-				&kt_ctx.stack_depot,
-				old_state.locked_mtx[i].stack_handle));
-		}
+	if (new->mutexset.size) {
+		pr_err("Mutexes locked by T%d:\n", new->id);
+		kt_print_mutexset(&new->mutexset);
 	}
-	pr_err("\n");
-#endif /* KT_ENABLE_LOCKSETS */
+
+	if (old_state.mutexset.size) {
+		pr_err("Mutexes locked by T%d:\n", old->id);
+		kt_print_mutexset(&old_state.mutexset);
+	}
 
 	pr_err("DBG: addr: %lx\n", info->addr);
 	pr_err("DBG: first offset: %d, second offset: %d\n",
@@ -228,11 +221,6 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	kt_trace_dump(&new->trace, kt_clk_get(&new->clk, new->id) - 30,
 				kt_clk_get(&new->clk, new->id) + 30);
 #endif /* KT_DEBUG_TRACE */
-
-#if KT_DEBUG
-	kt_report_sync_usage();
-#endif /* KT_DEBUG */
-
 	pr_err("==================================================================\n");
 
 	kt_stat_inc(new, kt_stat_reports);

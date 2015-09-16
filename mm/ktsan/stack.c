@@ -3,6 +3,7 @@
 #include <linux/kernel.h>
 #include <linux/stacktrace.h>
 
+/* TODO: remove this function, it cannot be used without frame pointers. */
 void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr)
 {
 	unsigned long entries[KT_MAX_STACK_FRAMES];
@@ -23,7 +24,7 @@ void kt_stack_save_current(kt_stack_t *stack, unsigned long strip_addr)
 
 	/* Save stack frames in reversed order (deepest first). */
 	for (i = 0; i < end - beg; i++)
-		stack->pc[i] = kt_pc_compress(entries[end - 1 - i]);
+		stack->pc[i] = kt_compress(entries[end - 1 - i]);
 	stack->size = end - beg;
 }
 
@@ -33,11 +34,13 @@ void kt_stack_print(kt_stack_t *stack)
 	long pc;
 
 	for (i = stack->size - 1; i >= 0; i--) {
-		pc = kt_pc_decompress(stack->pc[i]);
+		pc = kt_decompress(stack->pc[i]);
 		pr_err(" [<%p>] %pS\n", (void *)pc, (void *)pc);
 	}
+	pr_err("\n");
 }
 
+/* TODO: remove this function, it cannot be used without frame pointers. */
 void kt_stack_print_current(unsigned long strip_addr)
 {
 	kt_stack_t stack;

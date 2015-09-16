@@ -12,11 +12,6 @@ void kt_percpu_release(kt_thr_t *thr, uptr_t pc)
 	list_for_each_safe(entry, tmp, &thr->percpu_list) {
 		sync = list_entry(entry, kt_percpu_sync_t, list);
 		list_del(entry);
-#if KT_DEBUG
-		kt_trace_add_event(thr, kt_event_type_release,
-					kt_pc_compress(pc));
-		kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG */
 		kt_sync_release(thr, pc, sync->addr);
 		kt_cache_free(&kt_ctx.percpu_sync_cache, sync);
 	}
@@ -43,10 +38,6 @@ void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 	   irqs/preemption without actually accessing the structure itself. */
 	/* BUG_ON(thr->preempt_disable_depth == 0 && !thr->irqs_disabled); */
 
-#if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_acquire, kt_pc_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG */
 	kt_sync_acquire(thr, pc, addr);
 
 	list_for_each_entry(percpu_sync, &thr->percpu_list, list)
@@ -63,8 +54,7 @@ void kt_percpu_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value)
 {
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_preempt_disable,
-				kt_pc_compress(pc));
+	kt_trace_add_event(thr, kt_event_preempt_disable, kt_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
@@ -74,8 +64,7 @@ void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value)
 void kt_preempt_sub(kt_thr_t *thr, uptr_t pc, int value)
 {
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_preempt_enable,
-				kt_pc_compress(pc));
+	kt_trace_add_event(thr, kt_event_preempt_enable, kt_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
@@ -87,7 +76,7 @@ void kt_preempt_sub(kt_thr_t *thr, uptr_t pc, int value)
 void kt_irq_disable(kt_thr_t *thr, uptr_t pc)
 {
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_irq_disable, kt_pc_compress(pc));
+	kt_trace_add_event(thr, kt_event_irq_disable, kt_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
@@ -97,7 +86,7 @@ void kt_irq_disable(kt_thr_t *thr, uptr_t pc)
 void kt_irq_enable(kt_thr_t *thr, uptr_t pc)
 {
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_irq_enable, kt_pc_compress(pc));
+	kt_trace_add_event(thr, kt_event_irq_enable, kt_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 

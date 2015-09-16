@@ -47,6 +47,7 @@ void kt_stat_collect(kt_stats_t *stat)
 static int kt_stat_show(struct seq_file *m, void *v)
 {
 	kt_stats_t stat;
+	unsigned long depot_nstacks, depot_memory;
 	int i;
 
 	kt_stat_collect(&stat);
@@ -54,7 +55,10 @@ static int kt_stat_show(struct seq_file *m, void *v)
 		seq_printf(m, "%s: %lu\n", desc[i].s, stat.stat[desc[i].i]);
 	seq_printf(m, "shadow_memory_mb: %lu\n",
 		(kt_shadow_pages * PAGE_SIZE) >> 20);
-
+	kt_stack_depot_stats(&kt_ctx.stack_depot,
+		&depot_nstacks, &depot_memory);
+	seq_printf(m, "depot_nstacks: %lu\n", depot_nstacks);
+	seq_printf(m, "depot_memory_mb: %lu\n", depot_memory >> 20);
 	return 0;
 }
 

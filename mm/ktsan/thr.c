@@ -41,15 +41,15 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 	kt_spin_unlock(&pool->lock);
 
 	new->kid = kid;
-	kt_atomic32_store_no_ktsan(&new->inside, 0);
+	new->inside = 0;
 	new->cpu = NULL;
 	kt_clk_init(&new->clk);
 	kt_clk_init(&new->acquire_clk);
 	new->acquire_active = 0;
 	kt_clk_init(&new->release_clk);
 	new->release_active = 0;
+	new->stack.size = 0;
 	kt_trace_init(&new->trace);
-	new->call_depth = 0;
 	new->read_disable_depth = 0;
 	new->event_disable_depth = 0;
 	new->report_disable_depth = 0;
@@ -62,6 +62,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int kid)
 		new->seqcount_pc[i] = 0;
 	}
 	new->seqcount_ignore = 0;
+	new->interrupt_depth = 0;
 
 	/* thr == NULL when thread #0 is being initialized. */
 	if (thr == NULL)
@@ -88,6 +89,7 @@ void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old)
 	if (old->read_disable_depth != 0)
 		kt_seqcount_bug(old, 0, "read_disable_depth on thr end");
 	BUG_ON(old->seqcount_ignore != 0);
+	BUG_ON(old->interrupt_depth != 0);
 
 	kt_spin_lock(&pool->lock);
 	list_add_tail(&old->quarantine_list, &pool->quarantine);
@@ -114,27 +116,32 @@ kt_thr_t *kt_thr_get(int id)
 
 void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
-	kt_trace_add_event(thr, kt_event_type_thr_start, smp_processor_id());
+	kt_trace_add_event(thr, kt_event_thr_start, smp_processor_id());
 	kt_clk_tick(&thr->clk, thr->id);
 #if KT_DEBUG
 	kt_stack_save_current(&thr->start_stack, _RET_IP_);
 #endif /* KT_DEBUG */
 
 	thr->cpu = this_cpu_ptr(kt_ctx.cpus);
+	BUG_ON(thr->cpu->thr != NULL);
+	thr->cpu->thr = thr;
 }
 
 void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 {
 	BUG_ON(thr->event_disable_depth != 0);
 
-	kt_trace_add_event(thr, kt_event_type_thr_stop, smp_processor_id());
-	kt_clk_tick(&thr->clk, thr->id);
-
 	/* Current thread might be rescheduled even if preemption is disabled
 	   (for example using might_sleep()). Therefore, percpu syncs won't
 	   be released before thread switching. Release them here. */
 	kt_percpu_release(thr, pc);
 
+	kt_trace_add_event(thr, kt_event_thr_stop, smp_processor_id());
+	kt_clk_tick(&thr->clk, thr->id);
+
+	BUG_ON(thr->cpu == NULL);
+	BUG_ON(thr->cpu->thr != thr);
+	thr->cpu->thr = NULL;
 	thr->cpu = NULL;
 }
 
@@ -147,7 +154,7 @@ void kt_thr_wakeup(kt_thr_t *thr, kt_thr_t *other)
 bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 {
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_event_disable, kt_pc_compress(pc));
+	kt_trace_add_event(thr, kt_event_event_disable, kt_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 	if (thr->event_disable_depth == 0)
 		thr->last_event_disable_time = kt_clk_get(&thr->clk, thr->id);
@@ -171,7 +178,7 @@ bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 {
 #if KT_DEBUG
-	kt_trace_add_event(thr, kt_event_type_event_enable, kt_pc_compress(pc));
+	kt_trace_add_event(thr, kt_event_event_enable, kt_compress(pc));
 	kt_clk_tick(&thr->clk, thr->id);
 	if (thr->event_disable_depth - 1 == 0)
 		thr->last_event_enable_time = kt_clk_get(&thr->clk, thr->id);

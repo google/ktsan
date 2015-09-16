@@ -12,6 +12,7 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 		      bool success)
 {
 	kt_tab_sync_t *sync;
+	kt_stack_handle_t stk;
 
 	/* Sometimes even locks that are not trylocks might fail.
 	   For example a thread calling mutex_lock might be rescheduled.
@@ -21,16 +22,19 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 	if (!success)
 		return;
 
-#if (KT_DEBUG || KT_ENABLE_LOCKSETS)
-	kt_trace_add_event(thr, kt_event_type_lock, kt_pc_compress(addr));
-	kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG || KT_ENABLE_LOCKSETS */
-	kt_sync_acquire(thr, pc, addr);
-
-	/* FIXME(xairy): double tab access. */
-	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, false);
-	if (sync == NULL)
+	sync = kt_sync_ensure_created(thr, pc, addr);
+	if (!sync)
 		return;
+
+	/* Temporary push the pc onto stack so that it is recorded. */
+	kt_func_entry(thr, pc);
+	kt_trace_add_event(thr, wr ? kt_event_lock : kt_event_rlock, sync->uid);
+	kt_clk_tick(&thr->clk, thr->id);
+	stk = kt_stack_depot_save(&kt_ctx.stack_depot, &thr->stack);
+	kt_mutexset_lock(&thr->mutexset, sync->uid, stk, wr);
+	kt_func_exit(thr);
+
+	kt_acquire(thr, pc, sync);
 
 	/* The following BUG_ON currently fails on scheduler rq lock.
 	 * Which is bad.
@@ -46,16 +50,15 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 {
 	kt_tab_sync_t *sync;
 
-#if (KT_DEBUG || KT_ENABLE_LOCKSETS)
-	kt_trace_add_event(thr, kt_event_type_unlock, kt_pc_compress(addr));
-	kt_clk_tick(&thr->clk, thr->id);
-#endif /* KT_DEBUG || KT_ENABLE_LOCKSETS */
-	kt_sync_release(thr, pc, addr);
-
-	/* FIXME(xairy): double tab access. */
-	sync = kt_tab_access(&kt_ctx.sync_tab, addr, NULL, false);
-	if (sync == NULL)
+	sync = kt_sync_ensure_created(thr, pc, addr);
+	if (!sync)
 		return;
+
+	kt_trace_add_event(thr, wr ? kt_event_unlock : kt_event_runlock,
+		sync->uid);
+	kt_clk_tick(&thr->clk, thr->id);
+	kt_mutexset_unlock(&thr->mutexset, sync->uid, wr);
+	kt_release(thr, pc, sync);
 
 	if (wr) {
 		BUG_ON(sync->lock_tid == -1);
