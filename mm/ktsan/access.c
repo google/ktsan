@@ -206,6 +206,6 @@ void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	for (; size; size -= KT_GRAIN) {
 		for (i = 0; i < KT_SHADOW_SLOTS; i++, slots++)
 			kt_atomic64_store_no_ktsan(slots,
-				KT_SHADOW_TO_LONG(value));
+				i ? 0 : KT_SHADOW_TO_LONG(value));
 	}
 }
