@@ -26,6 +26,9 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 	if (!sync)
 		return;
 
+	/* This can catch unsafe publication of a mutex. */
+	kt_access(thr, pc, addr, 0, true);
+
 	/* Temporary push the pc onto stack so that it is recorded. */
 	kt_func_entry(thr, pc);
 	kt_trace_add_event(thr, wr ? kt_event_lock : kt_event_rlock, sync->uid);
@@ -53,6 +56,9 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 	sync = kt_sync_ensure_created(thr, pc, addr);
 	if (!sync)
 		return;
+
+	/* This can catch race between unlock and mutex destruction. */
+	kt_access(thr, pc, addr, 0, true);
 
 	kt_trace_add_event(thr, wr ? kt_event_unlock : kt_event_runlock,
 		sync->uid);
