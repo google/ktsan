@@ -415,7 +415,7 @@ static inline u64 kt_decompress(u64 addr)
 	return addr | KT_PC_MASK;
 }
 
-void kt_stack_print(kt_stack_t *stack);
+void kt_stack_print(kt_stack_t *stack, uptr_t top_pc);
 
 /* Stack depot. */
 
@@ -454,6 +454,7 @@ void kt_trace_switch(kt_thr_t *thr);
 void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 				kt_trace_state_t *state);
 void kt_trace_dump(kt_trace_t *trace, unsigned long beg, unsigned long end);
+u64 kt_trace_last_data(kt_thr_t *thr);
 
 static inline
 void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u64 data)
@@ -728,7 +729,7 @@ void kt_func_exit(kt_thr_t *thr);
 void kt_report_disable(kt_thr_t *thr);
 void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
-void kt_report_bad_mtx_unlock(kt_thr_t *thr, kt_tab_sync_t *sync, uptr_t strip);
+void kt_report_bad_mtx_unlock(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync);
 void kt_report_sync_usage(void);
 
 #if KT_DEBUG

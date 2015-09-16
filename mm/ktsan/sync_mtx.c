@@ -69,7 +69,7 @@ void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr)
 	if (wr) {
 		BUG_ON(sync->lock_tid == -1);
 		if (wr && sync->lock_tid != thr->id)
-			kt_report_bad_mtx_unlock(thr, sync, _RET_IP_);
+			kt_report_bad_mtx_unlock(thr, pc, sync);
 		sync->lock_tid = -1;
 	}
 	BUG_ON(sync->lock_tid != -1);

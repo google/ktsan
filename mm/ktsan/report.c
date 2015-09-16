@@ -110,10 +110,10 @@ static void kt_print_mutexset(kt_mutexset_t *set)
 
 	for (i = 0; i < set->size; i++) {
 		mtx = &set->mtx[i];
-		pr_err("Mutex %llu is %s locked here:\n",
-			mtx->uid, mtx->write ? "write" : "read");
+		pr_err("Mutex %llu is %slocked here:\n",
+			mtx->uid, mtx->write ? "" : "read ");
 		kt_stack_print(kt_stack_depot_get(
-			&kt_ctx.stack_depot, mtx->stack));
+			&kt_ctx.stack_depot, mtx->stack), 0);
 	}
 }
 
@@ -137,7 +137,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 		return;
 
 	BUG_ON(new->stack.size == 0);
-	new_pc = kt_decompress(new->stack.pc[new->stack.size - 1]);
+	new_pc = kt_decompress(kt_trace_last_data(new));
 	if (kt_supp_suppressed(new_pc))
 		return;
 
@@ -178,11 +178,11 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 
 	print_mop(true, !info->new.read, info->addr, (1 << info->new.size),
 		new->pid, smp_processor_id());
-	kt_stack_print(&new->stack);
+	kt_stack_print(&new->stack, new_pc);
 
 	print_mop(false, !info->old.read, info->addr, (1 << info->old.size),
 		old_state.pid, old_state.cpu_id);
-	kt_stack_print(&old_state.stack);
+	kt_stack_print(&old_state.stack, 0);
 
 	if (new->mutexset.size) {
 		pr_err("Mutexes locked by thread %d:\n", new->pid);
@@ -220,7 +220,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	kt_spin_unlock(&kt_report_lock);
 }
 
-void kt_report_bad_mtx_unlock(kt_thr_t *new, kt_tab_sync_t *sync, uptr_t strip)
+void kt_report_bad_mtx_unlock(kt_thr_t *new, uptr_t pc, kt_tab_sync_t *sync)
 {
 	kt_thr_t *old;
 	kt_trace_state_t state;
@@ -241,12 +241,12 @@ void kt_report_bad_mtx_unlock(kt_thr_t *new, kt_tab_sync_t *sync, uptr_t strip)
 
 	pr_err("Unlock by thread %d on CPU %d:\n",
 		new->pid, smp_processor_id());
-	kt_stack_print(&new->stack);
+	kt_stack_print(&new->stack, pc);
 	pr_err("\n");
 
 	pr_err("Previous lock by thread %d on CPU %d:\n",
 		state.pid, state.cpu_id);
-	kt_stack_print(&state.stack);
+	kt_stack_print(&state.stack, 0);
 	pr_err("\n");
 
 	pr_err("==================================================================\n");

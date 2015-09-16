@@ -79,6 +79,17 @@ void kt_trace_init(kt_trace_t *trace)
 	kt_spin_init(&trace->lock);
 }
 
+u64 kt_trace_last_data(kt_thr_t *thr)
+{
+	kt_time_t clock;
+	kt_event_t event;
+
+	clock = kt_clk_get(&thr->clk, thr->id) - 1;
+	event = thr->trace.events[clock % KT_TRACE_SIZE];
+	BUG_ON(event.type != kt_event_mop);
+	return event.data;
+}
+
 void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 				kt_trace_state_t *state)
 {
