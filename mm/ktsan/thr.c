@@ -198,6 +198,17 @@ bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 	return (thr->event_disable_depth == 0);
 }
 
+void kt_thr_report_disable(kt_thr_t *thr)
+{
+	thr->report_disable_depth++;
+}
+
+void kt_thr_report_enable(kt_thr_t *thr)
+{
+	thr->report_disable_depth--;
+	BUG_ON(thr->report_disable_depth < 0);
+}
+
 void kt_thr_interrupt(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
 {
 	BUG_ON(state->thr != NULL);

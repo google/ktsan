@@ -337,21 +337,21 @@ void ktsan_thr_event_enable(void)
 }
 EXPORT_SYMBOL(ktsan_thr_event_enable);
 
-void ktsan_report_disable(void)
+void ktsan_thr_report_disable(void)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_report_disable(thr);
+	kt_thr_report_disable(thr);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_report_disable);
+EXPORT_SYMBOL(ktsan_thr_report_disable);
 
-void ktsan_report_enable(void)
+void ktsan_thr_report_enable(void)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_report_enable(thr);
+	kt_thr_report_enable(thr);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_report_enable);
+EXPORT_SYMBOL(ktsan_thr_report_enable);
 
 void ktsan_sync_acquire(void *addr)
 {

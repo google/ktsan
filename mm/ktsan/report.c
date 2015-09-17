@@ -92,17 +92,6 @@ void kt_report_sync_usage(void)
 
 #endif /* KT_DEBUG */
 
-void kt_report_disable(kt_thr_t *thr)
-{
-	thr->report_disable_depth++;
-}
-
-void kt_report_enable(kt_thr_t *thr)
-{
-	thr->report_disable_depth--;
-	BUG_ON(thr->report_disable_depth < 0);
-}
-
 static void kt_print_mutexset(kt_mutexset_t *set)
 {
 	kt_locked_mutex_t *mtx;

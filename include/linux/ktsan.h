@@ -42,17 +42,18 @@ struct ktsan_thr_s {
 void ktsan_init_early(void);
 void ktsan_init(void);
 
+/* Debugging purposes only. */
 void ktsan_print_diagnostics(void);
-
-void ktsan_report_disable(void);
-void ktsan_report_enable(void);
 
 void ktsan_thr_create(struct ktsan_thr_s *new, int pid);
 void ktsan_thr_destroy(struct ktsan_thr_s *old);
 void ktsan_thr_start(void);
 void ktsan_thr_stop(void);
+
 void ktsan_thr_event_disable(void);
 void ktsan_thr_event_enable(void);
+void ktsan_thr_report_disable(void);
+void ktsan_thr_report_enable(void);
 
 void ktsan_memblock_alloc(void *addr, unsigned long size);
 void ktsan_memblock_free(void *addr, unsigned long size);
@@ -141,15 +142,15 @@ static inline void ktsan_init(void) {}
 
 static inline void ktsan_print_diagnostics(void) {}
 
-static inline void ktsan_report_disable(void) {}
-static inline void ktsan_report_enable(void) {}
-
 static inline void ktsan_thr_create(struct ktsan_thr_s *new, int tid) {}
 static inline void ktsan_thr_destroy(struct ktsan_thr_s *old) {}
 static inline void ktsan_thr_start(void) {}
 static inline void ktsan_thr_stop(void) {}
+
 static inline void ktsan_thr_event_disable(void) {}
 static inline void ktsan_thr_event_enable(void) {}
+static inline void ktsan_thr_report_disable(void) {}
+static inline void ktsan_thr_report_enable(void) {}
 
 static inline void ktsan_memblock_alloc(void *addr, unsigned long size) {}
 static inline void ktsan_memblock_free(void *addr, unsigned long size) {}

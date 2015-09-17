@@ -577,6 +577,8 @@ void kt_thr_resume(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state);
 
 bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
 bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
+void kt_thr_report_disable(kt_thr_t *thr);
+void kt_thr_report_enable(kt_thr_t *thr);
 
 /* Synchronization. */
 
@@ -775,8 +777,6 @@ void kt_func_exit(kt_thr_t *thr);
 
 /* Reports. */
 
-void kt_report_disable(kt_thr_t *thr);
-void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
 void kt_report_bad_mtx_unlock(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync);
 void kt_report_sync_usage(void);
