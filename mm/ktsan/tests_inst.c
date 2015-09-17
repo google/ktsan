@@ -350,24 +350,35 @@ static void kt_test_rwlock(void)
 
 DECLARE_RWSEM(rwsem_sync);
 
-static void rwsem_first(void *arg)
+static void rwsem_write_write(void *arg)
 {
 	down_write(&rwsem_sync);
 	*((int *)arg) = 1;
 	up_write(&rwsem_sync);
 }
 
-static void rwsem_second(void *arg)
+static void rwsem_read_read(void *arg)
 {
-	down_write(&rwsem_sync);
+	down_read(&rwsem_sync);
+	*((int *)arg + 4) = *((int *)arg);
+	up_read(&rwsem_sync);
+}
+
+static void rwsem_read_write(void *arg)
+{
+	down_read(&rwsem_sync);
 	*((int *)arg) = 1;
-	up_write(&rwsem_sync);
+	up_read(&rwsem_sync);
 }
 
 static void kt_test_rwsem(void)
 {
-	kt_test(kt_nop, rwsem_first, rwsem_second,
-		"rwsem", false);
+	kt_test(kt_nop, rwsem_write_write, rwsem_write_write,
+		"rwsem-write-write", false);
+	kt_test(kt_nop, rwsem_write_write, rwsem_read_read,
+		"rwsem-write-read", false);
+	kt_test(kt_nop, rwsem_write_write, rwsem_read_write,
+		"rwsem-write-write-bad", true);
 }
 
 /* ktsan test: percpu-rwsem. */
