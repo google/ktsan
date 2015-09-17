@@ -20,10 +20,8 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 			BUG_ON(state->stack.size <= 0);
 			state->stack.size--;
 		} else if (event.type == kt_event_thr_start) {
-			int cpu, pid;
-
-			cpu = event.data & 0xffff;
-			pid = (s32)(u32)(event.data >> 16);
+			int cpu = event.data & 0xffff;
+			int pid = (s32)(u32)(event.data >> 16);
 			BUG_ON(state->cpu_id != -1);
 			state->cpu_id = cpu;
 			state->pid = pid;
@@ -177,11 +175,15 @@ void kt_trace_dump(kt_trace_t *trace, uptr_t beg, uptr_t end)
 			pr_err(" i: %lu, exit   , pc: [<%p>] %pS\n",
 				i, (void *)pc, (void *)pc);
 		} else if (event.type == kt_event_thr_stop) {
-			pr_err(" i: %lu, stop   , cpu: %d\n",
-				i, (int)event.data);
+			int cpu = event.data & 0xffff;
+			int pid = (s32)(u32)(event.data >> 16);
+			pr_err(" i: %lu, stop   , cpu: %d, thread: %d\n",
+				i, cpu, pid);
 		} else if (event.type == kt_event_thr_start) {
-			pr_err(" i: %lu, start  , cpu: %d\n",
-				i, (int)event.data);
+			int cpu = event.data & 0xffff;
+			int pid = (s32)(u32)(event.data >> 16);
+			pr_err(" i: %lu, start  , cpu: %d, thread: %d\n",
+				i, cpu, pid);
 		} else if (event.type == kt_event_lock) {
 			pr_err(" i: %lu, lock   , mutex: %llu\n",
 				i, (u64)event.data);
