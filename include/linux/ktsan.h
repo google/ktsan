@@ -33,10 +33,10 @@ extern int ktsan_glob_sync[ktsan_glob_sync_type_count];
 
 #ifdef CONFIG_KTSAN
 
-struct kt_thr_s;
+struct kt_task_s;
 
-struct ktsan_thr_s {
-	struct kt_thr_s	*thr;
+struct ktsan_task_s {
+	struct kt_task_s	*task;
 };
 
 void ktsan_init_early(void);
@@ -45,10 +45,12 @@ void ktsan_init(void);
 /* Debugging purposes only. */
 void ktsan_print_diagnostics(void);
 
-void ktsan_thr_create(struct ktsan_thr_s *new, int pid);
-void ktsan_thr_destroy(struct ktsan_thr_s *old);
-void ktsan_thr_start(void);
-void ktsan_thr_stop(void);
+void ktsan_cpu_start(void);
+
+void ktsan_task_create(struct ktsan_task_s *new, int pid);
+void ktsan_task_destroy(struct ktsan_task_s *old);
+void ktsan_task_start(void);
+void ktsan_task_stop(void);
 
 void ktsan_thr_event_disable(void);
 void ktsan_thr_event_enable(void);
@@ -134,7 +136,7 @@ void ktsan_split_page(struct page *page, unsigned int order);
 
 /* When disabled ktsan is no-op. */
 
-struct ktsan_thr_s {
+struct ktsan_task_s {
 };
 
 static inline void ktsan_init_early(void) {}
@@ -142,10 +144,12 @@ static inline void ktsan_init(void) {}
 
 static inline void ktsan_print_diagnostics(void) {}
 
-static inline void ktsan_thr_create(struct ktsan_thr_s *new, int tid) {}
-static inline void ktsan_thr_destroy(struct ktsan_thr_s *old) {}
-static inline void ktsan_thr_start(void) {}
-static inline void ktsan_thr_stop(void) {}
+static inline void ktsan_cpu_start(void) {}
+
+static inline void ktsan_task_create(struct ktsan_task_s *new, int pid) {}
+static inline void ktsan_task_destroy(struct ktsan_task_s *old) {}
+static inline void ktsan_task_start(void) {}
+static inline void ktsan_task_stop(void) {}
 
 static inline void ktsan_thr_event_disable(void) {}
 static inline void ktsan_thr_event_enable(void) {}

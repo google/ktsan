@@ -34,7 +34,9 @@
 #define KT_MAX_SYNC_COUNT (1700 * 1000)
 #define KT_MAX_MEMBLOCK_COUNT (200 * 1000)
 #define KT_MAX_PERCPU_SYNC_COUNT (30 * 1000)
-#define KT_MAX_THREAD_COUNT 1024
+
+#define KT_MAX_TASK_COUNT 1024
+#define KT_MAX_THREAD_COUNT KT_MAX_TASK_COUNT
 
 #define KT_MAX_STACK_FRAMES 96
 #define KT_TAME_COUNTER_LIMIT 3
@@ -71,6 +73,7 @@ typedef struct kt_ctx_s			kt_ctx_t;
 typedef enum kt_stat_e			kt_stat_t;
 typedef struct kt_stats_s		kt_stats_t;
 typedef struct kt_cpu_s			kt_cpu_t;
+typedef struct kt_task_s		kt_task_t;
 typedef struct kt_race_info_s		kt_race_info_t;
 typedef struct kt_cache_s		kt_cache_t;
 typedef struct kt_stack_s		kt_stack_t;
@@ -375,6 +378,8 @@ struct kt_stats_s {
 	unsigned long		stat[kt_stat_count];
 };
 
+/* KTSAN per-cpu state. */
+
 struct kt_cpu_s {
 	/* Thread that currently runs on the CPU or NULL. */
 	kt_thr_t		*thr;
@@ -384,11 +389,19 @@ struct kt_cpu_s {
 	kt_interrupted_t	interrupted;
 };
 
+/* KTSAN per-task state. */
+
+struct kt_task_s {
+	/* Thread that is associated with this task. Never NULL. */
+	kt_thr_t		*thr;
+};
+
 /* Global. */
 
 struct kt_ctx_s {
 	int			enabled;
 	kt_cpu_t __percpu	*cpus;
+	kt_cache_t		task_cache;
 	kt_tab_t		sync_tab; /* sync addr -> sync object */
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
