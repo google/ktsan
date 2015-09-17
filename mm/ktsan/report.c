@@ -195,21 +195,21 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	}
 
 #if KT_DEBUG
-	pr_err("DBG: T%d clock: {T%d: %lu, T%d: %lu}\n", new->id,
-			new->id, kt_clk_get(&new->clk, new->id),
-			old->id, kt_clk_get(&new->clk, old->id));
-	pr_err("DBG: T%d clock: {T%d: %lu}\n", old->id,
-			old->id, (unsigned long)info->old.clock);
+	pr_err("DBG: T%d clock: {T%d: %lu, T%d: %lu}\n", new->pid,
+			new->pid, kt_clk_get(&new->clk, new->id),
+			old->pid, kt_clk_get(&new->clk, old->id));
+	pr_err("DBG: T%d clock: {T%d: %lu}\n", old->pid,
+			old->pid, (unsigned long)info->old.clock);
 #endif
 
 #if KT_DEBUG_TRACE
 	pr_err("\n");
-	pr_err("T%d trace:\n", old->id);
+	pr_err("Thread %d trace:\n", old->pid);
 	kt_trace_dump(&old->trace, kt_clk_get(&new->clk, old->id) - 20,
 			(uptr_t)info->old.clock + 30);
 
 	pr_err("\n");
-	pr_err("T%d trace:\n", new->id);
+	pr_err("Thread %d trace:\n", new->pid);
 	kt_trace_dump(&new->trace, kt_clk_get(&new->clk, new->id) - 30,
 				kt_clk_get(&new->clk, new->id) + 30);
 #endif /* KT_DEBUG_TRACE */
