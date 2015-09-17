@@ -417,23 +417,21 @@ extern kt_ctx_t kt_ctx;
 
 void kt_stat_init(void);
 
-static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
+static inline void kt_stat_add(kt_stat_t what, unsigned long x)
 {
 #if KT_ENABLE_STATS
-	if (thr->cpu == NULL)
-		return;
-	thr->cpu->stat.stat[what] += x;
+	this_cpu_ptr(kt_ctx.cpus)->stat.stat[what] += x;
 #endif
 }
 
-static inline void kt_stat_inc(kt_thr_t *thr, kt_stat_t what)
+static inline void kt_stat_inc(kt_stat_t what)
 {
-	kt_stat_add(thr, what, 1);
+	kt_stat_add(what, 1);
 }
 
-static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
+static inline void kt_stat_dec(kt_stat_t what)
 {
-	kt_stat_add(thr, what, -1);
+	kt_stat_add(what, -1);
 }
 
 /* Stack. */
@@ -515,7 +513,7 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u64 data)
 	kt_event_t event;
 	unsigned pos;
 
-	kt_stat_inc(thr, kt_stat_trace_event);
+	kt_stat_inc(kt_stat_trace_event);
 
 	trace = &thr->trace;
 	clock = kt_clk_get(&thr->clk, thr->id);

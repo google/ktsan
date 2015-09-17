@@ -70,7 +70,8 @@ kt_ctx_t kt_ctx;
 			!((enter_flags) & KT_ENTER_DISABLED)))		\
 		goto exit;						\
 									\
-	if (unlikely(thr->cpu == NULL && !((enter_flags) & KT_ENTER_SCHED))) \
+	if (unlikely(thr->cpu == NULL &&				\
+			!((enter_flags) & KT_ENTER_SCHED))) 		\
 		goto exit;						\
 									\
 	if (unlikely(__test_and_set_bit(0, &thr->inside)))		\
@@ -169,10 +170,6 @@ void ktsan_init(void)
 	kt_stat_init();
 	kt_supp_init();
 	kt_tests_init();
-
-	/* FIXME: these stats were not recorded in kt_thr_create. */
-	kt_stat_inc(thr, kt_stat_thread_create);
-	kt_stat_inc(thr, kt_stat_threads);
 
 	inside = __test_and_clear_bit(0, &thr->inside);
 	BUG_ON(!inside);

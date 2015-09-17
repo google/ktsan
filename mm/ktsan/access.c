@@ -88,8 +88,8 @@ void kt_access_impl(kt_thr_t *thr, kt_shadow_t *slots, kt_time_t current_clock,
 	int i;
 	bool stored;
 
-	kt_stat_inc(thr, read ? kt_stat_access_read : kt_stat_access_write);
-	kt_stat_inc(thr, kt_stat_access_size1 + size);
+	kt_stat_inc(read ? kt_stat_access_read : kt_stat_access_write);
+	kt_stat_inc(kt_stat_access_size1 + size);
 
 	value.tid = thr->id;
 	value.clock = current_clock;
