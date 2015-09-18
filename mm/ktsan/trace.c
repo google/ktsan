@@ -137,7 +137,8 @@ void kt_trace_restore_state(kt_thr_t *thr, kt_time_t clock,
 	kt_trace_follow(trace, beg, end, state);
 
 	event = trace->events[end];
-	if (event.type != kt_event_func_enter
+	if (event.type != kt_event_nop
+	    && event.type != kt_event_func_enter
 	    && event.type != kt_event_func_exit
 	    && event.type != kt_event_thr_stop
 	    && event.type != kt_event_thr_start
