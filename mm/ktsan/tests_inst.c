@@ -74,6 +74,7 @@ void kt_test(thr_func_t main, thr_func_t first, thr_func_t second,
 			value = (int *)&buffer[0];
 
 		BUG_ON(!value);
+		BUG_ON(!kt_shadow_get((uptr_t)value));
 
 		main(value);
 
