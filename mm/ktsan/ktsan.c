@@ -13,6 +13,17 @@ EXPORT_SYMBOL(ktsan_glob_sync);
 
 kt_ctx_t kt_ctx;
 
+static inline kt_cpu_t *kt_current_cpu(void)
+{
+	return this_cpu_ptr(kt_ctx.cpus);
+}
+
+static inline kt_task_t *kt_current_task(void)
+{
+	KT_BUG_ON(!current);
+	return current->ktsan.task;
+}
+
 #define DISABLE_INTERRUPTS(flags)	\
 	preempt_disable();		\
 	flags = arch_local_irq_save();	\
@@ -55,23 +66,19 @@ kt_ctx_t kt_ctx;
 	if (unlikely(IN_INTERRUPT()))					\
 		goto exit;						\
 									\
-	/* TODO(xairy): check if we even need theese checks. */		\
-	if (unlikely(!current))						\
-		goto exit;						\
-									\
-	task = current->ktsan.task;					\
+	task = kt_current_task();					\
 	if (unlikely(!task))						\
 		goto exit;						\
 									\
-	thr = current->ktsan.task->thr;					\
+	if (unlikely(!task->running &&					\
+			!((enter_flags) & KT_ENTER_SCHED))) 		\
+		goto exit;						\
+									\
+	thr = task->thr;						\
 	KT_BUG_ON(!thr);						\
 									\
 	if (unlikely(thr->event_disable_depth != 0 &&			\
 			!((enter_flags) & KT_ENTER_DISABLED)))		\
-		goto exit;						\
-									\
-	if (unlikely(thr->cpu == NULL &&				\
-			!((enter_flags) & KT_ENTER_SCHED))) 		\
 		goto exit;						\
 									\
 	if (unlikely(__test_and_set_bit(0, &thr->inside)))		\
@@ -309,6 +316,7 @@ void ktsan_task_create(struct ktsan_task_s *new, int pid)
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
 	new->task = kt_cache_alloc(&kt_ctx.task_cache);
 	new->task->thr = kt_thr_create(thr, pid);
+	new->task->running = false;
 	LEAVE();
 }
 
@@ -324,6 +332,8 @@ void ktsan_task_destroy(struct ktsan_task_s *old)
 void ktsan_task_start(void)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
+	BUG_ON(task->running);
+	task->running = true;
 	kt_thr_start(thr, pc);
 	LEAVE();
 }
@@ -332,6 +342,8 @@ void ktsan_task_stop(void)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
 	BUG_ON(thr->interrupt_depth); /* Context switch during an interrupt? */
+	BUG_ON(!task->running);
+	task->running = false;
 	kt_thr_stop(thr, pc);
 	LEAVE();
 }
