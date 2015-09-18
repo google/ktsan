@@ -394,6 +394,8 @@ struct kt_cpu_s {
 struct kt_task_s {
 	/* Thread that is associated with this task. Never NULL. */
 	kt_thr_t		*thr;
+	/* Shows whether this task is being executed. */
+	bool			running;
 };
 
 /* Global. */
