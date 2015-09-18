@@ -682,6 +682,8 @@ asmlinkage __visible void __init start_kernel(void)
 	ftrace_init();
 
 	ktsan_init();
+	ktsan_cpu_start();
+	ktsan_task_start();
 
 	/* Do the rest non-__init'ed, we're now alive */
 	rest_init();

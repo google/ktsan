@@ -69,14 +69,14 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int pid)
 	new->seqcount_ignore = 0;
 	new->interrupt_depth = 0;
 
+	kt_stat_inc(kt_stat_thread_create);
+	kt_stat_inc(kt_stat_threads);
+
 	/* thr == NULL when thread #0 is being initialized. */
 	if (thr == NULL)
 		return new;
 
 	kt_clk_acquire(&new->clk, &thr->clk);
-
-	kt_stat_inc(thr, kt_stat_thread_create);
-	kt_stat_inc(thr, kt_stat_threads);
 
 	return new;
 }
@@ -101,8 +101,8 @@ void kt_thr_destroy(kt_thr_t *thr, kt_thr_t *old)
 	pool->quarantine_size++;
 	kt_spin_unlock(&pool->lock);
 
-	kt_stat_inc(thr, kt_stat_thread_destroy);
-	kt_stat_dec(thr, kt_stat_threads);
+	kt_stat_inc(kt_stat_thread_destroy);
+	kt_stat_dec(kt_stat_threads);
 }
 
 kt_thr_t *kt_thr_get(int id)
@@ -196,6 +196,17 @@ bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 	}
 
 	return (thr->event_disable_depth == 0);
+}
+
+void kt_thr_report_disable(kt_thr_t *thr)
+{
+	thr->report_disable_depth++;
+}
+
+void kt_thr_report_enable(kt_thr_t *thr)
+{
+	thr->report_disable_depth--;
+	BUG_ON(thr->report_disable_depth < 0);
 }
 
 void kt_thr_interrupt(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)

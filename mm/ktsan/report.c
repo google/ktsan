@@ -92,17 +92,6 @@ void kt_report_sync_usage(void)
 
 #endif /* KT_DEBUG */
 
-void kt_report_disable(kt_thr_t *thr)
-{
-	thr->report_disable_depth++;
-}
-
-void kt_report_enable(kt_thr_t *thr)
-{
-	thr->report_disable_depth--;
-	BUG_ON(thr->report_disable_depth < 0);
-}
-
 static void kt_print_mutexset(kt_mutexset_t *set)
 {
 	kt_locked_mutex_t *mtx;
@@ -215,7 +204,7 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 #endif /* KT_DEBUG_TRACE */
 	pr_err("==================================================================\n");
 
-	kt_stat_inc(new, kt_stat_reports);
+	kt_stat_inc(kt_stat_reports);
 
 	kt_spin_unlock(&kt_report_lock);
 }

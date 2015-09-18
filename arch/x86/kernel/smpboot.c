@@ -215,7 +215,8 @@ static void notrace start_secondary(void *unused)
 	 * most necessary things.
 	 */
 	cpu_init();
-	ktsan_thr_start();
+	ktsan_cpu_start();
+	ktsan_task_start();
 	x86_cpuinit.early_percpu_clock_init();
 	preempt_disable();
 	smp_callin();

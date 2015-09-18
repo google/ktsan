@@ -55,8 +55,8 @@ kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 		}
 		sync->uid = thr->cpu->sync_uid_pos++;
 
-		kt_stat_inc(thr, kt_stat_sync_objects);
-		kt_stat_inc(thr, kt_stat_sync_alloc);
+		kt_stat_inc(kt_stat_sync_objects);
+		kt_stat_inc(kt_stat_sync_alloc);
 	}
 
 	return sync;
@@ -73,8 +73,8 @@ void kt_sync_free(kt_thr_t *thr, uptr_t addr)
 	kt_spin_unlock(&sync->tab.lock);
 	kt_cache_free(&kt_ctx.sync_tab.obj_cache, sync);
 
-	kt_stat_dec(thr, kt_stat_sync_objects);
-	kt_stat_inc(thr, kt_stat_sync_free);
+	kt_stat_dec(kt_stat_sync_objects);
+	kt_stat_inc(kt_stat_sync_free);
 }
 
 void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
@@ -111,12 +111,12 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 
 void kt_acquire(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync)
 {
-	kt_stat_inc(thr, kt_stat_acquire);
+	kt_stat_inc(kt_stat_acquire);
 	kt_clk_acquire(&thr->clk, &sync->clk);
 }
 
 void kt_release(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync)
 {
-	kt_stat_inc(thr, kt_stat_release);
+	kt_stat_inc(kt_stat_release);
 	kt_clk_acquire(&sync->clk, &thr->clk);
 }

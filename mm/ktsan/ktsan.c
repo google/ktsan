@@ -37,6 +37,7 @@ kt_ctx_t kt_ctx;
 #define KT_ENTER_DISABLED	(1<<1)
 
 #define ENTER(enter_flags)						\
+	kt_task_t *task;						\
 	kt_thr_t *thr;							\
 	uptr_t pc;							\
 	unsigned long kt_flags;						\
@@ -57,15 +58,20 @@ kt_ctx_t kt_ctx;
 	/* TODO(xairy): check if we even need theese checks. */		\
 	if (unlikely(!current))						\
 		goto exit;						\
-	thr = current->ktsan.thr;					\
-	if (unlikely(!thr))					\
+									\
+	task = current->ktsan.task;					\
+	if (unlikely(!task))						\
 		goto exit;						\
+									\
+	thr = current->ktsan.task->thr;					\
+	KT_BUG_ON(!thr);						\
 									\
 	if (unlikely(thr->event_disable_depth != 0 &&			\
 			!((enter_flags) & KT_ENTER_DISABLED)))		\
 		goto exit;						\
 									\
-	if (unlikely(thr->cpu == NULL && !((enter_flags) & KT_ENTER_SCHED))) \
+	if (unlikely(thr->cpu == NULL &&				\
+			!((enter_flags) & KT_ENTER_SCHED))) 		\
 		goto exit;						\
 									\
 	if (unlikely(__test_and_set_bit(0, &thr->inside)))		\
@@ -98,6 +104,7 @@ void __init ktsan_init_early(void)
 
 	kt_cache_init(&ctx->percpu_sync_cache,
 		      sizeof(kt_percpu_sync_t), KT_MAX_PERCPU_SYNC_COUNT);
+	kt_cache_init(&ctx->task_cache, sizeof(kt_task_t), KT_MAX_TASK_COUNT);
 
 	kt_thr_pool_init();
 
@@ -117,18 +124,20 @@ static void ktsan_report_memory_usage(void)
 
 	u64 percpu_sync_cache_mem = KT_MAX_PERCPU_SYNC_COUNT *
 					sizeof(kt_percpu_sync_t);
+	u64 task_cache_mem = KT_MAX_TASK_COUNT * sizeof(kt_task_t);
 
 	u64 thr_cache_mem = KT_MAX_THREAD_COUNT * sizeof(kt_thr_t);
 
 	u64 depot_objs_mem = KT_STACK_DEPOT_MEMORY_LIMIT;
 
-	u64 total_mem = sync_total_mem + memblock_total_mem +
+	u64 total_mem = sync_total_mem + memblock_total_mem + task_cache_mem +
 		percpu_sync_cache_mem + thr_cache_mem + depot_objs_mem;
 
 	pr_err("ktsan memory usage: %llu GB + shadow.\n", total_mem >> 20);
 	pr_err("             syncs: %llu MB \n", sync_total_mem >> 20);
 	pr_err("          memblock: %llu MB \n", memblock_total_mem >> 20);
 	pr_err("      percpu syncs: %llu MB\n", percpu_sync_cache_mem >> 20);
+	pr_err("             tasks: %llu MB\n", task_cache_mem >> 20);
 	pr_err("      thrs (trace): %llu MB\n", thr_cache_mem >> 20);
 	pr_err("       stack depot: %llu MB\n", depot_objs_mem >> 20);
 }
@@ -136,11 +145,13 @@ static void ktsan_report_memory_usage(void)
 void ktsan_init(void)
 {
 	kt_ctx_t *ctx;
-	kt_thr_t *thr;
 	kt_cpu_t *cpu;
+	kt_task_t *task;
+	kt_thr_t *thr;
 	int inside, i;
 
 	ctx = &kt_ctx;
+
 	ctx->cpus = alloc_percpu(kt_cpu_t);
 	for_each_possible_cpu(i) {
 		cpu = per_cpu_ptr(ctx->cpus, i);
@@ -148,8 +159,9 @@ void ktsan_init(void)
 	}
 
 	thr = kt_thr_create(NULL, current->pid);
-	kt_thr_start(thr, (uptr_t)_RET_IP_);
-	current->ktsan.thr = thr;
+	task = kt_cache_alloc(&kt_ctx.task_cache);
+	task->thr = thr;
+	current->ktsan.task = task;
 
 	BUG_ON(ctx->enabled);
 	inside = __test_and_set_bit(0, &thr->inside);
@@ -158,10 +170,6 @@ void ktsan_init(void)
 	kt_stat_init();
 	kt_supp_init();
 	kt_tests_init();
-
-	/* These stats were not recorded in kt_thr_create. */
-	kt_stat_inc(thr, kt_stat_thread_create);
-	kt_stat_inc(thr, kt_stat_threads);
 
 	inside = __test_and_clear_bit(0, &thr->inside);
 	BUG_ON(!inside);
@@ -198,8 +206,8 @@ void ktsan_print_diagnostics(void)
 			(!IN_INTERRUPT()) ? "+" : "-");
 		pr_err(" current:                       %s\n",
 			(current) ? "+" : "-");
-		pr_err(" current->ktsan.thr:            %s\n",
-			(current->ktsan.thr) ? "+" : "-");
+		pr_err(" current->ktsan.task:           %s\n",
+			(current->ktsan.task) ? "+" : "-");
 		if (thr != NULL) {
 			pr_err(" thr->event_disable_depth == 0: %s\n",
 				(thr->event_disable_depth == 0) ? "+" : "-");
@@ -291,29 +299,36 @@ void ktsan_syscall_exit(void)
 	/* Does nothing for now. */
 }
 
-void ktsan_thr_create(struct ktsan_thr_s *new, int pid)
+void ktsan_cpu_start(void)
+{
+	/* Does nothing for now. */
+}
+
+void ktsan_task_create(struct ktsan_task_s *new, int pid)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
-	new->thr = kt_thr_create(thr, pid);
+	new->task = kt_cache_alloc(&kt_ctx.task_cache);
+	new->task->thr = kt_thr_create(thr, pid);
 	LEAVE();
 }
 
-void ktsan_thr_destroy(struct ktsan_thr_s *old)
+void ktsan_task_destroy(struct ktsan_task_s *old)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
-	kt_thr_destroy(thr, old->thr);
-	old->thr = NULL;
+	kt_thr_destroy(thr, old->task->thr);
+	old->task->thr = NULL;
+	kt_cache_free(&kt_ctx.task_cache, old->task);
 	LEAVE();
 }
 
-void ktsan_thr_start(void)
+void ktsan_task_start(void)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
 	kt_thr_start(thr, pc);
 	LEAVE();
 }
 
-void ktsan_thr_stop(void)
+void ktsan_task_stop(void)
 {
 	ENTER(KT_ENTER_SCHED | KT_ENTER_DISABLED);
 	BUG_ON(thr->interrupt_depth); /* Context switch during an interrupt? */
@@ -337,21 +352,21 @@ void ktsan_thr_event_enable(void)
 }
 EXPORT_SYMBOL(ktsan_thr_event_enable);
 
-void ktsan_report_disable(void)
+void ktsan_thr_report_disable(void)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_report_disable(thr);
+	kt_thr_report_disable(thr);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_report_disable);
+EXPORT_SYMBOL(ktsan_thr_report_disable);
 
-void ktsan_report_enable(void)
+void ktsan_thr_report_enable(void)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_report_enable(thr);
+	kt_thr_report_enable(thr);
 	LEAVE();
 }
-EXPORT_SYMBOL(ktsan_report_enable);
+EXPORT_SYMBOL(ktsan_thr_report_enable);
 
 void ktsan_sync_acquire(void *addr)
 {

@@ -45,8 +45,8 @@ static kt_tab_memblock_t *kt_memblock_ensure_created(kt_thr_t *thr, uptr_t addr)
 		INIT_LIST_HEAD(&memblock->sync_list);
 		INIT_LIST_HEAD(&memblock->lock_list);
 
-		kt_stat_inc(thr, kt_stat_memblock_objects);
-		kt_stat_inc(thr, kt_stat_memblock_alloc);
+		kt_stat_inc(kt_stat_memblock_objects);
+		kt_stat_inc(kt_stat_memblock_alloc);
 	}
 
 	return memblock;
@@ -109,8 +109,8 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 	kt_spin_unlock(&memblock->tab.lock);
 	kt_cache_free(&kt_ctx.memblock_tab.obj_cache, memblock);
 
-	kt_stat_dec(thr, kt_stat_memblock_objects);
-	kt_stat_inc(thr, kt_stat_memblock_free);
+	kt_stat_dec(kt_stat_memblock_objects);
+	kt_stat_inc(kt_stat_memblock_free);
 
 	kt_access_range(thr, pc, addr, size, false);
 }

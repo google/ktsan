@@ -116,7 +116,7 @@ void kt_test_trace(void)
 
 	pr_err("ktsan: starting trace test.\n");
 
-	thr = current->ktsan.thr;
+	thr = current->ktsan.task->thr;
 	clock = kt_clk_get(&thr->clk, thr->id);
 
 	/* Fake mop event. */

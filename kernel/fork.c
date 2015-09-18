@@ -384,7 +384,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 	account_kernel_stack(ti, 1);
 
 #ifdef CONFIG_KTSAN
-	tsk->ktsan.thr = NULL;
+	tsk->ktsan.task = NULL;
 #endif
 
 	return tsk;
@@ -1672,7 +1672,7 @@ struct task_struct *fork_idle(int cpu)
 	struct task_struct *task;
 	task = copy_process(CLONE_VM, 0, 0, NULL, &init_struct_pid, 0, 0);
 	if (!IS_ERR(task)) {
-		ktsan_thr_create(&task->ktsan, task->pid);
+		ktsan_task_create(&task->ktsan, task->pid);
 		init_idle_pids(task->pids);
 		init_idle(task, cpu);
 	}
@@ -1725,7 +1725,7 @@ long _do_fork(unsigned long clone_flags,
 		struct completion vfork;
 		struct pid *pid;
 
-		ktsan_thr_create(&p->ktsan, p->pid);
+		ktsan_task_create(&p->ktsan, p->pid);
 
 		trace_sched_process_fork(current, p);
 

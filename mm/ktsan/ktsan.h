@@ -34,7 +34,9 @@
 #define KT_MAX_SYNC_COUNT (1700 * 1000)
 #define KT_MAX_MEMBLOCK_COUNT (200 * 1000)
 #define KT_MAX_PERCPU_SYNC_COUNT (30 * 1000)
-#define KT_MAX_THREAD_COUNT 1024
+
+#define KT_MAX_TASK_COUNT 1024
+#define KT_MAX_THREAD_COUNT KT_MAX_TASK_COUNT
 
 #define KT_MAX_STACK_FRAMES 96
 #define KT_TAME_COUNTER_LIMIT 3
@@ -71,6 +73,7 @@ typedef struct kt_ctx_s			kt_ctx_t;
 typedef enum kt_stat_e			kt_stat_t;
 typedef struct kt_stats_s		kt_stats_t;
 typedef struct kt_cpu_s			kt_cpu_t;
+typedef struct kt_task_s		kt_task_t;
 typedef struct kt_race_info_s		kt_race_info_t;
 typedef struct kt_cache_s		kt_cache_t;
 typedef struct kt_stack_s		kt_stack_t;
@@ -375,6 +378,8 @@ struct kt_stats_s {
 	unsigned long		stat[kt_stat_count];
 };
 
+/* KTSAN per-cpu state. */
+
 struct kt_cpu_s {
 	/* Thread that currently runs on the CPU or NULL. */
 	kt_thr_t		*thr;
@@ -384,11 +389,19 @@ struct kt_cpu_s {
 	kt_interrupted_t	interrupted;
 };
 
+/* KTSAN per-task state. */
+
+struct kt_task_s {
+	/* Thread that is associated with this task. Never NULL. */
+	kt_thr_t		*thr;
+};
+
 /* Global. */
 
 struct kt_ctx_s {
 	int			enabled;
 	kt_cpu_t __percpu	*cpus;
+	kt_cache_t		task_cache;
 	kt_tab_t		sync_tab; /* sync addr -> sync object */
 	kt_tab_t		memblock_tab; /* memory block -> sync objects */
 	kt_tab_t		test_tab;
@@ -404,23 +417,21 @@ extern kt_ctx_t kt_ctx;
 
 void kt_stat_init(void);
 
-static inline void kt_stat_add(kt_thr_t *thr, kt_stat_t what, unsigned long x)
+static inline void kt_stat_add(kt_stat_t what, unsigned long x)
 {
 #if KT_ENABLE_STATS
-	if (thr->cpu == NULL)
-		return;
-	thr->cpu->stat.stat[what] += x;
+	this_cpu_ptr(kt_ctx.cpus)->stat.stat[what] += x;
 #endif
 }
 
-static inline void kt_stat_inc(kt_thr_t *thr, kt_stat_t what)
+static inline void kt_stat_inc(kt_stat_t what)
 {
-	kt_stat_add(thr, what, 1);
+	kt_stat_add(what, 1);
 }
 
-static inline void kt_stat_dec(kt_thr_t *thr, kt_stat_t what)
+static inline void kt_stat_dec(kt_stat_t what)
 {
-	kt_stat_add(thr, what, -1);
+	kt_stat_add(what, -1);
 }
 
 /* Stack. */
@@ -502,7 +513,7 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u64 data)
 	kt_event_t event;
 	unsigned pos;
 
-	kt_stat_inc(thr, kt_stat_trace_event);
+	kt_stat_inc(kt_stat_trace_event);
 
 	trace = &thr->trace;
 	clock = kt_clk_get(&thr->clk, thr->id);
@@ -577,6 +588,8 @@ void kt_thr_resume(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state);
 
 bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
 bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags);
+void kt_thr_report_disable(kt_thr_t *thr);
+void kt_thr_report_enable(kt_thr_t *thr);
 
 /* Synchronization. */
 
@@ -775,8 +788,6 @@ void kt_func_exit(kt_thr_t *thr);
 
 /* Reports. */
 
-void kt_report_disable(kt_thr_t *thr);
-void kt_report_enable(kt_thr_t *thr);
 void kt_report_race(kt_thr_t *thr, kt_race_info_t *info);
 void kt_report_bad_mtx_unlock(kt_thr_t *thr, uptr_t pc, kt_tab_sync_t *sync);
 void kt_report_sync_usage(void);
