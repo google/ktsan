@@ -55,11 +55,15 @@ extern long do_no_restart_syscall(struct restart_block *parm);
 
 #ifdef __KERNEL__
 
+#ifndef CONFIG_KTSAN
 #ifdef CONFIG_DEBUG_STACK_USAGE
 # define THREADINFO_GFP		(GFP_KERNEL | __GFP_NOTRACK | __GFP_ZERO)
 #else
 # define THREADINFO_GFP		(GFP_KERNEL | __GFP_NOTRACK)
 #endif
+#else /* CONFIG_KTSAN */
+# define THREADINFO_GFP		(GFP_KERNEL)
+#endif /* CONFIG_KTSAN */
 
 /*
  * flag set/clear/test wrappers
