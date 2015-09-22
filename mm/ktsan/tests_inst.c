@@ -419,6 +419,40 @@ static void kt_test_atomic(void)
 		"xchg-vs-xadd", false, false);
 }
 
+/* ktsan test: mop vs atomic */
+
+static void mva_write(void *arg)
+{
+	*((int *)arg) = 1;
+}
+
+static void mva_read(void *arg)
+{
+	use(*((int *)arg));
+}
+
+static void mva_atomic_write(void *arg)
+{
+	atomic_set((atomic_t *)arg, 1);
+}
+
+static void mva_atomic_read(void *arg)
+{
+	use(atomic_read((atomic_t *)arg));
+}
+
+static void kt_test_mop_vs_atomic(void)
+{
+	kt_test(kt_nop, kt_nop, mva_write, mva_atomic_write,
+		"mop-vs-atomic-write-write", false, true);
+	kt_test(kt_nop, kt_nop, mva_write, mva_atomic_read,
+		"mop-vs-atomic-write-read", false, true);
+	kt_test(kt_nop, kt_nop, mva_read, mva_atomic_write,
+		"mop-vs-atomic-read-write", false, true);
+	kt_test(kt_nop, kt_nop, mva_read, mva_atomic_read,
+		"mop-vs-atomic-read-read", false, false);
+}
+
 /* ktsan test: completion. */
 
 DECLARE_COMPLETION(completion_sync);
@@ -992,6 +1026,8 @@ void kt_tests_run_inst(void)
 	kt_test_read_once_ctrl();
 	pr_err("\n");
 	kt_test_atomic();
+	pr_err("\n");
+	kt_test_mop_vs_atomic();
 	pr_err("\n");
 	kt_test_completion();
 	pr_err("\n");
