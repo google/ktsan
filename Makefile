@@ -365,7 +365,7 @@ LDFLAGS_MODULE  =
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
-CFLAGS_KTSAN	= -fsanitize=thread
+CFLAGS_KTSAN	= -fsanitize=thread -ffuzzing-coverage
 
 
 # Use USERINCLUDE when you must reference the UAPI directories only.

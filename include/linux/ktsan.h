@@ -37,6 +37,9 @@ struct kt_task_s;
 
 struct ktsan_task_s {
 	struct kt_task_s	*task;
+	u32			*cover;
+	unsigned long		cover_pos;
+	unsigned long		cover_mask;
 };
 
 void ktsan_init_early(void);

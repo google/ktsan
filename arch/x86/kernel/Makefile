@@ -2,7 +2,12 @@
 # Makefile for the linux kernel.
 #
 
+KTSAN_SANITIZE = n
+
 KTSAN_SANITIZE_nmi.o = n
+KTSAN_SANITIZE_head$(BITS).o := n
+KTSAN_SANITIZE_dumpstack.o := n
+KTSAN_SANITIZE_dumpstack_$(BITS).o := n
 
 extra-y                := head_$(BITS).o head$(BITS).o head.o vmlinux.lds
 

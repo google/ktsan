@@ -258,6 +258,13 @@ void __put_task_struct(struct task_struct *tsk)
 	delayacct_tsk_free(tsk);
 	put_signal_struct(tsk->signal);
 
+#ifdef CONFIG_KTSAN
+	if (tsk->ktsan.cover) {
+		vfree(tsk->ktsan.cover);
+		tsk->ktsan.cover = NULL;
+	}
+#endif
+
 	if (!profile_handoff_task(tsk))
 		free_task(tsk);
 }
@@ -385,6 +392,9 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 
 #ifdef CONFIG_KTSAN
 	tsk->ktsan.task = NULL;
+	tsk->ktsan.cover = NULL;
+	tsk->ktsan.cover_pos = 0;
+	tsk->ktsan.cover_mask = 0;
 #endif
 
 	return tsk;
