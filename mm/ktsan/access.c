@@ -54,6 +54,8 @@ bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr, kt_shadow_t *slot,
 
 		if (likely(old.read && value.read))
 			return false;
+		if (likely(old.atomic && value.atomic))
+			return false;
 
 		goto report_race;
 	}
@@ -66,6 +68,8 @@ bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr, kt_shadow_t *slot,
 		if (old.read && value.read)
 			return false;
 		if (kt_clk_get(&thr->clk, old.tid) >= old.clock)
+			return false;
+		if (likely(old.atomic && value.atomic))
 			return false;
 
 report_race:
