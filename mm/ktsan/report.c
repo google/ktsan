@@ -108,11 +108,24 @@ static void kt_print_mutexset(kt_mutexset_t *set)
 	}
 }
 
-static void print_mop(bool new, bool wr, uptr_t addr, int sz, int pid, int cpu)
+static void print_mop(bool new, bool wr, bool atomic,
+		uptr_t addr, int sz, int pid, int cpu)
 {
 	pr_err("%s at 0x%p of size %d by thread %d on CPU %d:\n",
-		new ? (wr ? "Write" : "Read") :
-			(wr ? "Previous write" : "Previous read"),
+		new ? (
+			atomic ? (
+				wr ? "Atomic write" : "Atomic read"
+			) : (
+				wr ? "Write" : "Read"
+			)
+		) : (
+			atomic ? (
+				wr ? "Previous atomic write" :
+					"Previous atomic read"
+			) : (
+				wr ? "Previous write" : "Previous read"
+			)
+		),
 		(void *)addr, sz, pid, cpu);
 }
 
@@ -167,12 +180,12 @@ void kt_report_race(kt_thr_t *new, kt_race_info_t *info)
 	pr_err("==================================================================\n");
 	pr_err("ThreadSanitizer: data-race in %s\n\n", function);
 
-	print_mop(true, !info->new.read, info->addr, (1 << info->new.size),
-		new->pid, smp_processor_id());
+	print_mop(true, !info->new.read, info->new.atomic, info->addr,
+		(1 << info->new.size), new->pid, smp_processor_id());
 	kt_stack_print(&new->stack, new_pc);
 
-	print_mop(false, !info->old.read, info->addr, (1 << info->old.size),
-		old_state.pid, old_state.cpu_id);
+	print_mop(false, !info->old.read, info->old.atomic, info->addr,
+		(1 << info->old.size), old_state.pid, old_state.cpu_id);
 	kt_stack_print(&old_state.stack, 0);
 
 	if (new->mutexset.size) {
