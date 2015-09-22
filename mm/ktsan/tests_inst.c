@@ -211,7 +211,7 @@ struct roc_arg {
 static void roc_init(void *p)
 {
 	struct roc_arg *arg = p;
-	
+
 	arg->sync = arg->data = 0;
 }
 
@@ -228,18 +228,16 @@ static void roc_read(void *p)
 {
 	struct roc_arg *arg = p;
 
-	if (READ_ONCE(arg->sync)) {
+	if (READ_ONCE(arg->sync))
 		arg->data = 2;
-	}
 }
 
 static void roc_read_ctrl(void *p)
 {
 	struct roc_arg *arg = p;
 
-	if (READ_ONCE_CTRL(arg->sync)) {
+	if (READ_ONCE_CTRL(arg->sync))
 		arg->data = 2;
-	}
 }
 
 static void kt_test_read_once_ctrl(void)
@@ -604,8 +602,7 @@ static void kt_test_rcu(void)
 
 /* ktsan test: seqlock */
 
-struct wait_on_bit_arg
-{
+struct wait_on_bit_arg {
 	unsigned long bit;
 	unsigned long data;
 };
@@ -641,8 +638,7 @@ static void kt_test_wait_on_bit(void)
 		false, "wait_on_bit", false);
 }
 
-struct seqcount_arg
-{
+struct seqcount_arg {
 	seqcount_t seq[3];
 	int data[6];
 };
@@ -821,7 +817,7 @@ static void kt_test_seqcount(void)
 
 static void kt_malloc1(void *p)
 {
-	*(int*)p = 1;
+	*(int *)p = 1;
 	kfree(kmalloc(1, GFP_KERNEL));
 }
 
@@ -831,7 +827,7 @@ static void kt_malloc2(void *p)
 	   on the same CPU. */
 	msleep_interruptible(100);
 	kfree(kmalloc(1, GFP_KERNEL));
-	*(int*)p = 1;
+	*(int *)p = 1;
 }
 
 static void kt_test_malloc(void)

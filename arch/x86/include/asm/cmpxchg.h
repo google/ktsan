@@ -91,7 +91,7 @@ extern void __add_wrong_size(void)
 	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
 		     sizeof(*(ptr)) != 4 &&				\
 		     sizeof(*(ptr)) != 2 &&				\
-	             sizeof(*(ptr)) != 1);				\
+		     sizeof(*(ptr)) != 1);				\
 									\
 	if (sizeof(*(ptr)) == 8) {					\
 		ret64 = ktsan_atomic64_exchange((void *)(ptr),		\

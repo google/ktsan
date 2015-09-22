@@ -197,6 +197,7 @@ void ktsan_print_diagnostics(void)
 #if KT_DEBUG_TRACE
 	if (thr != NULL) {
 		kt_time_t time;
+
 		time = kt_clk_get(&thr->clk, thr->id);
 		pr_err("Trace:\n");
 		kt_trace_dump(&thr->trace, (time - 512) % KT_TRACE_SIZE, time);
@@ -416,9 +417,8 @@ void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
 {
 	ENTER(KT_ENTER_DISABLED);
 
-	if (kt_thr_event_disable(thr, pc, &kt_flags)) {
+	if (kt_thr_event_disable(thr, pc, &kt_flags))
 		kt_mtx_pre_lock(thr, pc, (uptr_t)addr, write, try);
-	}
 
 	LEAVE();
 }
@@ -428,9 +428,8 @@ void ktsan_mtx_post_lock(void *addr, bool write, bool try, bool success)
 {
 	ENTER(KT_ENTER_DISABLED);
 
-	if (kt_thr_event_enable(thr, pc, &kt_flags)) {
+	if (kt_thr_event_enable(thr, pc, &kt_flags))
 		kt_mtx_post_lock(thr, pc, (uptr_t)addr, write, try, success);
-	}
 
 	LEAVE();
 }
@@ -440,9 +439,8 @@ void ktsan_mtx_pre_unlock(void *addr, bool write)
 {
 	ENTER(KT_ENTER_DISABLED);
 
-	if (kt_thr_event_disable(thr, pc, &kt_flags)) {
+	if (kt_thr_event_disable(thr, pc, &kt_flags))
 		kt_mtx_pre_unlock(thr, pc, (uptr_t)addr, write);
-	}
 
 	LEAVE();
 }
@@ -452,9 +450,8 @@ void ktsan_mtx_post_unlock(void *addr, bool write)
 {
 	ENTER(KT_ENTER_DISABLED);
 
-	if (kt_thr_event_enable(thr, pc, &kt_flags)) {
+	if (kt_thr_event_enable(thr, pc, &kt_flags))
 		kt_mtx_post_unlock(thr, pc, (uptr_t)addr, write);
-	}
 
 	LEAVE();
 }

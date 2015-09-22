@@ -34,7 +34,7 @@ bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr, kt_shadow_t *slot,
 				KT_SHADOW_TO_LONG(value));
 		return true;
 	}
-	old = *(kt_shadow_t*)&raw;
+	old = *(kt_shadow_t *)&raw;
 
 	/* Is the memory access equal to the previous? */
 	if (value.offset == old.offset && value.size == old.size) {
@@ -68,7 +68,7 @@ bool update_one_shadow_slot(kt_thr_t *thr, uptr_t addr, kt_shadow_t *slot,
 		if (kt_clk_get(&thr->clk, old.tid) >= old.clock)
 			return false;
 
-	report_race:
+report_race:
 		info.addr = addr;
 		info.old = old;
 		info.new = value;

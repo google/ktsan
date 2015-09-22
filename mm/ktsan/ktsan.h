@@ -180,7 +180,7 @@ struct kt_locked_mutex_s {
 
 struct kt_mutexset_s {
 	kt_locked_mutex_t	mtx[KT_MAX_LOCKED_MTX];
-	int			size;	
+	int			size;
 };
 
 struct kt_trace_state_s {
@@ -641,7 +641,7 @@ void kt_seqcount_ignore_begin(kt_thr_t *thr, uptr_t pc);
 void kt_seqcount_ignore_end(kt_thr_t *thr, uptr_t pc);
 void kt_seqcount_bug(kt_thr_t *thr, uptr_t addr, const char *what);
 
-void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo);
+void kt_thread_fence(kt_thr_t *thr, uptr_t pc, ktsan_memory_order_t mo);
 
 void kt_atomic8_store(kt_thr_t *thr, uptr_t pc,
 		void *addr, u8 value, ktsan_memory_order_t mo);

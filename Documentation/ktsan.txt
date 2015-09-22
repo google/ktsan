@@ -123,7 +123,7 @@ used to suppress unwanted race reports.
 Shadow
 ------
 
-The shadow memory holds infromation about a few (4 right now) last memory
+The shadow memory holds information about a few (4 right now) last memory
 accesses to each memory cell (with is 8-byte sized now). So for each 8 bytes
 of kernel memory threre are 32 bytes of shadow memory, which contain the
 thread id, clock, size, etc. of a few last accesses to these 8 bytes.

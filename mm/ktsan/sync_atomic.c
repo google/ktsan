@@ -3,7 +3,7 @@
 #include <linux/atomic.h>
 #include <linux/spinlock.h>
 
-void kt_thread_fence(kt_thr_t* thr, uptr_t pc, ktsan_memory_order_t mo)
+void kt_thread_fence(kt_thr_t *thr, uptr_t pc, ktsan_memory_order_t mo)
 {
 	if (mo == ktsan_memory_order_acquire ||
 	    mo == ktsan_memory_order_acq_rel) {

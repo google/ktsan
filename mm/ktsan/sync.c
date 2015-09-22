@@ -49,6 +49,7 @@ kt_tab_sync_t *kt_sync_ensure_created(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 		/* Allocated unique id for the sync object. */
 		if (thr->cpu->sync_uid_pos == thr->cpu->sync_uid_end) {
 			const u64 batch = 64;
+
 			thr->cpu->sync_uid_pos = kt_atomic64_fetch_add_no_ktsan
 				(&kt_ctx.sync_uid_gen, batch);
 			thr->cpu->sync_uid_end = thr->cpu->sync_uid_pos + batch;

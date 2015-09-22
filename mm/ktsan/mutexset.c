@@ -26,7 +26,7 @@ void kt_mutexset_unlock(kt_mutexset_t *set, u64 uid, bool wr)
 			BUG_ON(set->mtx[i].write != wr);
 			set->mtx[i] = set->mtx[set->size - 1];
 			set->size--;
-			return;			
+			return;
 		}
 	}
 	BUG();
