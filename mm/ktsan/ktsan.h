@@ -457,6 +457,24 @@ static inline u64 kt_decompress(u64 addr)
 	return addr | KT_PC_MASK;
 }
 
+static __always_inline void kt_stack_init(kt_stack_t *stack)
+{
+	stack->size = 0;
+}
+
+static __always_inline void kt_stack_push(kt_stack_t *stack, u32 pc)
+{
+	BUG_ON(stack->size + 1 >= KT_MAX_STACK_FRAMES);
+	stack->pc[stack->size++] = pc;
+}
+
+static __always_inline u32 kt_stack_pop(kt_stack_t *stack)
+{
+	BUG_ON(stack->size <= 0);
+	return stack->pc[--stack->size];
+}
+
+void kt_stack_copy(kt_stack_t *dst, kt_stack_t *src);
 void kt_stack_print(kt_stack_t *stack, uptr_t top_pc);
 
 #if KT_DEBUG

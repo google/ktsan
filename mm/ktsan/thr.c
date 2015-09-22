@@ -53,7 +53,7 @@ kt_thr_t *kt_thr_create(kt_thr_t *thr, int pid)
 	new->acquire_active = 0;
 	kt_clk_init(&new->release_clk);
 	new->release_active = 0;
-	new->stack.size = 0;
+	kt_stack_init(&new->stack);
 	kt_trace_init(&new->trace);
 	new->read_disable_depth = 0;
 	new->event_disable_depth = 0;
@@ -221,10 +221,8 @@ void kt_thr_interrupt(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
 	 * BUG_ON(thr->irqs_disabled);
 	 */
 
-	memcpy(&state->stack.pc[0], &thr->stack.pc[0],
-		thr->stack.size * sizeof(thr->stack.pc[0]));
-	state->stack.size = thr->stack.size;
-	thr->stack.size = 0;
+	kt_stack_copy(&state->stack, &thr->stack);
+	kt_stack_init(&thr->stack);
 
 	state->mutexset = thr->mutexset;
 	thr->mutexset.size = 0;
@@ -280,7 +278,7 @@ void kt_thr_resume(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
 	/* This resets stack and mutexset during trace replay. */
 	kt_trace_add_event(thr, kt_event_interrupt, 0);
 	kt_clk_tick(&thr->clk, thr->id);
-	thr->stack.size = 0;
+	kt_stack_init(&thr->stack);
 	for (i = 0; i < state->stack.size; i++)
 		kt_func_entry(thr, kt_decompress(state->stack.pc[i]));
 

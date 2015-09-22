@@ -3,6 +3,13 @@
 #include <linux/kernel.h>
 #include <linux/stacktrace.h>
 
+void kt_stack_copy(kt_stack_t *dst, kt_stack_t *src)
+{
+	/* Faster than *dst = *src, since copies only the needed frames. */
+	memcpy(&dst->pc[0], &src->pc[0], src->size * sizeof(src->pc[0]));
+	dst->size = src->size;
+}
+
 void kt_stack_print(kt_stack_t *stack, uptr_t top_pc)
 {
 	int i;
