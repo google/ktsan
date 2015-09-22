@@ -15,6 +15,7 @@
 #include <linux/sched.h>
 #include <linux/semaphore.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
 typedef void (*thr_func_t)(void *);
 
@@ -818,6 +819,28 @@ static void kt_test_seqcount(void)
 		false, "seqcount_cancel", false);
 }
 
+static void kt_malloc1(void *p)
+{
+	*(int*)p = 1;
+	kfree(kmalloc(1, GFP_KERNEL));
+}
+
+static void kt_malloc2(void *p)
+{
+	/* The intention is that this thread is scheduled after kt_malloc1
+	   on the same CPU. */
+	msleep_interruptible(100);
+	kfree(kmalloc(1, GFP_KERNEL));
+	*(int*)p = 1;
+}
+
+static void kt_test_malloc(void)
+{
+	/* Test that kmalloc does not introduce parasitic synchronization
+	   for threads running on the same CPU. Currently fails. */
+	kt_test(kt_nop, kt_malloc1, kt_malloc2, false, "kmalloc", true);
+}
+
 /* Instrumented tests. */
 
 void kt_tests_run_inst(void)
@@ -858,5 +881,6 @@ void kt_tests_run_inst(void)
 	kt_test_wait_on_bit();
 	pr_err("\n");
 	kt_test_seqcount();
+	kt_test_malloc();
 	pr_err("\n");
 }
