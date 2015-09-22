@@ -916,7 +916,7 @@ EXPORT_SYMBOL(ktsan_percpu_acquire);
 void ktsan_read1(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 0, true);
+	kt_access(thr, pc, (uptr_t)addr, 0, true, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_read1);
@@ -924,7 +924,7 @@ EXPORT_SYMBOL(ktsan_read1);
 void ktsan_read2(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 1, true);
+	kt_access(thr, pc, (uptr_t)addr, 1, true, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_read2);
@@ -932,7 +932,7 @@ EXPORT_SYMBOL(ktsan_read2);
 void ktsan_read4(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 2, true);
+	kt_access(thr, pc, (uptr_t)addr, 2, true, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_read4);
@@ -940,7 +940,7 @@ EXPORT_SYMBOL(ktsan_read4);
 void ktsan_read8(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 3, true);
+	kt_access(thr, pc, (uptr_t)addr, 3, true, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_read8);
@@ -948,8 +948,8 @@ EXPORT_SYMBOL(ktsan_read8);
 void ktsan_read16(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 3, true);
-	kt_access(thr, pc, (uptr_t)addr + 8, 3, true);
+	kt_access(thr, pc, (uptr_t)addr, 3, true, false);
+	kt_access(thr, pc, (uptr_t)addr + 8, 3, true, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_read16);
@@ -965,7 +965,7 @@ EXPORT_SYMBOL(ktsan_read_range);
 void ktsan_write1(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 0, false);
+	kt_access(thr, pc, (uptr_t)addr, 0, false, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_write1);
@@ -973,7 +973,7 @@ EXPORT_SYMBOL(ktsan_write1);
 void ktsan_write2(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 1, false);
+	kt_access(thr, pc, (uptr_t)addr, 1, false, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_write2);
@@ -981,7 +981,7 @@ EXPORT_SYMBOL(ktsan_write2);
 void ktsan_write4(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 2, false);
+	kt_access(thr, pc, (uptr_t)addr, 2, false, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_write4);
@@ -989,7 +989,7 @@ EXPORT_SYMBOL(ktsan_write4);
 void ktsan_write8(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 3, false);
+	kt_access(thr, pc, (uptr_t)addr, 3, false, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_write8);
@@ -997,8 +997,8 @@ EXPORT_SYMBOL(ktsan_write8);
 void ktsan_write16(void *addr)
 {
 	ENTER(KT_ENTER_NORMAL);
-	kt_access(thr, pc, (uptr_t)addr, 3, false);
-	kt_access(thr, pc, (uptr_t)addr + 8, 3, false);
+	kt_access(thr, pc, (uptr_t)addr, 3, false, false);
+	kt_access(thr, pc, (uptr_t)addr + 8, 3, false, false);
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_write16);

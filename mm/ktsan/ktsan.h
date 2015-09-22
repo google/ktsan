@@ -25,7 +25,7 @@
 #define KT_ACCESS_SIZE_4 2
 #define KT_ACCESS_SIZE_8 3
 
-#define KT_THREAD_ID_BITS 13
+#define KT_THREAD_ID_BITS 12
 #define KT_CLOCK_BITS 42
 
 #define KT_SYNC_TAB_SIZE 196613
@@ -215,6 +215,7 @@ struct kt_shadow_s {
 	unsigned long offset	: 3;
 	unsigned long size	: 2;
 	unsigned long read	: 1;
+	unsigned long atomic	: 1;
 };
 
 /* Reports. */
@@ -805,8 +806,10 @@ void ktsan_memblock_free(void *addr, unsigned long size, bool write_to_shadow);
 
 /* Generic memory access. */
 
-void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read);
-void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t sz, bool rd);
+void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+		size_t size, bool read, bool atomic);
+void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+			size_t size, bool read);
 
 void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 				size_t size, bool read);

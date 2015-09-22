@@ -82,7 +82,7 @@ report_race:
 
 static __always_inline
 void kt_access_impl(kt_thr_t *thr, kt_shadow_t *slots, kt_time_t current_clock,
-		uptr_t addr, size_t size, bool read)
+		uptr_t addr, size_t size, bool read, bool atomic)
 {
 	kt_shadow_t value;
 	int i;
@@ -96,6 +96,7 @@ void kt_access_impl(kt_thr_t *thr, kt_shadow_t *slots, kt_time_t current_clock,
 	value.offset = addr & (KT_GRAIN - 1);
 	value.size = size;
 	value.read = read;
+	value.atomic = atomic;
 
 	stored = false;
 	for (i = 0; i < KT_SHADOW_SLOTS; i++)
@@ -117,7 +118,8 @@ void kt_access_impl(kt_thr_t *thr, kt_shadow_t *slots, kt_time_t current_clock,
    Size might be 0, 1, 2 or 3 and equals to the binary logarithm
    of the actual access size.
 */
-void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
+void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr,
+		size_t size, bool read, bool atomic)
 {
 	kt_time_t current_clock;
 	kt_shadow_t *slots;
@@ -132,7 +134,7 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	kt_trace_add_event(thr, kt_event_mop, kt_compress(pc));
 	current_clock = kt_clk_get(&thr->clk, thr->id);
 
-	kt_access_impl(thr, slots, current_clock, addr, size, read);
+	kt_access_impl(thr, slots, current_clock, addr, size, read, atomic);
 }
 
 void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
@@ -156,21 +158,21 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	if (addr & (KT_GRAIN - 1)) {
 		for (; (addr & (KT_GRAIN - 1)) && size; addr++, size--)
 			kt_access_impl(thr, slots, current_clock, addr,
-				KT_ACCESS_SIZE_1, read);
+				KT_ACCESS_SIZE_1, read, false);
 		slots += KT_SHADOW_SLOTS;
 	}
 
 	/* Handle middle part, if any. */
 	for (; size >= KT_GRAIN; addr += KT_GRAIN, size -= KT_GRAIN) {
 		kt_access_impl(thr, slots, current_clock, addr,
-			KT_ACCESS_SIZE_8, read);
+			KT_ACCESS_SIZE_8, read, false);
 		slots += KT_SHADOW_SLOTS;
 	}
 
 	/* Handle ending, if any. */
 	for (; size; addr++, size--)
 		kt_access_impl(thr, slots, current_clock, addr,
-			KT_ACCESS_SIZE_1, read);
+			KT_ACCESS_SIZE_1, read, false);
 }
 
 void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
@@ -201,6 +203,7 @@ void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	value.offset = 0;
 	value.size = KT_ACCESS_SIZE_8;
 	value.read = read;
+	value.atomic = false;
 
 	for (; size; size -= KT_GRAIN) {
 		for (i = 0; i < KT_SHADOW_SLOTS; i++, slots++)
