@@ -793,8 +793,13 @@ void kt_percpu_release(kt_thr_t *thr, uptr_t pc);
 uptr_t kt_memblock_addr(uptr_t addr);
 void kt_memblock_add_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync);
 void kt_memblock_remove_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync);
-void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
-void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size);
+void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size,
+			bool write_to_shadow);
+void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size,
+			bool write_to_shadow);
+
+/* For usage in ktsan_free_page, which doesn't use ENTER / LEAVE. */
+void ktsan_memblock_free(void *addr, unsigned long size, bool write_to_shadow);
 
 /* Generic memory access. */
 

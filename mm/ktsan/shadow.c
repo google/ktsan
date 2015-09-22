@@ -53,9 +53,12 @@ void ktsan_free_page(struct page *page, unsigned int order)
 		for (obj_addr = first_obj_addr;
 		     obj_addr < page_addr + (PAGE_SIZE << order);
 		     obj_addr += cache->size)
-			ktsan_memblock_free((void *)obj_addr, cache->size);
+			ktsan_memblock_free((void *)obj_addr,
+						cache->size, false);
 	}
-	ktsan_memblock_free((void *)page_addr, PAGE_SIZE << order);
+
+	ktsan_memblock_free((void *)page_addr, PAGE_SIZE << order,
+				page[0].shadow ? true : false);
 
 	if (!page[0].shadow)
 		return;

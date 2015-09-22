@@ -7,6 +7,7 @@
 #include <linux/preempt.h>
 #include <linux/printk.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
 
 int ktsan_glob_sync[ktsan_glob_sync_type_count];
 EXPORT_SYMBOL(ktsan_glob_sync);
@@ -397,20 +398,31 @@ void ktsan_sync_release(void *addr)
 }
 EXPORT_SYMBOL(ktsan_sync_release);
 
-void ktsan_memblock_alloc(void *addr, unsigned long size)
+static
+void ktsan_memblock_alloc(void *addr, unsigned long size, bool write_to_shadow)
 {
 	ENTER(KT_ENTER_DISABLED);
 	BUG_ON(thr->event_disable_depth != 0);
-	kt_memblock_alloc(thr, pc, (uptr_t)addr, (size_t)size);
+	kt_memblock_alloc(thr, pc, (uptr_t)addr, (size_t)size, write_to_shadow);
 	LEAVE();
 }
 
-void ktsan_memblock_free(void *addr, unsigned long size)
+void ktsan_memblock_free(void *addr, unsigned long size, bool write_to_shadow)
 {
 	ENTER(KT_ENTER_DISABLED);
 	BUG_ON(thr->event_disable_depth != 0);
-	kt_memblock_free(thr, pc, (uptr_t)addr, (size_t)size);
+	kt_memblock_free(thr, pc, (uptr_t)addr, (size_t)size, write_to_shadow);
 	LEAVE();
+}
+
+void ktsan_slab_alloc(void *addr, unsigned long size, unsigned long flags)
+{
+	ktsan_memblock_alloc(addr, size, !(flags & SLAB_DESTROY_BY_RCU));
+}
+
+void ktsan_slab_free(void *addr, unsigned long size, unsigned long flags)
+{
+	ktsan_memblock_free(addr, size, !(flags & SLAB_DESTROY_BY_RCU));
 }
 
 void ktsan_mtx_pre_lock(void *addr, bool write, bool try)
@@ -456,7 +468,6 @@ void ktsan_mtx_post_unlock(void *addr, bool write)
 	LEAVE();
 }
 EXPORT_SYMBOL(ktsan_mtx_post_unlock);
-
 
 void ktsan_seqcount_begin(const void *s)
 {
