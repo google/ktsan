@@ -1,5 +1,10 @@
 #include "ktsan.h"
 
+void kt_mutexset_init(kt_mutexset_t *set)
+{
+	set->size = 0;
+}
+
 void kt_mutexset_lock(kt_mutexset_t *set, u64 uid, kt_stack_handle_t stk,
 	bool wr)
 {

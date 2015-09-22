@@ -36,7 +36,7 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 			kt_mutexset_unlock(&state->mutexset, event.data, false);
 		} else if (event.type == kt_event_interrupt) {
 			kt_stack_init(&state->stack);
-			state->mutexset.size = 0;
+			kt_mutexset_init(&state->mutexset);
 		}
 	}
 }

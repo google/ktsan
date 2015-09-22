@@ -225,7 +225,7 @@ void kt_thr_interrupt(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
 	kt_stack_init(&thr->stack);
 
 	state->mutexset = thr->mutexset;
-	thr->mutexset.size = 0;
+	kt_mutexset_init(&thr->mutexset);
 
 	state->acquire_active = thr->acquire_active;
 	if (thr->acquire_active) {

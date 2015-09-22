@@ -628,8 +628,10 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
+void kt_mutexset_init(kt_mutexset_t *s);
 void kt_mutexset_lock(kt_mutexset_t *s, u64 uid, kt_stack_handle_t h, bool wr);
 void kt_mutexset_unlock(kt_mutexset_t *set, u64 uid, bool wr);
+
 void kt_mutex_lock(kt_thr_t *thr, uptr_t pc, u64 sync_uid, bool write);
 void kt_mutex_unlock(kt_thr_t *thr, u64 sync_uid, bool write);
 
