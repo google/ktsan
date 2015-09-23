@@ -78,6 +78,7 @@ static inline pte_t native_ptep_get_and_clear(pte_t *xp)
 	   This significantly reduces the number of sync objects.
 	   This might introduce false positives, but none were observed. */
 	pte_t rv;
+
 	ktsan_thr_event_disable();
 	rv = native_make_pte(xchg(&xp->pte, 0));
 	ktsan_thr_event_enable();

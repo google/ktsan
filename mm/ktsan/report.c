@@ -25,7 +25,8 @@ typedef struct sync_entry_s sync_entry_t;
 
 sync_entry_t sync_entries[KT_MAX_SYNC_COUNT];
 
-int u64_cmp(const void *a, const void *b) {
+int u64_cmp(const void *a, const void *b)
+{
 	if (*(u64 *)a < *(u64 *)b)
 		return -1;
 	else if (*(u64 *)a > *(u64 *)b)
@@ -33,7 +34,8 @@ int u64_cmp(const void *a, const void *b) {
 	return 0;
 }
 
-int sync_entry_cmp(const void *a, const void *b) {
+int sync_entry_cmp(const void *a, const void *b)
+{
 	sync_entry_t *sa = (sync_entry_t *)a;
 	sync_entry_t *sb = (sync_entry_t *)b;
 	return sb->count - sa->count;
@@ -48,7 +50,7 @@ void kt_report_sync_usage(void)
 	kt_tab_sync_t *sync;
 	int i, p, curr;
 	uptr_t curr_pc;
-	static int counter = 0;
+	static int counter; /* = 0 */
 
 	if (counter++ % 8 != 0)
 		return;
@@ -111,7 +113,7 @@ static void print_mop(bool new, bool wr, uptr_t addr, int sz, int pid, int cpu)
 	pr_err("%s at 0x%p of size %d by thread %d on CPU %d:\n",
 		new ? (wr ? "Write" : "Read") :
 			(wr ? "Previous write" : "Previous read"),
-		(void*)addr, sz, pid, cpu);
+		(void *)addr, sz, pid, cpu);
 }
 
 void kt_report_race(kt_thr_t *new, kt_race_info_t *info)

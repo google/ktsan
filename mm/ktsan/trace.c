@@ -27,7 +27,7 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 			state->cpu_id = -1;
 		} else if (event.type == kt_event_lock ||
 				event.type == kt_event_rlock) {
-			stk = *(u64*)&trace->events[++i];
+			stk = *(u64 *)&trace->events[++i];
 			kt_mutexset_lock(&state->mutexset, event.data, stk,
 				event.type == kt_event_lock);
 		} else if (event.type == kt_event_unlock) {
@@ -82,7 +82,7 @@ void kt_trace_add_event2(kt_thr_t *thr, kt_event_type_t type, u64 data,
 	pos = clock % KT_TRACE_SIZE;
 	BUG_ON((pos % KT_TRACE_PART_SIZE) == 0);
 	BUG_ON(sizeof(kt_event_t) != sizeof(data2));
-	*(u64*)&thr->trace.events[pos] = data2;
+	*(u64 *)&thr->trace.events[pos] = data2;
 }
 
 void kt_trace_init(kt_trace_t *trace)

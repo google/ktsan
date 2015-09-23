@@ -167,11 +167,11 @@ bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 	BUG_ON(thr->event_disable_depth >= 3);
 
 	if (thr->event_disable_depth - 1 == 0) {
-                /* Disable interrupts as well. Otherwise all events
+		/* Disable interrupts as well. Otherwise all events
 		   that happen in interrupts will be ignored. */
-                thr->irq_flags_before_disable = *flags;
-                /* Set all disabled in *flags. */
-                *flags = arch_local_irq_save();
+		thr->irq_flags_before_disable = *flags;
+		/* Set all disabled in *flags. */
+		*flags = arch_local_irq_save();
 	}
 
 	return (thr->event_disable_depth - 1 == 0);
@@ -192,7 +192,7 @@ bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 
 	if (thr->event_disable_depth == 0) {
 		BUG_ON(!arch_irqs_disabled());
-                *flags = thr->irq_flags_before_disable; 
+		*flags = thr->irq_flags_before_disable;
 	}
 
 	return (thr->event_disable_depth == 0);

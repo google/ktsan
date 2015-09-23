@@ -50,7 +50,7 @@ void kt_seqcount_end(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 
 void kt_seqcount_ignore_begin(kt_thr_t *thr, uptr_t pc)
 {
-	// This is counter-measure against fs/namei.c.
+	/* This is counter-measure against fs/namei.c. */
 	BUG_ON(thr->seqcount_ignore);
 	thr->seqcount_ignore = 1;
 	thr->read_disable_depth++;
@@ -73,9 +73,11 @@ void kt_seqcount_bug(kt_thr_t *thr, uptr_t addr, const char *what)
 
 	pr_err("kt_seqcount_bug: %s\n", what);
 	pr_err(" seqlock=%p read_disable_depth=%d\n",
-		(void*)addr, thr->read_disable_depth);
+		(void *)addr, thr->read_disable_depth);
 	for (i = 0; i < ARRAY_SIZE(thr->seqcount); i++)
-		pr_err(" slot #%d: %p [<%p>] %pS\n", i, (void*)thr->seqcount[i],
-			(void*)thr->seqcount_pc[i], (void*)thr->seqcount_pc[i]);
+		pr_err(" slot #%d: %p [<%p>] %pS\n", i,
+			(void *)thr->seqcount[i],
+			(void *)thr->seqcount_pc[i],
+			(void *)thr->seqcount_pc[i]);
 	BUG();
 }

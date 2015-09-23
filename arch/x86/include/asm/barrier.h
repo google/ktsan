@@ -136,10 +136,10 @@ do {									\
 	compiletime_assert_atomic_type(*___p1);				\
 									\
 	switch (sizeof(*___p1)) {					\
-	case 1: *(u8*)&___r = ktsan_atomic8_load(___p1, ktsan_memory_order_acquire); break;	\
-	case 2: *(u16*)&___r = ktsan_atomic16_load(___p1, ktsan_memory_order_acquire); break;	\
-	case 4: *(u32*)&___r = ktsan_atomic32_load(___p1, ktsan_memory_order_acquire); break;	\
-	case 8: *(u64*)&___r = ktsan_atomic64_load(___p1, ktsan_memory_order_acquire); break;	\
+	case 1: *(u8 *)&___r = ktsan_atomic8_load(___p1, ktsan_memory_order_acquire); break;	\
+	case 2: *(u16 *)&___r = ktsan_atomic16_load(___p1, ktsan_memory_order_acquire); break;	\
+	case 4: *(u32 *)&___r = ktsan_atomic32_load(___p1, ktsan_memory_order_acquire); break;	\
+	case 8: *(u64 *)&___r = ktsan_atomic64_load(___p1, ktsan_memory_order_acquire); break;	\
 	default: BUG(); break;						\
 	}								\
 									\
