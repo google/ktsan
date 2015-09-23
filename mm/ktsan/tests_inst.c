@@ -211,6 +211,83 @@ void kt_test_racy_use_after_free(void)
 		"racy-use-after-free", false, true);
 }
 
+/* ktsan test: SLAB_DESTROY_BY_RCU  */
+
+struct sdbr_obj {
+	int data[32];
+};
+
+struct sdbr_arg {
+	struct kmem_cache *cache;
+	struct sdbr_obj *obj;
+};
+
+static void sdbr_setup(void *p)
+{
+	struct sdbr_arg *arg = (struct sdbr_arg *)p;
+
+	arg->cache = kmem_cache_create("sdbr_cache", sizeof(struct sdbr_obj),
+					0, SLAB_DESTROY_BY_RCU, NULL);
+	BUG_ON(!arg->cache);
+	arg->obj = kmem_cache_alloc(arg->cache, GFP_KERNEL);
+	BUG_ON(!arg->obj);
+}
+
+static void sdbr_teardown(void *p)
+{
+	struct sdbr_arg *arg = (struct sdbr_arg *)p;
+
+	if (arg->obj)
+		kmem_cache_free(arg->cache, arg->obj);
+	kmem_cache_destroy(arg->cache);
+}
+
+static void sdbr_obj_free(void *p)
+{
+	struct sdbr_arg *arg = (struct sdbr_arg *)p;
+	struct sdbr_obj *obj;
+
+	obj = arg->obj;
+	WRITE_ONCE(arg->obj, NULL);
+	kmem_cache_free(arg->cache, obj);
+}
+
+static void sdbr_obj_use(void *p)
+{
+	struct sdbr_arg *arg = (struct sdbr_arg *)p;
+	struct sdbr_obj *obj;
+	int i;
+
+	rcu_read_lock();
+	obj = rcu_dereference(arg->obj);
+	if (obj)
+		for (i = 0; i < 100 * 1000; i++)
+			use(obj->data[i % 32]);
+	rcu_read_unlock();
+}
+
+static void sdbr_obj_realloc(void *p)
+{
+	struct sdbr_arg *arg = (struct sdbr_arg *)p;
+	struct sdbr_obj *obj;
+
+	obj = arg->obj;
+	kmem_cache_free(arg->cache, obj);
+
+	obj = kmem_cache_alloc(arg->cache, GFP_KERNEL);
+	BUG_ON(!obj);
+
+	rcu_assign_pointer(arg->obj, obj);
+}
+
+static void kt_test_slab_destroy_by_rcu(void)
+{
+	kt_test(sdbr_setup, sdbr_teardown, sdbr_obj_free, sdbr_obj_use,
+		"SLAB_DESTROY_BY_RCU-use-vs-free", false, false);
+	kt_test(sdbr_setup, sdbr_teardown, sdbr_obj_realloc, sdbr_obj_use,
+		"SLAB_DESTROY_BY_RCU-use-vs-realloc", false, false);
+}
+
 /* ktsan test: offset. */
 
 static void offset_first(void *arg)
@@ -906,6 +983,7 @@ void kt_tests_run_inst(void)
 	kt_test_stack_race();
 	pr_err("\n");
 	kt_test_racy_use_after_free();
+	kt_test_slab_destroy_by_rcu();
 	pr_err("\n");
 	kt_test_offset();
 	pr_err("\n");
