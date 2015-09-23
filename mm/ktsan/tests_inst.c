@@ -47,8 +47,9 @@ static noinline void use(int x)
 DECLARE_COMPLETION(thr_fst_compl);
 DECLARE_COMPLETION(thr_snd_compl);
 
-void kt_test(thr_func_t main, thr_func_t first, thr_func_t second,
-		bool on_stack, const char *name, bool has_race)
+void kt_test(thr_func_t setup, thr_func_t teardown,
+	     thr_func_t first, thr_func_t second,
+	     const char *name, bool on_stack, bool has_race)
 {
 	struct task_struct *thr_fst, *thr_snd;
 	char thr_fst_name[] = "thr-fst";
@@ -77,7 +78,7 @@ void kt_test(thr_func_t main, thr_func_t first, thr_func_t second,
 		BUG_ON(!value);
 		BUG_ON(!kt_shadow_get((uptr_t)value));
 
-		main(value);
+		setup(value);
 
 		reinit_completion(&thr_fst_compl);
 		reinit_completion(&thr_snd_compl);
@@ -104,6 +105,8 @@ void kt_test(thr_func_t main, thr_func_t first, thr_func_t second,
 		wait_for_completion(&thr_fst_compl);
 		wait_for_completion(&thr_snd_compl);
 
+		teardown(value);
+
 		if (!on_stack)
 			kfree(value);
 	}
@@ -127,8 +130,8 @@ static void slab_race_write(void *arg)
 
 static void kt_test_slab_race(void)
 {
-	kt_test(kt_nop, slab_race_read, slab_race_write,
-		false, "slab-race", true);
+	kt_test(kt_nop, kt_nop, slab_race_read, slab_race_write,
+		"slab-race", false, true);
 }
 
 /* ktsan test: race on global. */
@@ -142,8 +145,8 @@ static void global_race_write(void *arg)
 
 static void kt_test_global_race(void)
 {
-	kt_test(kt_nop, global_race_write, global_race_write,
-		false, "global-race", true);
+	kt_test(kt_nop, kt_nop, global_race_write, global_race_write,
+		"global-race", false, true);
 }
 
 /* ktsan test: race on stack. */
@@ -155,8 +158,8 @@ static void stack_race_write(void *arg)
 
 static void kt_test_stack_race(void)
 {
-	kt_test(kt_nop, stack_race_write, stack_race_write,
-		true, "stack-race", true);
+	kt_test(kt_nop, kt_nop, stack_race_write, stack_race_write,
+		"stack-race", true, true);
 }
 
 /* ktsan test: offset. */
@@ -173,8 +176,8 @@ static void offset_second(void *arg)
 
 static void kt_test_offset(void)
 {
-	kt_test(kt_nop, offset_first, offset_second,
-		false, "offset", false);
+	kt_test(kt_nop, kt_nop, offset_first, offset_second,
+		"offset", false, false);
 }
 
 /* ktsan test: spinlock. */
@@ -197,8 +200,8 @@ static void spinlock_second(void *arg)
 
 static void kt_test_spinlock(void)
 {
-	kt_test(kt_nop, spinlock_first, spinlock_second,
-		false, "spinlock", false);
+	kt_test(kt_nop, kt_nop, spinlock_first, spinlock_second,
+		"spinlock", false, false);
 }
 
 /* ktsan test: READ_ONCE_CTRL. */
@@ -242,10 +245,10 @@ static void roc_read_ctrl(void *p)
 
 static void kt_test_read_once_ctrl(void)
 {
-	kt_test(roc_init, roc_write_wmb, roc_read,
-		false, "READ_ONCE[_CTRL]", true);
-	kt_test(roc_init, roc_write_wmb, roc_read_ctrl,
-		false, "READ_ONCE_CTRL", false);
+	kt_test(roc_init, kt_nop, roc_write_wmb, roc_read,
+		"READ_ONCE[_CTRL]", false, true);
+	kt_test(roc_init, kt_nop, roc_write_wmb, roc_read_ctrl,
+		"READ_ONCE_CTRL", false, false);
 }
 
 /* ktsan test: atomic. */
@@ -270,24 +273,24 @@ static void atomic64_second(void *arg)
 	atomic64_set((atomic64_t *)arg, 1);
 }
 
-static void atomic_xchg_xadd_first(void *arg)
+static void atomic_xvx_xchg(void *arg)
 {
 	xchg((int *)arg, 42);
 }
 
-static void atomic_xchg_xadd_second(void *arg)
+static void atomic_xvx_xadd(void *arg)
 {
 	xadd((int *)arg, 42);
 }
 
 static void kt_test_atomic(void)
 {
-	kt_test(kt_nop, atomic_first, atomic_second,
-		false, "atomic", false);
-	kt_test(kt_nop, atomic64_first, atomic64_second,
-		false, "atomic64", false);
-	kt_test(kt_nop, atomic_xchg_xadd_first, atomic_xchg_xadd_second,
-		false, "xchg & xadd", false);
+	kt_test(kt_nop, kt_nop, atomic_first, atomic_second,
+		"atomic", false, false);
+	kt_test(kt_nop, kt_nop, atomic64_first, atomic64_second,
+		"atomic64", false, false);
+	kt_test(kt_nop, kt_nop, atomic_xvx_xchg, atomic_xvx_xadd,
+		"xchg-vs-xadd", false, false);
 }
 
 /* ktsan test: completion. */
@@ -308,8 +311,8 @@ static void compl_second(void *arg)
 
 static void kt_test_completion(void)
 {
-	kt_test(kt_nop, compl_first, compl_second,
-		false, "completion", false);
+	kt_test(kt_nop, kt_nop, compl_first, compl_second,
+		"completion", false, false);
 }
 
 /* ktsan test: mutex. */
@@ -332,8 +335,8 @@ static void mutex_second(void *arg)
 
 static void kt_test_mutex(void)
 {
-	kt_test(kt_nop, mutex_first, mutex_second,
-		false, "mutex", false);
+	kt_test(kt_nop, kt_nop, mutex_first, mutex_second,
+		"mutex", false, false);
 }
 
 /* ktsan test: semaphore. */
@@ -356,8 +359,8 @@ static void sema_second(void *arg)
 
 static void kt_test_semaphore(void)
 {
-	kt_test(kt_nop, sema_first, sema_second,
-		false, "semaphore", false);
+	kt_test(kt_nop, kt_nop, sema_first, sema_second,
+		"semaphore", false, false);
 }
 
 /* ktsan test: rwlock. */
@@ -380,8 +383,8 @@ static void rwlock_second(void *arg)
 
 static void kt_test_rwlock(void)
 {
-	kt_test(kt_nop, rwlock_first, rwlock_second,
-		false, "rwlock", false);
+	kt_test(kt_nop, kt_nop, rwlock_first, rwlock_second,
+		"rwlock", false, false);
 }
 
 /* ktsan test: rwsem. */
@@ -411,12 +414,12 @@ static void rwsem_read_write(void *arg)
 
 static void kt_test_rwsem(void)
 {
-	kt_test(kt_nop, rwsem_write_write, rwsem_write_write,
-		false, "rwsem-write-write", false);
-	kt_test(kt_nop, rwsem_write_write, rwsem_read_read,
-		false, "rwsem-write-read", false);
-	kt_test(kt_nop, rwsem_write_write, rwsem_read_write,
-		false, "rwsem-write-write-bad", true);
+	kt_test(kt_nop, kt_nop, rwsem_write_write, rwsem_write_write,
+		"rwsem-write-write", false, false);
+	kt_test(kt_nop, kt_nop, rwsem_write_write, rwsem_read_read,
+		"rwsem-write-read", false, false);
+	kt_test(kt_nop, kt_nop, rwsem_write_write, rwsem_read_write,
+		"rwsem-write-write-bad", false, true);
 }
 
 /* ktsan test: percpu-rwsem. */
@@ -452,12 +455,12 @@ static void pcrws_read_write(void *arg)
 
 static void kt_test_percpu_rwsem(void)
 {
-	kt_test(pcrws_main, pcrws_write_write, pcrws_write_write,
-		false, "percpu-rwsem-write-write", false);
-	kt_test(pcrws_main, pcrws_write_write, pcrws_read_read,
-		false, "percpu-rwsem-write-read", false);
-	kt_test(pcrws_main, pcrws_write_write, pcrws_read_write,
-		false, "percpu-rwsem-write-write-bad", true);
+	kt_test(pcrws_main, kt_nop, pcrws_write_write, pcrws_write_write,
+		"percpu-rwsem-write-write", false, false);
+	kt_test(pcrws_main, kt_nop, pcrws_write_write, pcrws_read_read,
+		"percpu-rwsem-write-read", false, false);
+	kt_test(pcrws_main, kt_nop, pcrws_write_write, pcrws_read_write,
+		"percpu-rwsem-write-write-bad", false, true);
 }
 
 /* ktsan test: thread create. */
@@ -474,8 +477,8 @@ static void thr_crt_first(void *arg)
 
 static void kt_test_thread_create(void)
 {
-	kt_test(thr_crt_main, thr_crt_first, kt_nop,
-		false, "thread creation", false);
+	kt_test(thr_crt_main, kt_nop, thr_crt_first, kt_nop,
+		"thread creation", false, false);
 }
 
 /* ktsan tests: percpu. */
@@ -528,16 +531,16 @@ static void percpu_race(void *arg)
 
 static void kt_test_percpu(void)
 {
-	kt_test(kt_nop, percpu_get_put, percpu_get_put,
-		false, "percpu preempt", false);
-	kt_test(kt_nop, percpu_irq, percpu_irq,
-		false, "percpu irq", false);
-	kt_test(kt_nop, percpu_preempt_array, percpu_preempt_array,
-		false, "percpu array", false);
-	kt_test(kt_nop, percpu_access_one, percpu_access_one,
-		false, "percpu access one", true);
-	kt_test(kt_nop, percpu_race, percpu_race,
-		false, "percpu race", true);
+	kt_test(kt_nop, kt_nop, percpu_get_put, percpu_get_put,
+		"percpu preempt", false, false);
+	kt_test(kt_nop, kt_nop, percpu_irq, percpu_irq,
+		"percpu irq", false, false);
+	kt_test(kt_nop, kt_nop, percpu_preempt_array, percpu_preempt_array,
+		"percpu array", false, false);
+	kt_test(kt_nop, kt_nop, percpu_access_one, percpu_access_one,
+		"percpu access one", false, true);
+	kt_test(kt_nop, kt_nop, percpu_race, percpu_race,
+		"percpu race", false, true);
 }
 
 /* ktsan test: rcu */
@@ -582,22 +585,22 @@ static void rcu_deref_ptr(void *arg)
 
 static void kt_test_rcu(void)
 {
-	kt_test(kt_nop, rcu_read_under_lock, rcu_synchronize,
-		false, "rcu-read-synchronize", false);
+	kt_test(kt_nop, kt_nop, rcu_read_under_lock, rcu_synchronize,
+		"rcu-read-synchronize", false, false);
 
 	/* FIXME(xairy): this test doesn't produce report. */
-	kt_test(kt_nop, rcu_write_under_lock, rcu_write_under_lock,
-		false, "rcu-write-write", true);
+	kt_test(kt_nop, kt_nop, rcu_write_under_lock, rcu_write_under_lock,
+		"rcu-write-write", false, true);
 
 	/* FIXME(xairy): this test doesn't produce report. */
-	kt_test(kt_nop, rcu_read_under_lock, rcu_write_under_lock,
-		false, "rcu-read-write", true);
+	kt_test(kt_nop, kt_nop, rcu_read_under_lock, rcu_write_under_lock,
+		"rcu-read-write", false, true);
 
-	kt_test(kt_nop, rcu_read_under_lock, rcu_assign_ptr,
-		false, "rcu-read-assign", false);
+	kt_test(kt_nop, kt_nop, rcu_read_under_lock, rcu_assign_ptr,
+		"rcu-read-assign", false, false);
 
-	kt_test(rcu_init_ptr, rcu_deref_ptr, rcu_assign_ptr,
-		false, "rcu-deref-assign", false);
+	kt_test(rcu_init_ptr, kt_nop, rcu_deref_ptr, rcu_assign_ptr,
+		"rcu-deref-assign", false, false);
 }
 
 /* ktsan test: seqlock */
@@ -634,8 +637,8 @@ static void wait_on_bit_thr2(void *p)
 
 static void kt_test_wait_on_bit(void)
 {
-	kt_test(wait_on_bit_main, wait_on_bit_thr1, wait_on_bit_thr2,
-		false, "wait_on_bit", false);
+	kt_test(wait_on_bit_main, kt_nop, wait_on_bit_thr1, wait_on_bit_thr2,
+		"wait_on_bit", false, false);
 }
 
 struct seqcount_arg {
@@ -807,12 +810,16 @@ static void seq_read_cancel(void *p)
 
 static void kt_test_seqcount(void)
 {
-	kt_test(seq_main, seq_write, seq_read1, false, "seqcount1", false);
-	kt_test(seq_main, seq_write, seq_read2, false, "seqcount2", false);
-	kt_test(seq_main, seq_write, seq_read3, false, "seqcount3", false);
-	kt_test(seq_main, seq_write4, seq_read4, false, "seqcount4", false);
-	kt_test(seq_main, seq_write, seq_read_cancel,
-		false, "seqcount_cancel", false);
+	kt_test(seq_main, kt_nop, seq_write, seq_read1,
+		"seqcount1", false, false);
+	kt_test(seq_main, kt_nop, seq_write, seq_read2,
+		"seqcount2", false, false);
+	kt_test(seq_main, kt_nop, seq_write, seq_read3,
+		"seqcount3", false, false);
+	kt_test(seq_main, kt_nop, seq_write4, seq_read4,
+		"seqcount4", false, false);
+	kt_test(seq_main, kt_nop, seq_write, seq_read_cancel,
+		"seqcount_cancel", false, false);
 }
 
 static void kt_malloc1(void *p)
@@ -834,7 +841,8 @@ static void kt_test_malloc(void)
 {
 	/* Test that kmalloc does not introduce parasitic synchronization
 	   for threads running on the same CPU. Currently fails. */
-	kt_test(kt_nop, kt_malloc1, kt_malloc2, false, "kmalloc", true);
+	kt_test(kt_nop, kt_nop, kt_malloc1, kt_malloc2,
+		"kmalloc", false, true);
 }
 
 /* Instrumented tests. */
