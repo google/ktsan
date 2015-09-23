@@ -63,7 +63,7 @@ void kt_test(thr_func_t setup, thr_func_t teardown,
 	/*
 	 * Run each test 16 times.
 	 * Due to racy race detection algorithm tsan can miss races sometimes,
-	 * so we require it to catch a race at least once in 10 runs.
+	 * so we require it to catch a race at least once in 16 runs.
 	 * For tests without races, it would not be out of place to ensure
 	 * that no runs result in false race reports.
 	 */
@@ -160,6 +160,55 @@ static void kt_test_stack_race(void)
 {
 	kt_test(kt_nop, kt_nop, stack_race_write, stack_race_write,
 		"stack-race", true, true);
+}
+
+/* ktsan test: racy-use-after-free */
+
+struct uaf_obj {
+	int data[32];
+};
+
+struct uaf_arg {
+	struct kmem_cache *cache;
+	struct uaf_obj *obj;
+};
+
+void kt_uaf_setup(void *p)
+{
+	struct uaf_arg *arg = (struct uaf_arg *)p;
+
+	arg->cache = kmem_cache_create("uaf_cache", sizeof(struct uaf_obj),
+					0, 0, NULL);
+	BUG_ON(!arg->cache);
+	arg->obj = kmem_cache_alloc(arg->cache, GFP_KERNEL);
+	BUG_ON(!arg->obj);
+}
+
+void kt_uaf_teardown(void *p)
+{
+	struct uaf_arg *arg = (struct uaf_arg *)p;
+
+	kmem_cache_destroy(arg->cache);
+}
+
+void kt_uaf_free(void *p)
+{
+	struct uaf_arg *arg = (struct uaf_arg *)p;
+
+	kmem_cache_free(arg->cache, arg->obj);
+}
+
+void kt_uaf_use(void *p)
+{
+	struct uaf_arg *arg = (struct uaf_arg *)p;
+
+	use(arg->obj->data[0]);
+}
+
+void kt_test_racy_use_after_free(void)
+{
+	kt_test(kt_uaf_setup, kt_uaf_teardown, kt_uaf_free, kt_uaf_use,
+		"racy-use-after-free", false, true);
 }
 
 /* ktsan test: offset. */
@@ -856,6 +905,8 @@ void kt_tests_run_inst(void)
 	kt_test_global_race();
 	kt_test_stack_race();
 	pr_err("\n");
+	kt_test_racy_use_after_free();
+	pr_err("\n");
 	kt_test_offset();
 	pr_err("\n");
 	kt_test_spinlock();
@@ -885,6 +936,7 @@ void kt_tests_run_inst(void)
 	kt_test_wait_on_bit();
 	pr_err("\n");
 	kt_test_seqcount();
+	pr_err("\n");
 	kt_test_malloc();
 	pr_err("\n");
 }
