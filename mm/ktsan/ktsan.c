@@ -140,7 +140,7 @@ static void ktsan_report_memory_usage(void)
 	u64 total_mem = sync_total_mem + memblock_total_mem + task_cache_mem +
 		percpu_sync_cache_mem + thr_cache_mem + depot_objs_mem;
 
-	pr_err("ktsan memory usage: %llu GB + shadow.\n", total_mem >> 20);
+	pr_err("ktsan memory usage: %llu GB + shadow.\n", total_mem >> 30);
 	pr_err("             syncs: %llu MB \n", sync_total_mem >> 20);
 	pr_err("          memblock: %llu MB \n", memblock_total_mem >> 20);
 	pr_err("      percpu syncs: %llu MB\n", percpu_sync_cache_mem >> 20);

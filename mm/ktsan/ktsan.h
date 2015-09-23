@@ -457,6 +457,24 @@ static inline u64 kt_decompress(u64 addr)
 	return addr | KT_PC_MASK;
 }
 
+static __always_inline void kt_stack_init(kt_stack_t *stack)
+{
+	stack->size = 0;
+}
+
+static __always_inline void kt_stack_push(kt_stack_t *stack, u32 pc)
+{
+	BUG_ON(stack->size + 1 >= KT_MAX_STACK_FRAMES);
+	stack->pc[stack->size++] = pc;
+}
+
+static __always_inline u32 kt_stack_pop(kt_stack_t *stack)
+{
+	BUG_ON(stack->size <= 0);
+	return stack->pc[--stack->size];
+}
+
+void kt_stack_copy(kt_stack_t *dst, kt_stack_t *src);
 void kt_stack_print(kt_stack_t *stack, uptr_t top_pc);
 
 #if KT_DEBUG
@@ -610,9 +628,12 @@ void kt_mtx_post_lock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr, bool try,
 void kt_mtx_pre_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 void kt_mtx_post_unlock(kt_thr_t *thr, uptr_t pc, uptr_t addr, bool wr);
 
-void kt_mutexset_lock(kt_mutexset_t *set, u64 uid, kt_stack_handle_t stk,
-	bool wr);
+void kt_mutexset_init(kt_mutexset_t *s);
+void kt_mutexset_lock(kt_mutexset_t *s, u64 uid, kt_stack_handle_t h, bool wr);
 void kt_mutexset_unlock(kt_mutexset_t *set, u64 uid, bool wr);
+
+void kt_mutex_lock(kt_thr_t *thr, uptr_t pc, u64 sync_uid, bool write);
+void kt_mutex_unlock(kt_thr_t *thr, u64 sync_uid, bool write);
 
 void kt_seqcount_begin(kt_thr_t *thr, uptr_t pc, uptr_t addr);
 void kt_seqcount_end(kt_thr_t *thr, uptr_t pc, uptr_t addr);

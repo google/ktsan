@@ -13,12 +13,9 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 	for (i = beg; i <= end; i++) {
 		event = trace->events[i];
 		if (event.type == kt_event_func_enter) {
-			BUG_ON(state->stack.size + 1 == KT_MAX_STACK_FRAMES);
-			state->stack.pc[state->stack.size] = event.data;
-			state->stack.size++;
+			kt_stack_push(&state->stack, event.data);
 		} else if (event.type == kt_event_func_exit) {
-			BUG_ON(state->stack.size <= 0);
-			state->stack.size--;
+			kt_stack_pop(&state->stack);
 		} else if (event.type == kt_event_thr_start) {
 			int cpu = event.data & 0xffff;
 			int pid = (s32)(u32)(event.data >> 16);
@@ -38,8 +35,8 @@ static inline void kt_trace_follow(kt_trace_t *trace, unsigned long beg,
 		} else if (event.type == kt_event_runlock) {
 			kt_mutexset_unlock(&state->mutexset, event.data, false);
 		} else if (event.type == kt_event_interrupt) {
-			state->stack.size = 0;
-			state->mutexset.size = 0;
+			kt_stack_init(&state->stack);
+			kt_mutexset_init(&state->mutexset);
 		}
 	}
 }
