@@ -453,6 +453,37 @@ static void kt_test_mop_vs_atomic(void)
 		"mop-vs-atomic-read-read", false, false);
 }
 
+/* ktsan test: use-after-acquire */
+
+static void uaa_setup(void *arg)
+{
+	int *value = (int *)arg;
+
+	*value = 0;
+}
+
+static void uaa_release(void *arg)
+{
+	int *value = (int *)arg;
+
+	smp_store_release(value, 1);
+}
+
+static void uaa_acquire(void *arg)
+{
+	int *value = (int *)arg;
+
+	while (smp_load_acquire(value) != 1);
+
+	*value = 2;
+}
+
+static void kt_test_use_after_acquire(void)
+{
+	kt_test(uaa_setup, kt_nop, uaa_release, uaa_acquire,
+		"use-after-acquire", false, false);
+}
+
 /* ktsan test: completion. */
 
 DECLARE_COMPLETION(completion_sync);
@@ -1028,6 +1059,8 @@ void kt_tests_run_inst(void)
 	kt_test_atomic();
 	pr_err("\n");
 	kt_test_mop_vs_atomic();
+	pr_err("\n");
+	kt_test_use_after_acquire();
 	pr_err("\n");
 	kt_test_completion();
 	pr_err("\n");
