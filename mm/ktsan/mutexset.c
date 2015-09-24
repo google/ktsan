@@ -42,7 +42,6 @@ void kt_mutex_lock(kt_thr_t *thr, uptr_t pc, u64 sync_uid, bool write)
 	stack_handle = kt_stack_depot_save(&kt_ctx.stack_depot, &thr->stack);
 	kt_trace_add_event2(thr, write ? kt_event_lock : kt_event_rlock,
 				sync_uid, stack_handle);
-	kt_clk_tick(&thr->clk, thr->id);
 	kt_mutexset_lock(&thr->mutexset, sync_uid, stack_handle, write);
 	kt_func_exit(thr);
 }
@@ -52,6 +51,5 @@ void kt_mutex_unlock(kt_thr_t *thr, u64 sync_uid, bool write)
 {
 	kt_trace_add_event(thr, write ? kt_event_unlock : kt_event_runlock,
 				sync_uid);
-	kt_clk_tick(&thr->clk, thr->id);
 	kt_mutexset_unlock(&thr->mutexset, sync_uid, write);
 }

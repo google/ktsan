@@ -84,7 +84,6 @@ void kt_sync_acquire(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 
 #if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_acquire, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
 	sync = kt_sync_ensure_created(thr, pc, addr);
@@ -100,7 +99,6 @@ void kt_sync_release(kt_thr_t *thr, uptr_t pc, uptr_t addr)
 
 #if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_release, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
 	sync = kt_sync_ensure_created(thr, pc, addr);

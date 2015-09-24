@@ -129,9 +129,8 @@ void kt_access(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size, bool read)
 	if (unlikely(!slots))
 		return; /* FIXME? */
 
-	current_clock = kt_clk_get(&thr->clk, thr->id);
 	kt_trace_add_event(thr, kt_event_mop, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
+	current_clock = kt_clk_get(&thr->clk, thr->id);
 
 	kt_access_impl(thr, slots, current_clock, addr, size, read);
 }
@@ -150,9 +149,8 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 	if (unlikely(!slots))
 		return; /* FIXME? */
 
-	current_clock = kt_clk_get(&thr->clk, thr->id);
 	kt_trace_add_event(thr, kt_event_mop, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
+	current_clock = kt_clk_get(&thr->clk, thr->id);
 
 	/* Handle unaligned beginning, if any. */
 	if (addr & (KT_GRAIN - 1)) {
@@ -178,6 +176,7 @@ void kt_access_range(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 				size_t size, bool read)
 {
+	kt_time_t current_clock;
 	kt_shadow_t value;
 	kt_shadow_t *slots;
 	int i;
@@ -192,13 +191,13 @@ void kt_access_range_imitate(kt_thr_t *thr, uptr_t pc, uptr_t addr,
 		return; /* FIXME? */
 
 	kt_trace_add_event(thr, kt_event_mop, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
+	current_clock = kt_clk_get(&thr->clk, thr->id);
 
 	/* Below we assume that access size 8 covers whole grain. */
 	BUG_ON(KT_GRAIN != (1 << KT_ACCESS_SIZE_8));
 
 	value.tid = thr->id;
-	value.clock = kt_clk_get(&thr->clk, thr->id);
+	value.clock = current_clock;
 	value.offset = 0;
 	value.size = KT_ACCESS_SIZE_8;
 	value.read = read;

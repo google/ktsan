@@ -69,20 +69,19 @@ void kt_trace_add_event2(kt_thr_t *thr, kt_event_type_t type, u64 data,
 	unsigned pos;
 
 	clock = kt_clk_get(&thr->clk, thr->id);
-	if (((clock + 1) % KT_TRACE_PART_SIZE) == 0) {
+	if (((clock + 2) % KT_TRACE_PART_SIZE) == 0) {
 		/* The trace would switch between the two data items.
 		 * Push a fake event to precent it. */
 		kt_trace_add_event(thr, kt_event_nop, 0);
-		kt_clk_tick(&thr->clk, thr->id);
 	}
 	kt_trace_add_event(thr, type, data);
-	kt_clk_tick(&thr->clk, thr->id);
 
 	clock = kt_clk_get(&thr->clk, thr->id);
-	pos = clock % KT_TRACE_SIZE;
+	pos = clock % KT_TRACE_SIZE + 1;
 	BUG_ON((pos % KT_TRACE_PART_SIZE) == 0);
 	BUG_ON(sizeof(kt_event_t) != sizeof(data2));
 	*(u64 *)&thr->trace.events[pos] = data2;
+	kt_clk_tick(&thr->clk, thr->id);
 }
 
 void kt_trace_init(kt_trace_t *trace)
@@ -100,7 +99,7 @@ u64 kt_trace_last_data(kt_thr_t *thr)
 	kt_time_t clock;
 	kt_event_t event;
 
-	clock = kt_clk_get(&thr->clk, thr->id) - 1;
+	clock = kt_clk_get(&thr->clk, thr->id);
 	event = thr->trace.events[clock % KT_TRACE_SIZE];
 	BUG_ON(event.type != kt_event_mop);
 	return event.data;
