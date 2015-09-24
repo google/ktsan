@@ -100,6 +100,9 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size,
 	struct list_head *entry, *tmp;
 	kt_tab_sync_t *sync;
 
+	if (write_to_shadow)
+		kt_access_range(thr, pc, addr, size, false);
+
 	memblock = kt_tab_access(&kt_ctx.memblock_tab, addr, NULL, true);
 
 	if (memblock == NULL)
@@ -116,7 +119,4 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size,
 
 	kt_stat_dec(kt_stat_memblock_objects);
 	kt_stat_inc(kt_stat_memblock_free);
-
-	if (write_to_shadow)
-		kt_access_range(thr, pc, addr, size, false);
 }
