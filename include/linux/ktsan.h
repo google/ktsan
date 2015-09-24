@@ -57,8 +57,8 @@ void ktsan_thr_event_enable(void);
 void ktsan_thr_report_disable(void);
 void ktsan_thr_report_enable(void);
 
-void ktsan_memblock_alloc(void *addr, unsigned long size);
-void ktsan_memblock_free(void *addr, unsigned long size);
+void ktsan_slab_alloc(void *addr, unsigned long size, unsigned long flags);
+void ktsan_slab_free(void *addr, unsigned long size, unsigned long flags);
 
 void ktsan_sync_acquire(void *addr);
 void ktsan_sync_release(void *addr);

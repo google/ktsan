@@ -82,18 +82,26 @@ void kt_memblock_remove_sync(kt_thr_t *thr, uptr_t addr, kt_tab_sync_t *sync)
 	kt_spin_unlock(&memblock->tab.lock);
 }
 
-void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
+void kt_memblock_alloc(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size,
+			bool write_to_shadow)
 {
 	/* Memory block size is multiple of KT_GRAIN, so round the size up.
 	 * In the "worst" case we will catch OOB accesses due to this. */
-	kt_access_range_imitate(thr, pc, addr, round_up(size, KT_GRAIN), false);
+	size = round_up(size, KT_GRAIN);
+
+	if (write_to_shadow)
+		kt_access_range_imitate(thr, pc, addr, size, false);
 }
 
-void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
+void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size,
+			bool write_to_shadow)
 {
 	kt_tab_memblock_t *memblock;
 	struct list_head *entry, *tmp;
 	kt_tab_sync_t *sync;
+
+	if (write_to_shadow)
+		kt_access_range(thr, pc, addr, size, false);
 
 	memblock = kt_tab_access(&kt_ctx.memblock_tab, addr, NULL, true);
 
@@ -111,6 +119,4 @@ void kt_memblock_free(kt_thr_t *thr, uptr_t pc, uptr_t addr, size_t size)
 
 	kt_stat_dec(kt_stat_memblock_objects);
 	kt_stat_inc(kt_stat_memblock_free);
-
-	kt_access_range(thr, pc, addr, size, false);
 }
