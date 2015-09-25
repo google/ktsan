@@ -123,7 +123,6 @@ void kt_thr_start(kt_thr_t *thr, uptr_t pc)
 {
 	kt_trace_add_event(thr, kt_event_thr_start,
 		smp_processor_id() | ((u32)thr->pid << 16));
-	kt_clk_tick(&thr->clk, thr->id);
 
 	thr->cpu = this_cpu_ptr(kt_ctx.cpus);
 	BUG_ON(thr->cpu->thr != NULL);
@@ -140,7 +139,6 @@ void kt_thr_stop(kt_thr_t *thr, uptr_t pc)
 	kt_percpu_release(thr, pc);
 
 	kt_trace_add_event(thr, kt_event_thr_stop, smp_processor_id());
-	kt_clk_tick(&thr->clk, thr->id);
 
 	BUG_ON(thr->cpu == NULL);
 	BUG_ON(thr->cpu->thr != thr);
@@ -158,7 +156,6 @@ bool kt_thr_event_disable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 {
 #if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_event_disable, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
 	if (thr->event_disable_depth == 0)
 		thr->last_event_disable_time = kt_clk_get(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
@@ -182,7 +179,6 @@ bool kt_thr_event_enable(kt_thr_t *thr, uptr_t pc, unsigned long *flags)
 {
 #if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_event_enable, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
 	if (thr->event_disable_depth - 1 == 0)
 		thr->last_event_enable_time = kt_clk_get(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
@@ -257,7 +253,6 @@ void kt_thr_interrupt(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
 
 	/* This resets stack and mutexset during trace replay. */
 	kt_trace_add_event(thr, kt_event_interrupt, 0);
-	kt_clk_tick(&thr->clk, thr->id);
 }
 
 void kt_thr_resume(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
@@ -277,7 +272,6 @@ void kt_thr_resume(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
 
 	/* This resets stack and mutexset during trace replay. */
 	kt_trace_add_event(thr, kt_event_interrupt, 0);
-	kt_clk_tick(&thr->clk, thr->id);
 	kt_stack_init(&thr->stack);
 	for (i = 0; i < state->stack.size; i++)
 		kt_func_entry(thr, kt_decompress(state->stack.pc[i]));
@@ -288,7 +282,6 @@ void kt_thr_resume(kt_thr_t *thr, uptr_t pc, kt_interrupted_t *state)
 
 		kt_trace_add_event2(thr, mtx->write ? kt_event_lock :
 			kt_event_rlock, mtx->uid, mtx->stack);
-		kt_clk_tick(&thr->clk, thr->id);
 	}
 
 	thr->acquire_active = state->acquire_active;

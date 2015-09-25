@@ -535,6 +535,8 @@ void kt_trace_add_event(kt_thr_t *thr, kt_event_type_t type, u64 data)
 
 	kt_stat_inc(kt_stat_trace_event);
 
+	kt_clk_tick(&thr->clk, thr->id);
+
 	trace = &thr->trace;
 	clock = kt_clk_get(&thr->clk, thr->id);
 	pos = clock % KT_TRACE_SIZE;

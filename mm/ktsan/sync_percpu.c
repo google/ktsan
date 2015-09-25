@@ -55,7 +55,6 @@ void kt_preempt_add(kt_thr_t *thr, uptr_t pc, int value)
 {
 #if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_preempt_disable, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
 	thr->preempt_disable_depth += value;
@@ -65,7 +64,6 @@ void kt_preempt_sub(kt_thr_t *thr, uptr_t pc, int value)
 {
 #if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_preempt_enable, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
 	thr->preempt_disable_depth -= value;
@@ -77,7 +75,6 @@ void kt_irq_disable(kt_thr_t *thr, uptr_t pc)
 {
 #if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_irq_disable, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
 	thr->irqs_disabled = true;
@@ -87,7 +84,6 @@ void kt_irq_enable(kt_thr_t *thr, uptr_t pc)
 {
 #if KT_DEBUG
 	kt_trace_add_event(thr, kt_event_irq_enable, kt_compress(pc));
-	kt_clk_tick(&thr->clk, thr->id);
 #endif /* KT_DEBUG */
 
 	thr->irqs_disabled = false;
