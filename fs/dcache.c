@@ -2327,7 +2327,7 @@ struct dentry *__d_lookup(const struct dentry *parent, const struct qstr *name)
 				goto next;
 		}
 
-		dentry->d_lockref.count++;
+		WRITE_ONCE(dentry->d_lockref.count, READ_ONCE(dentry->d_lockref.count) + 1);
 		found = dentry;
 		spin_unlock(&dentry->d_lock);
 		break;
