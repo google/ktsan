@@ -661,7 +661,7 @@ static inline bool fast_dput(struct dentry *dentry)
 	if (unlikely(ret < 0)) {
 		spin_lock(&dentry->d_lock);
 		if (dentry->d_lockref.count > 1) {
-			dentry->d_lockref.count--;
+			WRITE_ONCE(dentry->d_lockref.count, READ_ONCE(dentry->d_lockref.count) - 1);
 			spin_unlock(&dentry->d_lock);
 			return 1;
 		}
@@ -803,7 +803,7 @@ EXPORT_SYMBOL(dput);
 /* This must be called with d_lock held */
 static inline void __dget_dlock(struct dentry *dentry)
 {
-	dentry->d_lockref.count++;
+	WRITE_ONCE(dentry->d_lockref.count, READ_ONCE(dentry->d_lockref.count) + 1);
 }
 
 static inline void __dget(struct dentry *dentry)
@@ -2334,7 +2334,7 @@ struct dentry *__d_lookup(const struct dentry *parent, const struct qstr *name)
 				goto next;
 		}
 
-		dentry->d_lockref.count++;
+		WRITE_ONCE(dentry->d_lockref.count, READ_ONCE(dentry->d_lockref.count) + 1);
 		found = dentry;
 		spin_unlock(&dentry->d_lock);
 		break;

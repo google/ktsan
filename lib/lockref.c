@@ -150,7 +150,7 @@ int lockref_put_or_lock(struct lockref *lockref)
 	spin_lock(&lockref->lock);
 	if (lockref->count <= 1)
 		return 0;
-	lockref->count--;
+	WRITE_ONCE(lockref->count, READ_ONCE(lockref->count) - 1);
 	spin_unlock(&lockref->lock);
 	return 1;
 }
@@ -187,7 +187,7 @@ int lockref_get_not_dead(struct lockref *lockref)
 	spin_lock(&lockref->lock);
 	retval = 0;
 	if (lockref->count >= 0) {
-		lockref->count++;
+		WRITE_ONCE(lockref->count, READ_ONCE(lockref->count) + 1);
 		retval = 1;
 	}
 	spin_unlock(&lockref->lock);
