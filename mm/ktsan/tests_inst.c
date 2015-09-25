@@ -419,6 +419,71 @@ static void kt_test_atomic(void)
 		"xchg-vs-xadd", false, false);
 }
 
+/* ktsan test: mop vs atomic */
+
+static void mva_write(void *arg)
+{
+	*((int *)arg) = 1;
+}
+
+static void mva_read(void *arg)
+{
+	use(*((int *)arg));
+}
+
+static void mva_atomic_write(void *arg)
+{
+	atomic_set((atomic_t *)arg, 1);
+}
+
+static void mva_atomic_read(void *arg)
+{
+	use(atomic_read((atomic_t *)arg));
+}
+
+static void kt_test_mop_vs_atomic(void)
+{
+	kt_test(kt_nop, kt_nop, mva_write, mva_atomic_write,
+		"mop-vs-atomic-write-write", false, true);
+	kt_test(kt_nop, kt_nop, mva_write, mva_atomic_read,
+		"mop-vs-atomic-write-read", false, true);
+	kt_test(kt_nop, kt_nop, mva_read, mva_atomic_write,
+		"mop-vs-atomic-read-write", false, true);
+	kt_test(kt_nop, kt_nop, mva_read, mva_atomic_read,
+		"mop-vs-atomic-read-read", false, false);
+}
+
+/* ktsan test: use-after-acquire */
+
+static void uaa_setup(void *arg)
+{
+	int *value = (int *)arg;
+
+	*value = 0;
+}
+
+static void uaa_release(void *arg)
+{
+	int *value = (int *)arg;
+
+	smp_store_release(value, 1);
+}
+
+static void uaa_acquire(void *arg)
+{
+	int *value = (int *)arg;
+
+	while (smp_load_acquire(value) != 1);
+
+	*value = 2;
+}
+
+static void kt_test_use_after_acquire(void)
+{
+	kt_test(uaa_setup, kt_nop, uaa_release, uaa_acquire,
+		"use-after-acquire", false, false);
+}
+
 /* ktsan test: completion. */
 
 DECLARE_COMPLETION(completion_sync);
@@ -992,6 +1057,10 @@ void kt_tests_run_inst(void)
 	kt_test_read_once_ctrl();
 	pr_err("\n");
 	kt_test_atomic();
+	pr_err("\n");
+	kt_test_mop_vs_atomic();
+	pr_err("\n");
+	kt_test_use_after_acquire();
 	pr_err("\n");
 	kt_test_completion();
 	pr_err("\n");

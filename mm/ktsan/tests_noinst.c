@@ -121,7 +121,7 @@ void kt_test_trace(void)
 
 	/* Fake mop event. */
 	fake = kmalloc(sizeof(*fake), GFP_KERNEL);
-	kt_access(thr, (uptr_t)_RET_IP_, (uptr_t)fake, 1, false);
+	kt_access(thr, (uptr_t)_RET_IP_, (uptr_t)fake, 1, false, false);
 	kfree(fake);
 
 	kt_trace_restore_state(thr, clock, &state);
