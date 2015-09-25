@@ -661,7 +661,7 @@ static inline bool fast_dput(struct dentry *dentry)
 	if (unlikely(ret < 0)) {
 		spin_lock(&dentry->d_lock);
 		if (dentry->d_lockref.count > 1) {
-			dentry->d_lockref.count--;
+			WRITE_ONCE(dentry->d_lockref.count, READ_ONCE(dentry->d_lockref.count) - 1);
 			spin_unlock(&dentry->d_lock);
 			return 1;
 		}
