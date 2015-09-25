@@ -803,7 +803,7 @@ EXPORT_SYMBOL(dput);
 /* This must be called with d_lock held */
 static inline void __dget_dlock(struct dentry *dentry)
 {
-	dentry->d_lockref.count++;
+	WRITE_ONCE(dentry->d_lockref.count, READ_ONCE(dentry->d_lockref.count) + 1);
 }
 
 static inline void __dget(struct dentry *dentry)
