@@ -223,6 +223,16 @@ static inline int plist_node_empty(const struct plist_node *node)
 	return list_empty(&node->node_list);
 }
 
+/**
+ * plist_node_empty - same as plist_node_empty, but allows concurrent
+ *		      mutations of the list (best-effort check).
+ * @node:	&struct plist_node pointer
+ */
+static inline int plist_node_empty_once(const struct plist_node *node)
+{
+	return list_empty_once(&node->node_list);
+}
+
 /* All functions below assume the plist_head is not empty. */
 
 /**
