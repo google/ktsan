@@ -1013,6 +1013,8 @@ static void kt_test_seqcount(void)
 		"seqcount_cancel", false, false);
 }
 
+/* ktsan test: parasitic synchronization by kmalloc */
+
 static void kt_malloc1(void *p)
 {
 	*(int *)p = 1;
@@ -1034,6 +1036,42 @@ static void kt_test_malloc(void)
 	   for threads running on the same CPU. Currently fails. */
 	kt_test(kt_nop, kt_nop, kt_malloc1, kt_malloc2,
 		"kmalloc", false, true);
+}
+
+/* ktsan test: bad-unlock: unlock mutex in another thread */
+
+int bu_locked;
+DEFINE_SPINLOCK(bu_spinlock);
+
+static void bu_setup(void *arg)
+{
+	bu_locked = 0;
+}
+
+static void bu_lock(void *arg)
+{
+	spin_lock(&bu_spinlock);
+
+	/* Fixup preempt counter. */
+	preempt_enable();
+
+	smp_store_release(&bu_locked, 1);
+}
+
+static void bu_unlock(void *arg)
+{
+	while (smp_load_acquire(&bu_locked) != 1);
+
+	/* Fixup preempt counter. */
+	preempt_disable();
+
+	spin_unlock(&bu_spinlock);
+}
+
+static void kt_test_bad_unlock(void)
+{
+	kt_test(bu_setup, kt_nop, bu_lock, bu_unlock,
+		"bad-unlock", false, true);
 }
 
 /* Instrumented tests. */
@@ -1085,5 +1123,7 @@ void kt_tests_run_inst(void)
 	kt_test_seqcount();
 	pr_err("\n");
 	kt_test_malloc();
+	pr_err("\n");
+	kt_test_bad_unlock();
 	pr_err("\n");
 }
