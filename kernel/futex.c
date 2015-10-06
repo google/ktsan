@@ -2084,7 +2084,7 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 	 * If we have been removed from the hash list, then another task
 	 * has tried to wake us, and we can skip the call to schedule().
 	 */
-	if (likely(!plist_node_empty(&q->list))) {
+	if (likely(!plist_node_empty_once(&q->list))) {
 		/*
 		 * If the timer has already expired, current will already be
 		 * flagged for rescheduling. Only call schedule if there
