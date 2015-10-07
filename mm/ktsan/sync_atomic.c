@@ -340,21 +340,21 @@ void kt_atomic_set_bit(kt_thr_t *thr, uptr_t pc,
 		void *addr, long nr, ktsan_memory_order_t mo)
 {
 	KT_ATOMIC_OP(kt_atomic_set_bit_no_ktsan(addr, nr),
-		(uptr_t)addr, KT_ACCESS_SIZE_8, mo, false, true);
+		(uptr_t)addr + (nr >> 3), KT_ACCESS_SIZE_1, mo, false, true);
 }
 
 void kt_atomic_clear_bit(kt_thr_t *thr, uptr_t pc,
 		void *addr, long nr, ktsan_memory_order_t mo)
 {
 	KT_ATOMIC_OP(kt_atomic_clear_bit_no_ktsan(addr, nr),
-		(uptr_t)addr, KT_ACCESS_SIZE_8, mo, false, true);
+		(uptr_t)addr + (nr >> 3), KT_ACCESS_SIZE_1, mo, false, true);
 }
 
 void kt_atomic_change_bit(kt_thr_t *thr, uptr_t pc,
 		void *addr, long nr, ktsan_memory_order_t mo)
 {
 	KT_ATOMIC_OP(kt_atomic_change_bit_no_ktsan(addr, nr),
-		(uptr_t)addr, KT_ACCESS_SIZE_8, mo, true, true);
+		(uptr_t)addr + (nr >> 3), KT_ACCESS_SIZE_1, mo, true, true);
 }
 
 int kt_atomic_fetch_set_bit(kt_thr_t *thr, uptr_t pc,
@@ -363,7 +363,7 @@ int kt_atomic_fetch_set_bit(kt_thr_t *thr, uptr_t pc,
 	int rv;
 
 	KT_ATOMIC_OP(rv = kt_atomic_fetch_set_bit_no_ktsan(addr, nr),
-		(uptr_t)addr, KT_ACCESS_SIZE_8, mo, true, true);
+		(uptr_t)addr + (nr >> 3), KT_ACCESS_SIZE_1, mo, true, true);
 
 	return rv;
 }
@@ -374,7 +374,7 @@ int kt_atomic_fetch_clear_bit(kt_thr_t *thr, uptr_t pc,
 	int rv;
 
 	KT_ATOMIC_OP(rv = kt_atomic_fetch_clear_bit_no_ktsan(addr, nr),
-		(uptr_t)addr, KT_ACCESS_SIZE_8, mo, true, true);
+		(uptr_t)addr + (nr >> 3), KT_ACCESS_SIZE_1, mo, true, true);
 
 	return rv;
 }
@@ -385,7 +385,7 @@ int kt_atomic_fetch_change_bit(kt_thr_t *thr, uptr_t pc,
 	int rv;
 
 	KT_ATOMIC_OP(rv = kt_atomic_fetch_change_bit_no_ktsan(addr, nr),
-		(uptr_t)addr, KT_ACCESS_SIZE_8, mo, true, true);
+		(uptr_t)addr + (nr >> 3), KT_ACCESS_SIZE_1, mo, true, true);
 
 	return rv;
 }
