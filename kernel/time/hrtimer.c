@@ -870,9 +870,9 @@ static int enqueue_hrtimer(struct hrtimer *timer,
 {
 	debug_activate(timer);
 
-	base->cpu_base->active_bases |= 1 << base->index;
+	READ_ONCE(base->cpu_base)->active_bases |= 1 << base->index;
 
-	timer->state = HRTIMER_STATE_ENQUEUED;
+	WRITE_ONCE(timer->state, HRTIMER_STATE_ENQUEUED);
 
 	return timerqueue_add(&base->active, &timer->node);
 }
@@ -891,10 +891,10 @@ static void __remove_hrtimer(struct hrtimer *timer,
 			     struct hrtimer_clock_base *base,
 			     unsigned long newstate, int reprogram)
 {
-	struct hrtimer_cpu_base *cpu_base = base->cpu_base;
-	unsigned int state = timer->state;
+	struct hrtimer_cpu_base *cpu_base = READ_ONCE(base->cpu_base);
+	unsigned int state = READ_ONCE(timer->state);
 
-	timer->state = newstate;
+	WRITE_ONCE(timer->state, newstate);
 	if (!(state & HRTIMER_STATE_ENQUEUED))
 		return;
 
@@ -1157,8 +1157,8 @@ bool hrtimer_active(const struct hrtimer *timer)
 		cpu_base = READ_ONCE(timer->base->cpu_base);
 		seq = raw_read_seqcount_begin(&cpu_base->seq);
 
-		if (timer->state != HRTIMER_STATE_INACTIVE ||
-		    cpu_base->running == timer)
+		if (READ_ONCE(timer->state) != HRTIMER_STATE_INACTIVE ||
+		    READ_ONCE(cpu_base->running) == timer)
 			return true;
 
 	} while (read_seqcount_retry(&cpu_base->seq, seq) ||
@@ -1196,7 +1196,7 @@ static void __run_hrtimer(struct hrtimer_cpu_base *cpu_base,
 	lockdep_assert_held(&cpu_base->lock);
 
 	debug_deactivate(timer);
-	cpu_base->running = timer;
+	WRITE_ONCE(cpu_base->running, timer);
 
 	/*
 	 * Separate the ->running assignment from the ->state assignment.
@@ -1232,7 +1232,7 @@ static void __run_hrtimer(struct hrtimer_cpu_base *cpu_base,
 	 * for us already.
 	 */
 	if (restart != HRTIMER_NORESTART &&
-	    !(timer->state & HRTIMER_STATE_ENQUEUED))
+	    !(READ_ONCE(timer->state) & HRTIMER_STATE_ENQUEUED))
 		enqueue_hrtimer(timer, base);
 
 	/*
@@ -1244,8 +1244,8 @@ static void __run_hrtimer(struct hrtimer_cpu_base *cpu_base,
 	 */
 	raw_write_seqcount_barrier(&cpu_base->seq);
 
-	WARN_ON_ONCE(cpu_base->running != timer);
-	cpu_base->running = NULL;
+	WARN_ON_ONCE(READ_ONCE(cpu_base->running) != timer);
+	WRITE_ONCE(cpu_base->running, NULL);
 }
 
 static void __hrtimer_run_queues(struct hrtimer_cpu_base *cpu_base, ktime_t now)
