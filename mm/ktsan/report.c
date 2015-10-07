@@ -246,12 +246,10 @@ void kt_report_bad_mtx_unlock(kt_thr_t *new, uptr_t pc, kt_tab_sync_t *sync)
 	pr_err("Unlock by thread %d on CPU %d:\n",
 		new->pid, smp_processor_id());
 	kt_stack_print(&new->stack, pc);
-	pr_err("\n");
 
 	pr_err("Previous lock by thread %d on CPU %d:\n",
 		state.pid, state.cpu_id);
 	kt_stack_print(&state.stack, 0);
-	pr_err("\n");
 
 	pr_err("==================================================================\n");
 }

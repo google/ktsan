@@ -29,7 +29,9 @@ void kt_mutexset_unlock(kt_mutexset_t *set, u64 uid, bool wr)
 			return;
 		}
 	}
-	BUG();
+
+	/* We could BUG() here, but instead in kt_mtx_pre_unlock we print
+	   a report saying that mutex was unlocked in another thread. */
 }
 
 /* Add mutex to mutexset and add event to trace. */

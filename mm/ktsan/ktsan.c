@@ -90,7 +90,7 @@ static inline kt_task_t *kt_current_task(void)
 /**/
 
 #define LEAVE()								\
-	KT_BUG_ON(thr != current->ktsan.thr);				\
+	KT_BUG_ON(task != current->ktsan.task);				\
 	if (unlikely(!__test_and_clear_bit(0, &thr->inside)))		\
 		KT_BUG_ON(1);						\
 									\
