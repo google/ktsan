@@ -54,7 +54,7 @@ void lockref_get(struct lockref *lockref)
 	);
 
 	spin_lock(&lockref->lock);
-	lockref->count++;
+	WRITE_ONCE(lockref->count, lockref->count + 1);
 	spin_unlock(&lockref->lock);
 }
 EXPORT_SYMBOL(lockref_get);
@@ -79,7 +79,7 @@ int lockref_get_not_zero(struct lockref *lockref)
 	spin_lock(&lockref->lock);
 	retval = 0;
 	if (lockref->count > 0) {
-		lockref->count++;
+		WRITE_ONCE(lockref->count, lockref->count + 1);
 		retval = 1;
 	}
 	spin_unlock(&lockref->lock);
@@ -106,7 +106,7 @@ int lockref_get_or_lock(struct lockref *lockref)
 	spin_lock(&lockref->lock);
 	if (lockref->count <= 0)
 		return 0;
-	lockref->count++;
+	WRITE_ONCE(lockref->count, lockref->count + 1);
 	spin_unlock(&lockref->lock);
 	return 1;
 }
@@ -163,7 +163,7 @@ EXPORT_SYMBOL(lockref_put_or_lock);
 void lockref_mark_dead(struct lockref *lockref)
 {
 	assert_spin_locked(&lockref->lock);
-	lockref->count = -128;
+	WRITE_ONCE(lockref->count, -128);
 }
 EXPORT_SYMBOL(lockref_mark_dead);
 
