@@ -181,7 +181,7 @@ static inline int atomic64_add_negative(long i, atomic64_t *v)
 #ifndef CONFIG_KTSAN
 	GEN_BINARY_RMWcc(LOCK_PREFIX "addq", v->counter, "er", i, "%0", "s");
 #else
-	return (ktsan_atomic64_fetch_add((void *)v, i,
+	return ((long)ktsan_atomic64_fetch_add((void *)v, i,
 			ktsan_memory_order_acq_rel) + i) < 0;
 #endif
 }
