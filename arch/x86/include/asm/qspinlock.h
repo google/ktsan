@@ -4,6 +4,7 @@
 #include <asm/cpufeature.h>
 #include <asm-generic/qspinlock_types.h>
 #include <asm/paravirt.h>
+#include <linux/ktsan.h>
 
 #define	queued_spin_unlock queued_spin_unlock
 /**
@@ -46,8 +47,11 @@ static inline bool virt_queued_spin_lock(struct qspinlock *lock)
 	if (!static_cpu_has(X86_FEATURE_HYPERVISOR))
 		return false;
 
-	while (atomic_cmpxchg(&lock->val, 0, _Q_LOCKED_VAL) != 0)
+	while (atomic_cmpxchg(&lock->val, 0, _Q_LOCKED_VAL) != 0) {
 		cpu_relax();
+		/* See the comment on ktsan_thr_spin() as to why it is needed */
+		ktsan_thr_spin();
+	}
 
 	return true;
 }

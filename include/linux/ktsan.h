@@ -52,6 +52,7 @@ void ktsan_task_destroy(struct ktsan_task_s *old);
 void ktsan_task_start(void);
 void ktsan_task_stop(void);
 
+void ktsan_thr_spin(void);
 void ktsan_thr_event_disable(void);
 void ktsan_thr_event_enable(void);
 void ktsan_thr_report_disable(void);
@@ -151,6 +152,7 @@ static inline void ktsan_task_destroy(struct ktsan_task_s *old) {}
 static inline void ktsan_task_start(void) {}
 static inline void ktsan_task_stop(void) {}
 
+static inline void ktsan_thr_spin(void) {}
 static inline void ktsan_thr_event_disable(void) {}
 static inline void ktsan_thr_event_enable(void) {}
 static inline void ktsan_thr_report_disable(void) {}

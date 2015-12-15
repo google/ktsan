@@ -15,6 +15,7 @@
 #include <linux/export.h>
 #include <linux/sched/rt.h>
 #include <linux/osq_lock.h>
+#include <linux/ktsan.h>
 
 #include "rwsem.h"
 
@@ -351,6 +352,9 @@ bool rwsem_spin_on_owner(struct rw_semaphore *sem, struct task_struct *owner)
 		}
 
 		cpu_relax_lowlatency();
+
+		/* See the comment on ktsan_thr_spin() as to why it is needed */
+		ktsan_thr_spin();
 	}
 	rcu_read_unlock();
 
@@ -407,6 +411,9 @@ static bool rwsem_optimistic_spin(struct rw_semaphore *sem)
 		 * values at the cost of a few extra spins.
 		 */
 		cpu_relax_lowlatency();
+
+		/* See the comment on ktsan_thr_spin() as to why it is needed */
+		ktsan_thr_spin();
 	}
 	osq_unlock(&sem->osq);
 done:
