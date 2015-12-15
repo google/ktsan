@@ -7,11 +7,17 @@ void kt_spin_init(kt_spinlock_t *l)
 
 void kt_spin_lock(kt_spinlock_t *l)
 {
-	for (;;) {
+	int i;
+
+	for (i = 0;;) {
 		if (kt_atomic8_exchange_no_ktsan(&l->state, 1) == 0)
 			return;
-		while (kt_atomic8_load_no_ktsan(&l->state) != 0)
+		while (kt_atomic8_load_no_ktsan(&l->state) != 0) {
 			cpu_relax();
+			i++;
+			if (i == 100000000)
+				BUG();
+		}
 	}
 }
 

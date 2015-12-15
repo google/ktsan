@@ -350,6 +350,37 @@ void ktsan_task_stop(void)
 	LEAVE();
 }
 
+/* Without these annotations kernel deadlocks in
+ * smp_call_function_single()/smp_call_function_many().
+ * These functions send IPIs to other CPUs potentially holding
+ * a spinlock (e.g. in wp_page_copy->flush_tlb_page).
+ * While ktsan_mtx_pre_lock() called up the stack disables all
+ * interrupts. So if a CPU is blocked on the same spinlock,
+ * it will never ack the IPI.
+ */
+void ktsan_thr_spin(void)
+{
+	bool ok = false;
+	int depth;
+	unsigned long flags, flags0;
+
+	ENTER(KT_ENTER_DISABLED);
+	depth = thr->event_disable_depth;
+	flags = flags0 = thr->irq_flags_before_disable;
+	ok = depth && !arch_irqs_disabled_flags(flags);
+	LEAVE();
+
+	if (ok) {
+		thr->event_disable_depth = 0;
+		thr->irq_flags_before_disable = 0;
+		ENABLE_INTERRUPTS(flags);
+		cpu_relax();
+		DISABLE_INTERRUPTS(flags);
+		thr->event_disable_depth = depth;
+		thr->irq_flags_before_disable = flags0;
+	}
+}
+
 void ktsan_thr_event_disable(void)
 {
 	ENTER(KT_ENTER_DISABLED);

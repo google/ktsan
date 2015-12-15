@@ -3081,8 +3081,12 @@ retry:
 		}
 	}
 
-	if (unlikely(!obj && read_mems_allowed_retry(cpuset_mems_cookie)))
-		goto retry_cpuset;
+	if (unlikely(!obj)) {
+		if (read_mems_allowed_retry(cpuset_mems_cookie))
+			goto retry_cpuset;
+	} else {
+		read_mems_allowed_cancel();
+	}
 	return obj;
 }
 
