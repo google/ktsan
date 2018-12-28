@@ -791,7 +791,7 @@ int tls_set_device_offload(struct sock *sk, struct tls_context *ctx)
 	 * will return true and the context might be accessed
 	 * by the netdev's xmit function.
 	 */
-	smp_store_release(&sk->sk_validate_xmit_skb, tls_validate_xmit_skb);
+	smp_store_release(&sk->sk_validate_xmit_skb, (uintptr_t)tls_validate_xmit_skb);
 	dev_put(netdev);
 	up_read(&device_offload_lock);
 	goto out;

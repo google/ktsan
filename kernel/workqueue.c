@@ -49,6 +49,7 @@
 #include <linux/uaccess.h>
 #include <linux/sched/isolation.h>
 #include <linux/nmi.h>
+#include <linux/ktsan.h>
 
 #include "workqueue_internal.h"
 
@@ -1825,6 +1826,9 @@ static struct worker *create_worker(struct worker_pool *pool)
 	spin_lock_irq(&pool->lock);
 	worker->pool->nr_workers++;
 	worker_enter_idle(worker);
+
+	ktsan_sync_release(worker);
+
 	wake_up_process(worker->task);
 	spin_unlock_irq(&pool->lock);
 
@@ -2239,6 +2243,8 @@ static int worker_thread(void *__worker)
 {
 	struct worker *worker = __worker;
 	struct worker_pool *pool = worker->pool;
+
+	ktsan_sync_acquire(worker);
 
 	/* tell the scheduler that this is a workqueue worker */
 	set_pf_worker(true);

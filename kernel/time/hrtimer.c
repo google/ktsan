@@ -1327,8 +1327,10 @@ bool hrtimer_active(const struct hrtimer *timer)
 		seq = raw_read_seqcount_begin(&base->seq);
 
 		if (timer->state != HRTIMER_STATE_INACTIVE ||
-		    base->running == timer)
+		    base->running == timer) {
+			read_seqcount_cancel(&base->seq);
 			return true;
+		}
 
 	} while (read_seqcount_retry(&base->seq, seq) ||
 		 base != READ_ONCE(timer->base));

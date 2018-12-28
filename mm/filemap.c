@@ -918,6 +918,8 @@ struct page *__page_cache_alloc(gfp_t gfp)
 			n = cpuset_mem_spread_node();
 			page = __alloc_pages_node(n, gfp, 0);
 		} while (!page && read_mems_allowed_retry(cpuset_mems_cookie));
+		if (page)
+			read_mems_allowed_cancel();
 
 		return page;
 	}

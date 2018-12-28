@@ -3269,6 +3269,12 @@ static netdev_tx_t e1000_xmit_frame(struct sk_buff *skb,
 
 		if (!skb->xmit_more ||
 		    netif_xmit_stopped(netdev_get_tx_queue(netdev, 0))) {
+			/* Teach KTSAN about synchronization through the adapter.
+			 * Here we hand off packets to the adapter,
+			 * e1000_clean_tx_irq will pick them up later and do
+			 * ktsan_sync_acquire(hw).
+			 */
+			ktsan_sync_release(hw);
 			writel(tx_ring->next_to_use, hw->hw_addr + tx_ring->tdt);
 			/* we need this if more than one processor can write to
 			 * our tail at a time, it synchronizes IO on IA64/Altix
@@ -3842,6 +3848,12 @@ static bool e1000_clean_tx_irq(struct e1000_adapter *adapter,
 	       (count < tx_ring->count)) {
 		bool cleaned = false;
 		dma_rmb();	/* read buffer_info after eop_desc */
+		/* Teach KTSAN about synchronization through the adapter.
+		 * In this case e1000_xmit_frame has wrote next_to_use to
+		 * hardware register and handed off a set of packets to the
+		 * adapter. Here we pick the completed packets up.
+		 */
+		ktsan_sync_acquire(hw);
 		for ( ; !cleaned; count++) {
 			tx_desc = E1000_TX_DESC(*tx_ring, i);
 			buffer_info = &tx_ring->buffer_info[i];

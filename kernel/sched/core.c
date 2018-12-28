@@ -10,6 +10,7 @@
 #include <linux/nospec.h>
 
 #include <linux/kcov.h>
+#include <linux/ktsan.h>
 
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
@@ -2709,9 +2710,18 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 		 */
 		kprobe_flush_task(prev);
 
+		/* Synchronize to the previous thread since it might
+		   have accessed prev struct, see comment in __schedule.
+		   Since ktsan_sync_acquire is ignored when called from
+		   scheduler, use fake start/stop to prevent this. */
+		ktsan_task_start();
+		ktsan_sync_acquire(prev);
+		ktsan_task_stop();
+
+		ktsan_task_destroy(&prev->ktsan);
+
 		/* Task is done with its stack. */
 		put_task_stack(prev);
-
 		put_task_struct(prev);
 	}
 
@@ -2775,8 +2785,14 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 	 */
 
 	rq = finish_task_switch(prev);
+
 	balance_callback(rq);
 	preempt_enable();
+
+	/* Must be before put_user call because the latter can cause
+	   page fault, which might enter scheduler, which results in
+	   two consequent ktsan_task_start calls. */
+	ktsan_task_start();
 
 	if (current->set_child_tid)
 		put_user(task_pid_vnr(current), current->set_child_tid);
@@ -2792,7 +2808,6 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	       struct task_struct *next, struct rq_flags *rf)
 {
 	struct mm_struct *mm, *oldmm;
-
 	prepare_task_switch(rq, prev, next);
 
 	mm = next->mm;
@@ -3391,6 +3406,12 @@ static void __sched notrace __schedule(bool preempt)
 	rq = cpu_rq(cpu);
 	prev = rq->curr;
 
+	/* The next thread might access prev structure while deleting it,
+	   but the synchronization that come from scheduler is not seen by
+	   ktsan, so we manually synchronize the next and prev threads. */
+	ktsan_sync_release(prev);
+	ktsan_task_stop();
+
 	schedule_debug(prev);
 
 	if (sched_feat(HRTICK))
@@ -3476,6 +3497,7 @@ static void __sched notrace __schedule(bool preempt)
 	}
 
 	balance_callback(rq);
+	ktsan_task_start();
 }
 
 void __noreturn do_task_dead(void)

@@ -51,7 +51,11 @@
 #endif
 
 #ifndef read_barrier_depends
+#ifndef CONFIG_KTSAN
 #define read_barrier_depends()		do { } while (0)
+#else /* CONFIG_KTSAN */
+#define read_barrier_depends()		ktsan_thread_fence(ktsan_memory_order_acquire)
+#endif /* CONFIG_KTSAN */
 #endif
 
 #ifndef __smp_mb

@@ -15,6 +15,7 @@
 #include <linux/bitops.h>
 #include <linux/threads.h>
 #include <asm/fixmap.h>
+#include <linux/ktsan.h>
 
 extern p4d_t level4_kernel_pgt[512];
 extern p4d_t level4_ident_pgt[512];
@@ -85,7 +86,15 @@ static inline void native_pmd_clear(pmd_t *pmd)
 static inline pte_t native_ptep_get_and_clear(pte_t *xp)
 {
 #ifdef CONFIG_SMP
-	return native_make_pte(xchg(&xp->pte, 0));
+	/* Make KTSAN ignore xchg.
+	   This significantly reduces the number of sync objects.
+	   This might introduce false positives, but none were observed. */
+	pte_t rv;
+
+	ktsan_thr_event_disable();
+	rv = native_make_pte(xchg(&xp->pte, 0));
+	ktsan_thr_event_enable();
+	return rv;
 #else
 	/* native_local_ptep_get_and_clear,
 	   but duplicated because of cyclic dependency */

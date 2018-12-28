@@ -907,8 +907,10 @@ retry_cpuset:
 		node = zone_to_nid(zone);
 
 		page = dequeue_huge_page_node_exact(h, node);
-		if (page)
+		if (page) {
+			read_mems_allowed_cancel();
 			return page;
+		}
 	}
 	if (unlikely(read_mems_allowed_retry(cpuset_mems_cookie)))
 		goto retry_cpuset;

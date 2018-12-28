@@ -5,6 +5,7 @@
 #include <asm/rmwcc.h>
 #include <asm/percpu.h>
 #include <linux/thread_info.h>
+#include <linux/ktsan.h>
 
 DECLARE_PER_CPU(int, __preempt_count);
 
@@ -74,10 +75,12 @@ static __always_inline bool test_preempt_need_resched(void)
 static __always_inline void __preempt_count_add(int val)
 {
 	raw_cpu_add_4(__preempt_count, val);
+	ktsan_preempt_add(val);
 }
 
 static __always_inline void __preempt_count_sub(int val)
 {
+	ktsan_preempt_sub(val);
 	raw_cpu_add_4(__preempt_count, -val);
 }
 

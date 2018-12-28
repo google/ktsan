@@ -92,6 +92,7 @@
 #include <linux/livepatch.h>
 #include <linux/thread_info.h>
 #include <linux/stackleak.h>
+#include <linux/ktsan.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -923,6 +924,11 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 #ifdef CONFIG_MEMCG
 	tsk->active_memcg = NULL;
 #endif
+
+#ifdef CONFIG_KTSAN
+	tsk->ktsan.task = NULL;
+#endif
+
 	return tsk;
 
 free_stack:
@@ -2174,6 +2180,7 @@ struct task_struct *fork_idle(int cpu)
 	task = copy_process(CLONE_VM, 0, 0, NULL, &init_struct_pid, 0, 0,
 			    cpu_to_node(cpu));
 	if (!IS_ERR(task)) {
+		ktsan_task_create(&task->ktsan, task->pid);
 		init_idle_pids(task);
 		init_idle(task, cpu);
 	}
@@ -2224,6 +2231,8 @@ long _do_fork(unsigned long clone_flags,
 
 	if (IS_ERR(p))
 		return PTR_ERR(p);
+
+	ktsan_task_create(&p->ktsan, p->pid);
 
 	/*
 	 * Do this prior waking up the new thread - the thread pointer

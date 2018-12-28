@@ -2,7 +2,9 @@
 #ifndef ASM_X86_CMPXCHG_H
 #define ASM_X86_CMPXCHG_H
 
+#include <linux/bug.h>
 #include <linux/compiler.h>
+#include <linux/ktsan.h>
 #include <asm/cpufeatures.h>
 #include <asm/alternative.h> /* Provides LOCK_PREFIX */
 
@@ -69,6 +71,7 @@ extern void __add_wrong_size(void)
 		__ret;							\
 	})
 
+#ifndef CONFIG_KTSAN
 /*
  * Note: no "lock" prefix even on SMP: xchg always implies lock anyway.
  * Since this is generally used to protect other memory information, we
@@ -76,6 +79,43 @@ extern void __add_wrong_size(void)
  * information around.
  */
 #define arch_xchg(ptr, v)	__xchg_op((ptr), (v), xchg, "")
+#else /* CONFIG_KTSAN */
+#define arch_xchg(ptr, v)							\
+({									\
+	__typeof__(*(ptr)) ret;						\
+	u64 ret64;							\
+	u32 ret32;							\
+	u16 ret16;							\
+	u8 ret8;							\
+									\
+	__typeof__(*(ptr)) lv = (v);					\
+									\
+	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
+		     sizeof(*(ptr)) != 4 &&				\
+		     sizeof(*(ptr)) != 2 &&				\
+		     sizeof(*(ptr)) != 1);				\
+									\
+	if (sizeof(*(ptr)) == 8) {					\
+		ret64 = ktsan_atomic64_exchange((void *)(ptr),		\
+			*((u64 *)(&lv)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret64));			\
+	} else if (sizeof(*(ptr)) == 4) {				\
+		ret32 = ktsan_atomic32_exchange((void *)(ptr),		\
+			*((u32 *)(&lv)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret32));			\
+	} else if (sizeof(*(ptr)) == 2) {				\
+		ret16 = ktsan_atomic16_exchange((void *)(ptr),		\
+			*((u16 *)(&lv)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret16));			\
+	} else if (sizeof(*(ptr)) == 1) {				\
+		ret8 = ktsan_atomic8_exchange((void *)(ptr),		\
+			*((u8 *)(&lv)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret8));			\
+	}								\
+									\
+	ret;								\
+})
+#endif /* CONFIG_KTSAN */
 
 /*
  * Atomic compare and exchange.  Compare OLD with MEM, if identical,
@@ -145,12 +185,57 @@ extern void __add_wrong_size(void)
 # include <asm/cmpxchg_64.h>
 #endif
 
+#ifndef CONFIG_KTSAN
 #define arch_cmpxchg(ptr, old, new)					\
 	__cmpxchg(ptr, old, new, sizeof(*(ptr)))
+#else /* CONFIG_KTSAN */
+#define arch_cmpxchg(ptr, old, new)						\
+({									\
+	__typeof__(*(ptr)) _ret;						\
+	u64 ret64;							\
+	u32 ret32;							\
+	u16 ret16;							\
+	u8 ret8;							\
+									\
+	__typeof__(*(ptr)) lo = (old);					\
+	__typeof__(*(ptr)) ln = (new);					\
+									\
+	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
+		     sizeof(*(ptr)) != 4 &&				\
+		     sizeof(*(ptr)) != 2 &&				\
+		     sizeof(*(ptr)) != 1);				\
+									\
+	if (sizeof(*(ptr)) == 8) {					\
+		ret64 = ktsan_atomic64_compare_exchange((void *)(ptr),	\
+				*((u64 *)(&lo)), *((u64 *)(&ln)),	\
+				ktsan_memory_order_acq_rel);		\
+		_ret = *((__typeof__(ptr))(&ret64));			\
+	} else if (sizeof(*(ptr)) == 4) {				\
+		ret32 = ktsan_atomic32_compare_exchange((void *)(ptr),	\
+				*((u32 *)(&lo)), *((u32 *)(&ln)),	\
+				ktsan_memory_order_acq_rel);		\
+		_ret = *((__typeof__(ptr))(&ret32));			\
+	} else if (sizeof(*(ptr)) == 2) {				\
+		ret16 = ktsan_atomic16_compare_exchange((void *)(ptr),	\
+				*((u16 *)(&lo)), *((u16 *)(&ln)),	\
+				ktsan_memory_order_acq_rel);		\
+		_ret = *((__typeof__(ptr))(&ret16));			\
+	} else if (sizeof(*(ptr)) == 1) {					\
+		ret8 = ktsan_atomic8_compare_exchange((void *)(ptr),	\
+				*((u8 *)(&lo)), *((u8 *)(&ln)),		\
+				ktsan_memory_order_acq_rel);		\
+		_ret = *((__typeof__(ptr))(&ret8));			\
+	}								\
+									\
+	_ret;								\
+})
+#endif /* CONFIG_KTSAN */
 
+/* FIXME(xairy): ktsan? */
 #define arch_sync_cmpxchg(ptr, old, new)				\
 	__sync_cmpxchg(ptr, old, new, sizeof(*(ptr)))
 
+/* FIXME(xairy): ktsan? */
 #define arch_cmpxchg_local(ptr, old, new)				\
 	__cmpxchg_local(ptr, old, new, sizeof(*(ptr)))
 
@@ -230,8 +315,48 @@ extern void __add_wrong_size(void)
  *
  * xadd() is locked when multiple CPUs are online
  */
+
 #define __xadd(ptr, inc, lock)	__xchg_op((ptr), (inc), xadd, lock)
+
+#ifndef CONFIG_KTSAN
 #define xadd(ptr, inc)		__xadd((ptr), (inc), LOCK_PREFIX)
+#else /* CONFIG_KTSAN */
+#define xadd(ptr, inc)							\
+({									\
+	__typeof__(*(ptr)) ret;						\
+	u64 ret64;							\
+	u32 ret32;							\
+	u16 ret16;							\
+	u8 ret8;							\
+									\
+	__typeof__(*(ptr)) li = (inc);					\
+									\
+	BUILD_BUG_ON(sizeof(*(ptr)) != 8 &&				\
+		     sizeof(*(ptr)) != 4 &&				\
+		     sizeof(*(ptr)) != 2 &&				\
+		     sizeof(*(ptr)) != 1);				\
+									\
+	if (sizeof(*(ptr)) == 8) {					\
+		ret64 = ktsan_atomic64_fetch_add((void *)(ptr),		\
+			*((u64 *)(&li)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret64));			\
+	} else if (sizeof(*(ptr)) == 4) {				\
+		ret32 = ktsan_atomic32_fetch_add((void *)(ptr),		\
+			*((u32 *)(&li)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret32));			\
+	} else if (sizeof(*(ptr)) == 2) {				\
+		ret16 = ktsan_atomic16_fetch_add((void *)(ptr),		\
+			*((u16 *)(&li)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret16));			\
+	} else if (sizeof(*(ptr)) == 1) {				\
+		ret8 = ktsan_atomic8_fetch_add((void *)(ptr),		\
+			*((u8 *)(&li)), ktsan_memory_order_acq_rel);	\
+		ret = *((__typeof__(ptr))(&ret8));			\
+	}								\
+									\
+	ret;								\
+})
+#endif /* CONFIG_KTSAN */
 
 #define __cmpxchg_double(pfx, p1, p2, o1, o2, n1, n2)			\
 ({									\

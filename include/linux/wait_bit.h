@@ -70,12 +70,23 @@ extern int bit_wait_io_timeout(struct wait_bit_key *key, int mode);
 static inline int
 wait_on_bit(unsigned long *word, int bit, unsigned mode)
 {
+	int ret = 0;
+
 	might_sleep();
-	if (!test_bit(bit, word))
-		return 0;
-	return out_of_line_wait_on_bit(word, bit,
-				       bit_wait,
-				       mode);
+	if (test_bit(bit, word))
+		ret = out_of_line_wait_on_bit(word, bit,
+					      bit_wait,
+					      mode);
+	/* test_bit does not imply a memory barrier, nonetheless wait_on_bit is
+	 * a synchronization operation. Inter-thread ordering is ensured by
+	 * control dependency on test_bit result. Ktsan does not understand
+	 * this ordering, so we add an explicit acquire annotation. Reset of the
+	 * bit should be done with clear_bit_unlock, which is the pairing
+	 * release operation.
+	 */
+	if (ret == 0)
+		ktsan_sync_acquire(word);
+	return ret;
 }
 
 /**
@@ -95,12 +106,17 @@ wait_on_bit(unsigned long *word, int bit, unsigned mode)
 static inline int
 wait_on_bit_io(unsigned long *word, int bit, unsigned mode)
 {
+	int ret = 0;
+
 	might_sleep();
-	if (!test_bit(bit, word))
-		return 0;
-	return out_of_line_wait_on_bit(word, bit,
-				       bit_wait_io,
-				       mode);
+	if (test_bit(bit, word))
+		ret = out_of_line_wait_on_bit(word, bit,
+					      bit_wait_io,
+					      mode);
+	if (ret == 0)
+		ktsan_sync_acquire(word);
+	return ret;
+
 }
 
 /**
@@ -122,12 +138,16 @@ static inline int
 wait_on_bit_timeout(unsigned long *word, int bit, unsigned mode,
 		    unsigned long timeout)
 {
+	int ret = 0;
+
 	might_sleep();
-	if (!test_bit(bit, word))
-		return 0;
-	return out_of_line_wait_on_bit_timeout(word, bit,
-					       bit_wait_timeout,
-					       mode, timeout);
+	if (test_bit(bit, word))
+		ret = out_of_line_wait_on_bit_timeout(word, bit,
+						      bit_wait_timeout,
+						      mode, timeout);
+	if (ret == 0)
+		ktsan_sync_acquire(word);
+	return ret;
 }
 
 /**
@@ -150,10 +170,14 @@ static inline int
 wait_on_bit_action(unsigned long *word, int bit, wait_bit_action_f *action,
 		   unsigned mode)
 {
+	int ret = 0;
+
 	might_sleep();
-	if (!test_bit(bit, word))
-		return 0;
-	return out_of_line_wait_on_bit(word, bit, action, mode);
+	if (test_bit(bit, word))
+		ret = out_of_line_wait_on_bit(word, bit, action, mode);
+	if (ret == 0)
+		ktsan_sync_acquire(word);
+	return ret;
 }
 
 /**

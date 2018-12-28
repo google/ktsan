@@ -3,6 +3,9 @@
 # Makefile for x86-compatible CPU details, features and quirks
 #
 
+KTSAN_SANITIZE_common.o = n
+KTSAN_SANITIZE_perf_event.o = n
+
 # Don't trace early stages of a secondary CPU boot
 ifdef CONFIG_FUNCTION_TRACER
 CFLAGS_REMOVE_common.o = -pg

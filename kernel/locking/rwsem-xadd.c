@@ -76,6 +76,7 @@
 void __init_rwsem(struct rw_semaphore *sem, const char *name,
 		  struct lock_class_key *key)
 {
+	ktsan_thr_event_disable();
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 	/*
 	 * Make sure we are not reinitializing a held semaphore:
@@ -90,6 +91,7 @@ void __init_rwsem(struct rw_semaphore *sem, const char *name,
 	sem->owner = NULL;
 	osq_lock_init(&sem->osq);
 #endif
+	ktsan_thr_event_enable();
 }
 
 EXPORT_SYMBOL(__init_rwsem);
@@ -227,12 +229,13 @@ __rwsem_down_read_failed_common(struct rw_semaphore *sem, int state)
 {
 	long count, adjustment = -RWSEM_ACTIVE_READ_BIAS;
 	struct rwsem_waiter waiter;
+	unsigned long flags;
 	DEFINE_WAKE_Q(wake_q);
 
 	waiter.task = current;
 	waiter.type = RWSEM_WAITING_FOR_READ;
 
-	raw_spin_lock_irq(&sem->wait_lock);
+	raw_spin_lock_irqsave(&sem->wait_lock, flags);
 	if (list_empty(&sem->wait_list)) {
 		/*
 		 * In case the wait queue is empty and the lock isn't owned
@@ -241,7 +244,7 @@ __rwsem_down_read_failed_common(struct rw_semaphore *sem, int state)
 		 * been set in the count.
 		 */
 		if (atomic_long_read(&sem->count) >= 0) {
-			raw_spin_unlock_irq(&sem->wait_lock);
+			raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 			return sem;
 		}
 		adjustment += RWSEM_WAITING_BIAS;
@@ -262,23 +265,27 @@ __rwsem_down_read_failed_common(struct rw_semaphore *sem, int state)
 	     adjustment != -RWSEM_ACTIVE_READ_BIAS))
 		__rwsem_mark_wake(sem, RWSEM_WAKE_ANY, &wake_q);
 
-	raw_spin_unlock_irq(&sem->wait_lock);
+	raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 	wake_up_q(&wake_q);
 
+	ktsan_mtx_post_lock(sem, false, false, false);
 	/* wait to be given the lock */
 	while (true) {
 		set_current_state(state);
 		if (!waiter.task)
 			break;
 		if (signal_pending_state(state, current)) {
-			raw_spin_lock_irq(&sem->wait_lock);
-			if (waiter.task)
+			raw_spin_lock_irqsave(&sem->wait_lock, flags);
+			if (waiter.task) {
+				ktsan_mtx_pre_lock(sem, false, false);
 				goto out_nolock;
-			raw_spin_unlock_irq(&sem->wait_lock);
+			}
+			raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 			break;
 		}
 		schedule();
 	}
+	ktsan_mtx_pre_lock(sem, false, false);
 
 	__set_current_state(TASK_RUNNING);
 	return sem;
@@ -286,7 +293,7 @@ out_nolock:
 	list_del(&waiter.list);
 	if (list_empty(&sem->wait_list))
 		atomic_long_add(-RWSEM_WAITING_BIAS, &sem->count);
-	raw_spin_unlock_irq(&sem->wait_lock);
+	raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 	__set_current_state(TASK_RUNNING);
 	return ERR_PTR(-EINTR);
 }
@@ -509,6 +516,7 @@ __rwsem_down_write_failed_common(struct rw_semaphore *sem, int state)
 	bool waiting = true; /* any queued threads before us */
 	struct rwsem_waiter waiter;
 	struct rw_semaphore *ret = sem;
+	unsigned long flags;
 	DEFINE_WAKE_Q(wake_q);
 
 	/* undo write bias from down_write operation, stop active locking */
@@ -525,7 +533,7 @@ __rwsem_down_write_failed_common(struct rw_semaphore *sem, int state)
 	waiter.task = current;
 	waiter.type = RWSEM_WAITING_FOR_WRITE;
 
-	raw_spin_lock_irq(&sem->wait_lock);
+	raw_spin_lock_irqsave(&sem->wait_lock, flags);
 
 	/* account for this before adding a new element to the list */
 	if (list_empty(&sem->wait_list))
@@ -567,18 +575,22 @@ __rwsem_down_write_failed_common(struct rw_semaphore *sem, int state)
 	while (true) {
 		if (rwsem_try_write_lock(count, sem))
 			break;
-		raw_spin_unlock_irq(&sem->wait_lock);
+		raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 
+		ktsan_mtx_post_lock(sem, true, false, false);
 		/* Block until there are no active lockers. */
 		do {
-			if (signal_pending_state(state, current))
+			if (signal_pending_state(state, current)) {
+				ktsan_mtx_pre_lock(sem, true, false);
 				goto out_nolock;
+			}
 
 			schedule();
 			set_current_state(state);
 		} while ((count = atomic_long_read(&sem->count)) & RWSEM_ACTIVE_MASK);
+		ktsan_mtx_pre_lock(sem, true, false);
 
-		raw_spin_lock_irq(&sem->wait_lock);
+		raw_spin_lock_irqsave(&sem->wait_lock, flags);
 	}
 	__set_current_state(TASK_RUNNING);
 	list_del(&waiter.list);
@@ -588,13 +600,13 @@ __rwsem_down_write_failed_common(struct rw_semaphore *sem, int state)
 
 out_nolock:
 	__set_current_state(TASK_RUNNING);
-	raw_spin_lock_irq(&sem->wait_lock);
+	raw_spin_lock_irqsave(&sem->wait_lock, flags);
 	list_del(&waiter.list);
 	if (list_empty(&sem->wait_list))
 		atomic_long_add(-RWSEM_WAITING_BIAS, &sem->count);
 	else
 		__rwsem_mark_wake(sem, RWSEM_WAKE_ANY, &wake_q);
-	raw_spin_unlock_irq(&sem->wait_lock);
+	raw_spin_unlock_irqrestore(&sem->wait_lock, flags);
 	wake_up_q(&wake_q);
 
 	return ERR_PTR(-EINTR);

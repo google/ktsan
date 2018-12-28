@@ -870,7 +870,7 @@ static inline int sk_stream_min_wspace(const struct sock *sk)
 
 static inline int sk_stream_wspace(const struct sock *sk)
 {
-	return sk->sk_sndbuf - sk->sk_wmem_queued;
+	return sk->sk_sndbuf - READ_ONCE(sk->sk_wmem_queued);
 }
 
 void sk_stream_write_space(struct sock *sk);
@@ -1443,7 +1443,7 @@ static inline void sk_mem_uncharge(struct sock *sk, int size)
 static inline void sk_wmem_free_skb(struct sock *sk, struct sk_buff *skb)
 {
 	sock_set_flag(sk, SOCK_QUEUE_SHRUNK);
-	sk->sk_wmem_queued -= skb->truesize;
+	WRITE_ONCE(sk->sk_wmem_queued, sk->sk_wmem_queued - skb->truesize);
 	sk_mem_uncharge(sk, skb->truesize);
 	__kfree_skb(skb);
 }

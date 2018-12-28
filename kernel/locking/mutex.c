@@ -28,6 +28,7 @@
 #include <linux/interrupt.h>
 #include <linux/debug_locks.h>
 #include <linux/osq_lock.h>
+#include <linux/ktsan.h>
 
 #ifdef CONFIG_DEBUG_MUTEXES
 # include "mutex-debug.h"
@@ -38,6 +39,7 @@
 void
 __mutex_init(struct mutex *lock, const char *name, struct lock_class_key *key)
 {
+	ktsan_thr_event_disable();
 	atomic_long_set(&lock->owner, 0);
 	spin_lock_init(&lock->wait_lock);
 	INIT_LIST_HEAD(&lock->wait_list);
@@ -46,6 +48,7 @@ __mutex_init(struct mutex *lock, const char *name, struct lock_class_key *key)
 #endif
 
 	debug_mutex_init(lock, name, key);
+	ktsan_thr_event_enable();
 }
 EXPORT_SYMBOL(__mutex_init);
 
@@ -253,8 +256,10 @@ void __sched mutex_lock(struct mutex *lock)
 {
 	might_sleep();
 
+	ktsan_mtx_pre_lock(lock, true, false);
 	if (!__mutex_trylock_fast(lock))
 		__mutex_lock_slowpath(lock);
+	ktsan_mtx_post_lock(lock, true, false, true);
 }
 EXPORT_SYMBOL(mutex_lock);
 #endif
@@ -677,7 +682,9 @@ fail:
 		 * we do not, make it so, otherwise we might get stuck.
 		 */
 		__set_current_state(TASK_RUNNING);
+		ktsan_mtx_post_lock(lock, true, false, false);
 		schedule_preempt_disabled();
+		ktsan_mtx_pre_lock(lock, true, false);
 	}
 
 	return false;
@@ -706,11 +713,16 @@ static noinline void __sched __mutex_unlock_slowpath(struct mutex *lock, unsigne
  */
 void __sched mutex_unlock(struct mutex *lock)
 {
+	ktsan_mtx_pre_unlock(lock, true);
+
 #ifndef CONFIG_DEBUG_LOCK_ALLOC
-	if (__mutex_unlock_fast(lock))
+	if (__mutex_unlock_fast(lock)) {
+		ktsan_mtx_post_unlock(lock, true);
 		return;
+	}
 #endif
 	__mutex_unlock_slowpath(lock, _RET_IP_);
+	ktsan_mtx_post_unlock(lock, true);
 }
 EXPORT_SYMBOL(mutex_unlock);
 
@@ -999,7 +1011,9 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
 		}
 
 		spin_unlock(&lock->wait_lock);
+		ktsan_mtx_post_lock(lock, true, false, false);
 		schedule_preempt_disabled();
+		ktsan_mtx_pre_lock(lock, true, false);
 
 		/*
 		 * ww_mutex needs to always recheck its position since its waiter
@@ -1274,12 +1288,18 @@ __mutex_lock_interruptible_slowpath(struct mutex *lock);
  */
 int __sched mutex_lock_interruptible(struct mutex *lock)
 {
+	int ret;
+
 	might_sleep();
+	ktsan_mtx_pre_lock(lock, true, false);
 
-	if (__mutex_trylock_fast(lock))
+	if (__mutex_trylock_fast(lock)) {
+		ktsan_mtx_post_lock(lock, true, false, true);
 		return 0;
-
-	return __mutex_lock_interruptible_slowpath(lock);
+	}
+	ret = __mutex_lock_interruptible_slowpath(lock);
+	ktsan_mtx_post_lock(lock, true, false, !ret);
+	return ret;
 }
 
 EXPORT_SYMBOL(mutex_lock_interruptible);
@@ -1298,12 +1318,19 @@ EXPORT_SYMBOL(mutex_lock_interruptible);
  */
 int __sched mutex_lock_killable(struct mutex *lock)
 {
+	int ret;
+
 	might_sleep();
+	ktsan_mtx_pre_lock(lock, true, false);
 
-	if (__mutex_trylock_fast(lock))
+	if (__mutex_trylock_fast(lock)) {
+		ktsan_mtx_post_lock(lock, true, false, true);
 		return 0;
+	}
 
-	return __mutex_lock_killable_slowpath(lock);
+	ret = __mutex_lock_killable_slowpath(lock);
+	ktsan_mtx_post_lock(lock, true, false, !ret);
+	return ret;
 }
 EXPORT_SYMBOL(mutex_lock_killable);
 
@@ -1378,10 +1405,13 @@ __ww_mutex_lock_interruptible_slowpath(struct ww_mutex *lock,
  */
 int __sched mutex_trylock(struct mutex *lock)
 {
-	bool locked = __mutex_trylock(lock);
+	bool locked;
 
+	ktsan_mtx_pre_lock(lock, true, true);
+	locked = __mutex_trylock(lock);
 	if (locked)
 		mutex_acquire(&lock->dep_map, 0, 1, _RET_IP_);
+	ktsan_mtx_post_lock(lock, true, true, locked == 1);
 
 	return locked;
 }

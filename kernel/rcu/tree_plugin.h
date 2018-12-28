@@ -26,6 +26,7 @@
 
 #include <linux/delay.h>
 #include <linux/gfp.h>
+#include <linux/ktsan.h>
 #include <linux/oom.h>
 #include <linux/sched/debug.h>
 #include <linux/smpboot.h>
@@ -857,6 +858,7 @@ void synchronize_rcu(void)
 		synchronize_rcu_expedited();
 	else
 		wait_rcu_gp(call_rcu);
+	ktsan_sync_acquire(&ktsan_glob_sync[ktsan_glob_sync_type_rcu_common]);
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu);
 
@@ -1115,6 +1117,7 @@ void synchronize_rcu(void)
 		synchronize_rcu_expedited();
 	else
 		wait_rcu_gp(call_rcu);
+	ktsan_sync_acquire(&ktsan_glob_sync[ktsan_glob_sync_type_rcu_common]);
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu);
 

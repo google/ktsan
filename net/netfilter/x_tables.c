@@ -1403,13 +1403,13 @@ xt_replace_table(struct xt_table *table,
 	/* ... so wait for even xt_recseq on all cpus */
 	for_each_possible_cpu(cpu) {
 		seqcount_t *s = &per_cpu(xt_recseq, cpu);
-		u32 seq = raw_read_seqcount(s);
+		u32 seq = raw_read_seqcount_nocritical(s);
 
 		if (seq & 1) {
 			do {
 				cond_resched();
 				cpu_relax();
-			} while (seq == raw_read_seqcount(s));
+			} while (seq == raw_read_seqcount_nocritical(s));
 		}
 	}
 

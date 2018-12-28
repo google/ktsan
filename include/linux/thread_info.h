@@ -43,7 +43,11 @@ enum {
 #define THREAD_ALIGN	THREAD_SIZE
 #endif
 
+#ifndef CONFIG_KTSAN
 #define THREADINFO_GFP		(GFP_KERNEL_ACCOUNT | __GFP_ZERO)
+#else /* CONFIG_KTSAN */
+# define THREADINFO_GFP		(GFP_KERNEL)
+#endif /* CONFIG_KTSAN */
 
 /*
  * flag set/clear/test wrappers

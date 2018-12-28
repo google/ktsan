@@ -40,6 +40,7 @@
 #include <linux/init_task.h>
 #include <linux/uaccess.h>
 #include <linux/build_bug.h>
+#include <linux/ktsan.h>
 
 #include "internal.h"
 #include "mount.h"
@@ -519,11 +520,21 @@ static void set_nameidata(struct nameidata *p, int dfd, struct filename *name)
 	p->total_link_count = old ? old->total_link_count : 0;
 	p->saved = old;
 	current->nameidata = p;
+
+	/*
+	 * Seqcount manipulation is crazy in this file.
+	 * I've tried to annotate seq-read critical sections, but did fail.
+	 * For now we bulk-disable handling of seqcounts in this region
+	 * and disable handling of memory reads to prevent false positives.
+	 */
+	ktsan_seqcount_ignore_begin();
 }
 
 static void restore_nameidata(void)
 {
 	struct nameidata *now = current->nameidata, *old = now->saved;
+
+	ktsan_seqcount_ignore_end();
 
 	current->nameidata = old;
 	if (old)

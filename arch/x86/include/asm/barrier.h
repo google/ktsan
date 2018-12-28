@@ -5,6 +5,8 @@
 #include <asm/alternative.h>
 #include <asm/nops.h>
 
+#include <linux/ktsan.h>
+
 /*
  * Force strict CPU ordering.
  * And yes, this might be required on UP too when we're talking
@@ -19,9 +21,15 @@
 #define wmb() asm volatile(ALTERNATIVE("lock; addl $0,-4(%%esp)", "sfence", \
 				       X86_FEATURE_XMM2) ::: "memory", "cc")
 #else
+#ifndef CONFIG_KTSAN
 #define mb() 	asm volatile("mfence":::"memory")
 #define rmb()	asm volatile("lfence":::"memory")
 #define wmb()	asm volatile("sfence" ::: "memory")
+#else /* CONFIG_KTSAN */
+#define mb()	ktsan_thread_fence(ktsan_memory_order_acq_rel)
+#define rmb()	ktsan_thread_fence(ktsan_memory_order_acquire)
+#define wmb()	ktsan_thread_fence(ktsan_memory_order_release)
+#endif
 #endif
 
 /**
@@ -55,6 +63,7 @@ static inline unsigned long array_index_mask_nospec(unsigned long index,
 #define dma_rmb()	barrier()
 #define dma_wmb()	barrier()
 
+#ifndef CONFIG_KTSAN
 #ifdef CONFIG_X86_32
 #define __smp_mb()	asm volatile("lock; addl $0,-4(%%esp)" ::: "memory", "cc")
 #else
@@ -62,8 +71,14 @@ static inline unsigned long array_index_mask_nospec(unsigned long index,
 #endif
 #define __smp_rmb()	dma_rmb()
 #define __smp_wmb()	barrier()
+#else /* CONFIG_KTSAN */
+#define __smp_mb()	ktsan_thread_fence(ktsan_memory_order_acq_rel)
+#define __smp_rmb()	ktsan_thread_fence(ktsan_memory_order_acquire)
+#define __smp_wmb()	ktsan_thread_fence(ktsan_memory_order_release)
+#endif
 #define __smp_store_mb(var, value) do { (void)xchg(&var, value); } while (0)
 
+#ifndef CONFIG_KTSAN
 #define __smp_store_release(p, v)					\
 do {									\
 	compiletime_assert_atomic_type(*p);				\
@@ -78,10 +93,52 @@ do {									\
 	barrier();							\
 	___p1;								\
 })
+#else /* CONFIG_KTSAN */
 
+#define __smp_store_release(p, v)                                                \
+do {                                                                   \
+	typeof(p) ___p1 = (p);                                          \
+	typeof(v) ___v1 = (v);                                          \
+	                                                               \
+	compiletime_assert_atomic_type(*___p1);                         \
+	                                                               \
+	switch (sizeof(*___p1)) {                                       \
+	case 1: ktsan_atomic8_store((void *)___p1, *((u8 *)&___v1), ktsan_memory_order_release); break; \
+	case 2: ktsan_atomic16_store((void *)___p1, *((u16 *)&___v1), ktsan_memory_order_release); break;       \
+	case 4: ktsan_atomic32_store((void *)___p1, *((u32 *)&___v1), ktsan_memory_order_release); break;       \
+	case 8: ktsan_atomic64_store((void *)___p1, *((u64 *)&___v1), ktsan_memory_order_release); break;       \
+	default: BUG(); break;                                          \
+	}                                                               \
+} while (0)
+
+#define __smp_load_acquire(p)                                            \
+({                                                                     \
+	typeof(p) ___p1 = (p);                                          \
+	typeof(*p) ___r;                                                \
+	                                                               \
+	compiletime_assert_atomic_type(*___p1);                         \
+	                                                               \
+	switch (sizeof(*___p1)) {                                       \
+	case 1: *(u8 *)&___r = ktsan_atomic8_load((const void *)___p1, ktsan_memory_order_acquire); break;    \
+	case 2: *(u16 *)&___r = ktsan_atomic16_load((const void *)___p1, ktsan_memory_order_acquire); break;  \
+	case 4: *(u32 *)&___r = ktsan_atomic32_load((const void *)___p1, ktsan_memory_order_acquire); break;  \
+	case 8: *(u64 *)&___r = ktsan_atomic64_load((const void *)___p1, ktsan_memory_order_acquire); break;  \
+	default: BUG(); break;                                          \
+	}                                                               \
+	                                                               \
+	___r;                                                           \
+})
+
+#endif /* CONFIG_KTSAN */
+
+#ifndef CONFIG_KTSAN
 /* Atomic operations are already serializing on x86 */
 #define __smp_mb__before_atomic()	barrier()
 #define __smp_mb__after_atomic()	barrier()
+#else /* CONFIG_KTSAN */
+#define __smp_mb__before_atomic()	ktsan_thread_fence(ktsan_memory_order_release)
+#define __smp_mb__after_atomic()	ktsan_thread_fence(ktsan_memory_order_acquire)
+#endif
 
 #include <asm-generic/barrier.h>
 

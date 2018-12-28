@@ -16,6 +16,8 @@
 #ifndef _LINUX_PERCPU_DEFS_H
 #define _LINUX_PERCPU_DEFS_H
 
+#include <linux/ktsan.h>
+
 #ifdef CONFIG_SMP
 
 #ifdef MODULE
@@ -238,6 +240,7 @@ do {									\
 
 #define raw_cpu_ptr(ptr)						\
 ({									\
+	ktsan_percpu_acquire(arch_raw_cpu_ptr(ptr));			\
 	__verify_pcpu_ptr(ptr);						\
 	arch_raw_cpu_ptr(ptr);						\
 })
@@ -245,6 +248,7 @@ do {									\
 #ifdef CONFIG_DEBUG_PREEMPT
 #define this_cpu_ptr(ptr)						\
 ({									\
+	ktsan_percpu_acquire(SHIFT_PERCPU_PTR(ptr, my_cpu_offset));	\
 	__verify_pcpu_ptr(ptr);						\
 	SHIFT_PERCPU_PTR(ptr, my_cpu_offset);				\
 })
@@ -317,6 +321,7 @@ static inline void __this_cpu_preempt_check(const char *op) { }
 ({									\
 	typeof(variable) pscr_ret__;					\
 	__verify_pcpu_ptr(&(variable));					\
+	ktsan_percpu_acquire(&(variable));				\
 	switch(sizeof(variable)) {					\
 	case 1: pscr_ret__ = stem##1(variable); break;			\
 	case 2: pscr_ret__ = stem##2(variable); break;			\
@@ -332,6 +337,7 @@ static inline void __this_cpu_preempt_check(const char *op) { }
 ({									\
 	typeof(variable) pscr2_ret__;					\
 	__verify_pcpu_ptr(&(variable));					\
+	ktsan_percpu_acquire(&(variable));				\
 	switch(sizeof(variable)) {					\
 	case 1: pscr2_ret__ = stem##1(variable, __VA_ARGS__); break;	\
 	case 2: pscr2_ret__ = stem##2(variable, __VA_ARGS__); break;	\
@@ -359,6 +365,8 @@ static inline void __this_cpu_preempt_check(const char *op) { }
 	VM_BUG_ON((unsigned long)(&(pcp1)) % (2 * sizeof(pcp1)));	\
 	VM_BUG_ON((unsigned long)(&(pcp2)) !=				\
 		  (unsigned long)(&(pcp1)) + sizeof(pcp1));		\
+	ktsan_percpu_acquire(&(pcp1));					\
+	ktsan_percpu_acquire(&(pcp2));					\
 	switch(sizeof(pcp1)) {						\
 	case 1: pdcrb_ret__ = stem##1(pcp1, pcp2, __VA_ARGS__); break;	\
 	case 2: pdcrb_ret__ = stem##2(pcp1, pcp2, __VA_ARGS__); break;	\
@@ -373,6 +381,7 @@ static inline void __this_cpu_preempt_check(const char *op) { }
 #define __pcpu_size_call(stem, variable, ...)				\
 do {									\
 	__verify_pcpu_ptr(&(variable));					\
+	ktsan_percpu_acquire(&(variable));				\
 	switch(sizeof(variable)) {					\
 		case 1: stem##1(variable, __VA_ARGS__);break;		\
 		case 2: stem##2(variable, __VA_ARGS__);break;		\

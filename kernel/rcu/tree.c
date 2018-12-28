@@ -62,6 +62,7 @@
 #include <linux/suspend.h>
 #include <linux/ftrace.h>
 #include <linux/tick.h>
+#include <linux/ktsan.h>
 
 #include "tree.h"
 #include "rcu.h"
@@ -2434,6 +2435,14 @@ static void rcu_do_batch(struct rcu_data *rdp)
 	rhp = rcu_cblist_dequeue(&rcl);
 	for (; rhp; rhp = rcu_cblist_dequeue(&rcl)) {
 		debug_rcu_head_unqueue(rhp);
+
+		/* call_rcu is defined to be call_rcu_sched
+		   in the current kernel configuration. */
+		ktsan_sync_acquire(&ktsan_glob_sync[
+			ktsan_glob_sync_type_rcu_common]);
+		ktsan_sync_acquire(&ktsan_glob_sync[
+			ktsan_glob_sync_type_rcu_sched]);
+
 		if (__rcu_reclaim(rcu_state.name, rhp))
 			rcu_cblist_dequeued_lazy(&rcl);
 		/*

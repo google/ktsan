@@ -37,6 +37,7 @@
 #include <linux/preempt.h>
 #include <linux/lockdep.h>
 #include <linux/compiler.h>
+#include <linux/ktsan.h>
 #include <asm/processor.h>
 
 /*
@@ -109,6 +110,7 @@ static inline unsigned __read_seqcount_begin(const seqcount_t *s)
 {
 	unsigned ret;
 
+	ktsan_seqcount_begin(s);
 repeat:
 	ret = READ_ONCE(s->sequence);
 	if (unlikely(ret & 1)) {
@@ -129,7 +131,26 @@ repeat:
  */
 static inline unsigned raw_read_seqcount(const seqcount_t *s)
 {
-	unsigned ret = READ_ONCE(s->sequence);
+	unsigned ret;
+
+	ktsan_seqcount_begin(s);
+	ret = READ_ONCE(s->sequence);
+	smp_rmb();
+	return ret;
+}
+
+/**
+ * raw_read_seqcount_nocritical - Read the raw seqcount
+ * @s: pointer to seqcount_t
+ * Returns: seq count
+ *
+ * unlike raw_read_seqcount this function does not open a read critical section.
+ */
+static inline unsigned raw_read_seqcount_nocritical(const seqcount_t *s)
+{
+	unsigned ret;
+
+	ret = READ_ONCE(s->sequence);
 	smp_rmb();
 	return ret;
 }
@@ -181,7 +202,10 @@ static inline unsigned read_seqcount_begin(const seqcount_t *s)
  */
 static inline unsigned raw_seqcount_begin(const seqcount_t *s)
 {
-	unsigned ret = READ_ONCE(s->sequence);
+	unsigned ret;
+
+	ktsan_seqcount_begin(s);
+	ret = READ_ONCE(s->sequence);
 	smp_rmb();
 	return ret & ~1;
 }
@@ -202,7 +226,11 @@ static inline unsigned raw_seqcount_begin(const seqcount_t *s)
  */
 static inline int __read_seqcount_retry(const seqcount_t *s, unsigned start)
 {
-	return unlikely(s->sequence != start);
+	int ret;
+
+	ret = unlikely(s->sequence != start);
+	ktsan_seqcount_end(s);
+	return ret;
 }
 
 /**
@@ -221,10 +249,23 @@ static inline int read_seqcount_retry(const seqcount_t *s, unsigned start)
 	return __read_seqcount_retry(s, start);
 }
 
+/**
+ * read_seqcount_cancel - cancel a seq-read critical section
+ * @s: pointer to seqcount_t
+ *
+ * This is a no-op except for ktsan, it needs to know scopes of seq-read
+ * critical sections. The sections are denoted either by begin->retry or
+ * by begin->cancel.
+ */
+static inline void read_seqcount_cancel(const seqcount_t *s)
+{
+	ktsan_seqcount_end(s);
+}
 
 
 static inline void raw_write_seqcount_begin(seqcount_t *s)
 {
+	ktsan_seqcount_begin(s);
 	s->sequence++;
 	smp_wmb();
 }
@@ -233,6 +274,7 @@ static inline void raw_write_seqcount_end(seqcount_t *s)
 {
 	smp_wmb();
 	s->sequence++;
+	ktsan_seqcount_end(s);
 }
 
 /**
@@ -278,8 +320,10 @@ static inline void raw_write_seqcount_barrier(seqcount_t *s)
 
 static inline int raw_read_seqcount_latch(seqcount_t *s)
 {
+	int seq;
+	ktsan_seqcount_begin(s);
 	/* Pairs with the first smp_wmb() in raw_write_seqcount_latch() */
-	int seq = READ_ONCE(s->sequence); /* ^^^ */
+	seq = READ_ONCE(s->sequence); /* ^^^ */
 	return seq;
 }
 
@@ -438,6 +482,11 @@ static inline unsigned read_seqretry(const seqlock_t *sl, unsigned start)
 	return read_seqcount_retry(&sl->seqcount, start);
 }
 
+static inline void read_seqcancel(const seqlock_t *sl)
+{
+	read_seqcount_cancel(&sl->seqcount);
+}
+
 /*
  * Lock out other writers and update the count.
  * Acts like a normal spin_lock/unlock.
@@ -534,6 +583,20 @@ static inline void read_seqbegin_or_lock(seqlock_t *lock, int *seq)
 static inline int need_seqretry(seqlock_t *lock, int seq)
 {
 	return !(seq & 1) && read_seqretry(lock, seq);
+}
+
+/**
+ * Same as need_seqretry, but does not end critical section,
+ * if the check is successful.
+ */
+static inline int need_seqretry_check(seqlock_t *lock, int seq)
+{
+	if (seq & 1)
+		return 0;
+	if (read_seqretry(lock, seq))
+		return 1;
+	ktsan_seqcount_begin(&lock->seqcount);
+	return 0;
 }
 
 static inline void done_seqretry(seqlock_t *lock, int seq)

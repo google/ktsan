@@ -914,6 +914,7 @@ retry:
 	dev = dev_get_by_index_rcu(net, ifindex);
 	if (!dev) {
 		rcu_read_unlock();
+		read_seqcount_cancel(&devnet_rename_seq);
 		return -ENODEV;
 	}
 

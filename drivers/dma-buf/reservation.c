@@ -419,10 +419,12 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 				nshared = krealloc(shared, sz, GFP_KERNEL);
 				if (nshared) {
 					shared = nshared;
+					read_seqcount_cancel(&obj->seq);
 					continue;
 				}
 
 				ret = -ENOMEM;
+				read_seqcount_cancel(&obj->seq);
 				break;
 			}
 			shared = nshared;
