@@ -8,6 +8,7 @@
 #include <linux/rcuwait.h>
 #include <linux/rcu_sync.h>
 #include <linux/lockdep.h>
+#include <linux/ktsan.h>
 
 struct percpu_rw_semaphore {
 	struct rcu_sync		rss;
@@ -33,6 +34,7 @@ static inline void percpu_down_read_preempt_disable(struct percpu_rw_semaphore *
 {
 	might_sleep();
 
+	ktsan_mtx_pre_lock(sem, false, false);
 	rwsem_acquire_read(&sem->rw_sem.dep_map, 0, 0, _RET_IP_);
 
 	preempt_disable();
@@ -47,6 +49,7 @@ static inline void percpu_down_read_preempt_disable(struct percpu_rw_semaphore *
 	__this_cpu_inc(*sem->read_count);
 	if (unlikely(!rcu_sync_is_idle(&sem->rss)))
 		__percpu_down_read(sem, false); /* Unconditional memory barrier */
+	ktsan_mtx_post_lock(sem, false, false, true);
 	barrier();
 	/*
 	 * The barrier() prevents the compiler from
@@ -64,6 +67,7 @@ static inline int percpu_down_read_trylock(struct percpu_rw_semaphore *sem)
 {
 	int ret = 1;
 
+	ktsan_mtx_pre_lock(sem, false, true);
 	preempt_disable();
 	/*
 	 * Same as in percpu_down_read().
@@ -79,6 +83,7 @@ static inline int percpu_down_read_trylock(struct percpu_rw_semaphore *sem)
 
 	if (ret)
 		rwsem_acquire_read(&sem->rw_sem.dep_map, 0, 1, _RET_IP_);
+	ktsan_mtx_post_lock(sem, false, true, ret == 1);
 
 	return ret;
 }
@@ -90,6 +95,7 @@ static inline void percpu_up_read_preempt_enable(struct percpu_rw_semaphore *sem
 	 * bleeding the critical section out.
 	 */
 	barrier();
+	ktsan_mtx_pre_unlock(sem, false);
 	/*
 	 * Same as in percpu_down_read().
 	 */
@@ -100,6 +106,7 @@ static inline void percpu_up_read_preempt_enable(struct percpu_rw_semaphore *sem
 	preempt_enable();
 
 	rwsem_release(&sem->rw_sem.dep_map, 1, _RET_IP_);
+	ktsan_mtx_post_unlock(sem, false);
 }
 
 static inline void percpu_up_read(struct percpu_rw_semaphore *sem)
