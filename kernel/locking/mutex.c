@@ -917,7 +917,9 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
 	struct ww_mutex *ww;
 	int ret;
 
+	ktsan_mtx_post_lock(lock, true, false, false);
 	might_sleep();
+	ktsan_mtx_pre_lock(lock, true, false);
 
 	ww = container_of(lock, struct ww_mutex, base);
 	if (use_ww_ctx && ww_ctx) {
