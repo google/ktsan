@@ -81,3 +81,4 @@ CFLAGS_trace.o			= -O3 -fomit-frame-pointer
 
 KTSAN_SANITIZE := n
 KTSAN_SANITIZE_tests_inst.o = y
+KCOV_INSTRUMENT := n
